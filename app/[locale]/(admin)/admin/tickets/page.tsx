@@ -40,7 +40,7 @@ export default async function AdminTicketsPage({
       <div>
         <h1 className="text-3xl font-bold">Support</h1>
         <p className="text-[var(--foreground-muted)] mt-1">
-          Tickets de tes clients. (Création de tickets côté client : Phase 4.5)
+          Tickets de tes clients. Clique sur une ligne pour répondre.
         </p>
       </div>
 
@@ -49,9 +49,6 @@ export default async function AdminTicketsPage({
           <div className="text-center py-16 text-[var(--foreground-muted)]">
             <TicketIcon className="size-12 mx-auto mb-3 opacity-30" />
             <p>Aucun ticket pour l&apos;instant.</p>
-            <p className="text-xs mt-2">
-              Le système de tickets côté client (UI utilisateur) sera livré dans la prochaine itération.
-            </p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -68,8 +65,16 @@ export default async function AdminTicketsPage({
             <tbody className="divide-y divide-[var(--border)]">
               {tickets.map((t) => (
                 <tr key={t.id} className="hover:bg-[var(--background-elevated)]">
-                  <td className="px-4 py-3 font-mono text-xs">#{t.number}</td>
-                  <td className="px-4 py-3 font-medium">{t.subject}</td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    <Link href={`/admin/tickets/${t.id}`} className="hover:text-[var(--accent)]">
+                      #{t.number}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 font-medium">
+                    <Link href={`/admin/tickets/${t.id}`} className="hover:text-[var(--accent)]">
+                      {t.subject}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-xs">
                     <Link href={`/admin/clients/${t.openedBy.id}`} className="hover:text-[var(--accent)]">
                       {t.openedBy.name ?? t.openedBy.email}

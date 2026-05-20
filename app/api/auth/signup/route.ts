@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { ensureBootstrap } from "@/lib/bootstrap";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { sendEmail, welcomeEmail, isEmailConfigured } from "@/lib/email";
 
 const schema = z.object({
   name: z.string().min(1).max(120),
@@ -51,9 +52,15 @@ export async function POST(req: Request) {
       role: isBootstrapAdmin ? "ADMIN" : "USER",
       planId: starter?.id,
       storageQuota: starter?.storageBytes ?? BigInt(0),
-      emailVerified: new Date(), // pas de mail de vérif pour l'instant
+      emailVerified: new Date(),
     },
   });
+
+  // Welcome email (best-effort, ne fail pas le signup si l'email plante)
+  if (isEmailConfigured()) {
+    const tpl = welcomeEmail(name);
+    sendEmail({ to: email, ...tpl }).catch(() => undefined);
+  }
 
   return NextResponse.json({
     ok: true,

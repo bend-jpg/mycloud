@@ -1,0 +1,40 @@
+{
+  "name": "MyCloud",
+  "short_name": "MyCloud",
+  "description": "Ton cloud personnel : stockage, partage et famille en un seul espace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0a14",
+  "theme_color": "#0a0a14",
+  "lang": "fr",
+  "categories": ["productivity", "utilities", "social"],
+  "icons": [
+    {
+      "src": "/icon",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mes fichiers",
+      "short_name": "Fichiers",
+      "url": "/files",
+      "description": "Voir et uploader des fichiers"
+    },
+    {
+      "name": "Famille",
+      "short_name": "Famille",
+      "url": "/family",
+      "description": "Espace partagé famille"
+    }
+  ]
+}

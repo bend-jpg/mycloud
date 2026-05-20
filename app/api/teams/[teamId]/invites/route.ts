@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getMembership, canManageMembers } from "@/lib/teams";
 import { getAppUrl } from "@/lib/url";
+import { sendEmail, inviteEmail, isEmailConfigured } from "@/lib/email";
 
 const schema = z.object({
   email: z.string().email(),
@@ -60,15 +61,26 @@ export async function POST(
   });
 
   const baseUrl = getAppUrl();
-  // TODO : envoi email (Phase 5)
+  const inviteUrl = `${baseUrl}/invite/${invite.token}`;
+
+  // Envoi email si Resend configuré (sinon le client doit copier le lien manuellement)
+  let emailSent = false;
+  if (isEmailConfigured()) {
+    const inviterName = session.name || session.email;
+    const tpl = inviteEmail(m.team.name, inviterName, role, inviteUrl);
+    const res = await sendEmail({ to: invite.email, ...tpl });
+    emailSent = res.ok;
+  }
+
   return NextResponse.json({
     ok: true,
+    emailSent,
     invite: {
       id: invite.id,
       token: invite.token,
       email: invite.email,
       role: invite.role,
-      url: `${baseUrl}/invite/${invite.token}`,
+      url: inviteUrl,
       expiresAt: invite.expiresAt,
     },
   });
