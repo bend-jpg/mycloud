@@ -149,7 +149,7 @@ export function FileList({
     setBulkBusy(true);
     await Promise.all([
       ...Array.from(selected).map((id) => fetch(`/api/files/${id}`, { method: "DELETE" })),
-      // Les dossiers : pas encore d'endpoint dédié, on saute pour l'instant
+      ...Array.from(selectFolders).map((id) => fetch(`/api/folders/${id}`, { method: "DELETE" })),
     ]);
     setBulkBusy(false);
     clearSelection();
