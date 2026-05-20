@@ -17,21 +17,25 @@ export async function ensureBootstrap(): Promise<void> {
     await db.plan.upsert({ where: { slug: plan.slug }, update: {}, create: plan });
   }
 
-  // 2. Backend storage LOCAL (dev) si aucun défaut existant
-  const defaultBackend = await db.storageBackend.findFirst({ where: { isDefault: true, isActive: true } });
-  if (!defaultBackend) {
-    await db.storageBackend.create({
-      data: {
-        name: "Stockage local (dev)",
-        type: "LOCAL",
-        bucket: "mycloud",
-        accessKeyId: "local",
-        secretAccessKey: "local",
-        endpoint: path.resolve(process.cwd(), ".storage", "mycloud"),
-        isDefault: true,
-        isActive: true,
-      },
-    });
+  // 2. Backend storage LOCAL UNIQUEMENT en dev.
+  //    En prod (Vercel), le filesystem est en lecture seule → l'admin doit
+  //    configurer R2/B2/S3 via /admin/storage après le 1er déploiement.
+  if (process.env.NODE_ENV === "development") {
+    const defaultBackend = await db.storageBackend.findFirst({ where: { isDefault: true, isActive: true } });
+    if (!defaultBackend) {
+      await db.storageBackend.create({
+        data: {
+          name: "Stockage local (dev)",
+          type: "LOCAL",
+          bucket: "mycloud",
+          accessKeyId: "local",
+          secretAccessKey: "local",
+          endpoint: path.resolve(process.cwd(), ".storage", "mycloud"),
+          isDefault: true,
+          isActive: true,
+        },
+      });
+    }
   }
 
   // 3. User demo — UNIQUEMENT en dev (jamais en prod automatique)
