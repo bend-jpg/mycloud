@@ -52,6 +52,11 @@ model User {
   storageUsed   BigInt    @default(0) // octets utilisés
   storageQuota  BigInt    @default(0) // octets alloués (override du plan possible)
 
+  // 2FA
+  twoFactorSecret      String?    // base32, vide tant que pas activé
+  twoFactorEnabled     Boolean    @default(false)
+  twoFactorBackupCodes String[]   @default([])  // 10 codes hashés bcrypt, usage unique
+
   // Relations
   accounts      Account[]
   sessions      Session[]
@@ -65,6 +70,7 @@ model User {
   ticketMessages TicketMessage[]
   payments      Payment[]
   auditLogs     AdminAuditLog[]
+  passkeys      Passkey[]
 }
 
 model Account {
@@ -100,6 +106,40 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ============================================================
+// WEBAUTHN / PASSKEYS (empreinte digitale, Face ID, Yubikey…)
+// ============================================================
+
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       String
+  credentialId String    @unique             // base64url
+  publicKey    Bytes
+  counter      BigInt    @default(0)
+  deviceType   String?                       // singleDevice | multiDevice
+  backedUp     Boolean   @default(false)
+  transports   String[]  @default([])        // usb, ble, nfc, internal
+  deviceName   String?                       // label libre ("iPhone de Ben")
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Challenges WebAuthn éphémères (TTL 5 min)
+model WebauthnChallenge {
+  id        String   @id @default(cuid())
+  challenge String   @unique
+  userId    String?                // null pour login (on ne connaît pas encore le user)
+  purpose   String                 // "register" | "login"
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 // ============================================================

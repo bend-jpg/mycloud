@@ -6,7 +6,9 @@ import { SiteHeader } from "@/components/site-header";
 import { ThemePicker } from "@/components/theme-picker";
 import { ProfileForm } from "@/components/settings-profile-form";
 import { PasswordChangeForm } from "@/components/settings-password-form";
-import { Palette, User as UserIcon, Lock, Globe, Smartphone } from "lucide-react";
+import { TwoFactorSection } from "@/components/two-factor-section";
+import { PasskeysSection } from "@/components/passkeys-section";
+import { Palette, User as UserIcon, Lock, Globe, Smartphone, Fingerprint } from "lucide-react";
 
 export default async function SettingsPage({
   params,
@@ -29,6 +31,7 @@ export default async function SettingsPage({
       locale: true,
       image: true,
       passwordHash: true,
+      twoFactorEnabled: true,
     },
   });
   if (!user) redirect(`/${locale}/login`);
@@ -109,23 +112,36 @@ export default async function SettingsPage({
           )}
         </section>
 
-        {/* 2FA — placeholder Phase 2 */}
-        <section className="tile cursor-default !min-h-0 opacity-60">
-          <div className="flex items-center gap-3 mb-2">
+        {/* 2FA */}
+        <section className="tile cursor-default !min-h-0">
+          <div className="flex items-center gap-3 mb-4">
             <div className="tile-icon">
               <Smartphone className="size-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Authentification à deux facteurs</h2>
+              <h2 className="text-lg font-semibold">Authentification à deux facteurs (TOTP)</h2>
               <p className="text-sm text-[var(--foreground-muted)]">
-                Google Authenticator + Passkeys / Face ID / Touch ID
+                Google Authenticator, Authy, 1Password…
               </p>
             </div>
           </div>
-          <p className="text-xs text-[var(--foreground-muted)] mt-2">
-            Bientôt disponible (Phase 2). Pour le moment ton compte est protégé par mot de passe et rate-limiting
-            anti-brute-force.
-          </p>
+          <TwoFactorSection enabled={user.twoFactorEnabled} />
+        </section>
+
+        {/* Passkeys */}
+        <section className="tile cursor-default !min-h-0">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="tile-icon">
+              <Fingerprint className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Passkeys — empreinte digitale, Face ID</h2>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                Touch ID, Face ID, Windows Hello, Yubikey…
+              </p>
+            </div>
+          </div>
+          <PasskeysSection />
         </section>
 
         {/* Langue */}
