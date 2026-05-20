@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Cloud } from "lucide-react";
@@ -22,7 +23,9 @@ export default async function LoginPage({
         <div className="tile cursor-default">
           <h1 className="text-2xl font-bold">{t("title")}</h1>
 
-          <LoginForm />
+          <Suspense fallback={<div className="mt-4 h-40 animate-pulse bg-[var(--background-elevated)] rounded-xl" />}>
+            <LoginForm />
+          </Suspense>
 
           {process.env.NODE_ENV === "development" && (
             <p className="text-xs text-[var(--foreground-muted)] mt-4 text-center rounded-lg bg-[var(--background-elevated)] p-3">
