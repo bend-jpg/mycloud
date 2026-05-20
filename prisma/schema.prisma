@@ -71,6 +71,7 @@ model User {
   payments      Payment[]
   auditLogs     AdminAuditLog[]
   passkeys      Passkey[]
+  notifications Notification[]
 }
 
 model Account {
@@ -504,4 +505,37 @@ model AdminAuditLog {
 
   @@index([actorId, createdAt])
   @@index([targetType, targetId])
+}
+
+// ============================================================
+// NOTIFICATIONS (in-app, par utilisateur)
+// ============================================================
+
+enum NotificationType {
+  QUOTA_WARNING       // user approche de sa limite stockage
+  QUOTA_EXCEEDED      // user a dépassé son quota
+  PAYMENT_FAILED      // paiement Stripe échoué
+  PAYMENT_SUCCEEDED   // paiement réussi (récap)
+  SHARE_DOWNLOADED    // un lien a été téléchargé
+  INVITE_ACCEPTED     // une invitation famille a été acceptée
+  INVITE_RECEIVED     // tu as reçu une invitation famille
+  TICKET_REPLY        // l'admin a répondu à ton ticket
+  ADMIN_ALERT         // alerte interne pour staff/admin
+  SYSTEM              // annonce générique
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           // destinataire
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?          // URL vers la ressource concernée
+  read      Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
 }

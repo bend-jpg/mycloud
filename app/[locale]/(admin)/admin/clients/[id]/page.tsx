@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { formatBytes, formatPrice } from "@/lib/utils";
-import { ChevronLeft, Mail, Phone, MessageCircle, Calendar } from "lucide-react";
+import { userCostAndMargin } from "@/lib/cost-stats";
+import { marginColor } from "@/lib/pricing";
+import { ChevronLeft, Mail, Phone, MessageCircle, Calendar, TrendingUp, Wallet } from "lucide-react";
 import { ClientActions } from "@/components/admin-client-actions";
 import { RecordPaymentButton } from "@/components/admin-record-payment-button";
 
@@ -35,6 +37,8 @@ export default async function ClientDetailPage({
   const used = Number(user.storageUsed);
   const quota = Number(user.storageQuota);
   const pct = quota > 0 ? Math.round((used / quota) * 100) : 0;
+  const cost = await userCostAndMargin(user.id);
+  const mColor = cost ? marginColor(cost.marginEur, cost.revenueMonthlyCents) : "ok";
 
   return (
     <main className="p-8 space-y-6">
@@ -134,6 +138,71 @@ export default async function ClientDetailPage({
               </div>
             </div>
           </div>
+
+          {/* Rentabilité de ce client */}
+          {cost && (
+            <div className="tile cursor-default !min-h-0">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="tile-icon">
+                  <Wallet className="size-5" />
+                </div>
+                <div>
+                  <h2 className="font-semibold">Rentabilité estimée</h2>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Calcul mensuel basé sur les prix R2/B2/S3 publics et la subscription.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="rounded-xl bg-[var(--background-elevated)] p-3">
+                  <p className="text-xs text-[var(--foreground-muted)]">Revenu / mois</p>
+                  <p className="text-lg font-bold text-[var(--success)]">
+                    {(cost.revenueMonthlyCents / 100).toFixed(2)} €
+                  </p>
+                </div>
+                <div className="rounded-xl bg-[var(--background-elevated)] p-3">
+                  <p className="text-xs text-[var(--foreground-muted)]">Coût hébergement</p>
+                  <p className="text-lg font-bold text-[var(--danger)]">
+                    {cost.storageCostEur.toFixed(2)} €
+                  </p>
+                </div>
+                <div className="rounded-xl bg-[var(--background-elevated)] p-3">
+                  <p className="text-xs text-[var(--foreground-muted)]">Marge</p>
+                  <p
+                    className={`text-lg font-bold ${
+                      mColor === "good"
+                        ? "text-[var(--success)]"
+                        : mColor === "ok"
+                        ? "text-yellow-400"
+                        : "text-[var(--danger)]"
+                    }`}
+                  >
+                    {cost.marginEur.toFixed(2)} €
+                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    {cost.revenueMonthlyCents > 0
+                      ? `${Math.round((cost.marginEur / (cost.revenueMonthlyCents / 100)) * 100)}%`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+              {cost.perBackend.length > 0 && (
+                <ul className="mt-3 space-y-1 text-xs text-[var(--foreground-muted)]">
+                  {cost.perBackend.map((b) => (
+                    <li key={b.backendId} className="flex justify-between">
+                      <span>
+                        <TrendingUp className="size-3 inline me-1" />
+                        {b.backendName} ({b.type})
+                      </span>
+                      <span>
+                        {formatBytes(b.bytes)} · {b.costEur.toFixed(2)} €/mois
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Paiements */}
           <div className="tile cursor-default !min-h-0">

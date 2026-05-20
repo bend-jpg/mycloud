@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getStorage } from "@/lib/storage";
 import { getMembership, canWrite } from "@/lib/teams";
+import { checkQuotaAlert } from "@/lib/notifications";
 
 export async function POST(
   _req: Request,
@@ -51,6 +52,9 @@ export async function POST(
       data: { usedBytes: { increment: realSize } },
     }),
   ]);
+
+  // Notification quota si seuil franchi (80%, 95%, 100%)
+  await checkQuotaAlert(quotaUserId).catch(() => undefined);
 
   return NextResponse.json({ ok: true, file: { id: file.id, name: file.name, size: realSize.toString() } });
 }
