@@ -1,4 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { getSession } from "@/lib/session";
 import { BoxTile } from "@/components/box-tile";
 import { SiteHeader } from "@/components/site-header";
 import { formatBytes } from "@/lib/utils";
@@ -20,10 +23,17 @@ export default async function DashboardPage({
   setRequestLocale(locale);
   const t = await getTranslations("dashboard");
 
-  // Données factices — seront remplacées par la session + DB en Phase 0 (auth)
-  const user = { name: "Demo", isAdmin: true };
-  const usage = { used: BigInt(8 * 1024 * 1024 * 1024), total: BigInt(50 * 1024 * 1024 * 1024) };
-  const pct = Number((usage.used * BigInt(100)) / usage.total);
+  const session = await getSession();
+  if (!session) redirect(`/${locale}/login`);
+
+  const user = await db.user.findUnique({
+    where: { id: session.id },
+    select: { name: true, storageUsed: true, storageQuota: true },
+  });
+
+  const used = Number(user?.storageUsed ?? BigInt(0));
+  const total = Number(user?.storageQuota ?? BigInt(1));
+  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
 
   return (
     <>
@@ -32,10 +42,10 @@ export default async function DashboardPage({
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold">
-              {t("welcome", { name: user.name })}
+              {t("welcome", { name: user?.name ?? session.name })}
             </h1>
             <p className="text-[var(--foreground-muted)] mt-1">
-              {t("usage", { used: formatBytes(usage.used), total: formatBytes(usage.total) })}
+              {t("usage", { used: formatBytes(used), total: formatBytes(total) })}
             </p>
           </div>
           <div className="w-full md:w-80">
@@ -84,7 +94,7 @@ export default async function DashboardPage({
             title={t("tiles.settings.title")}
             description={t("tiles.settings.desc")}
           />
-          {user.isAdmin && (
+          {session.isAdmin && (
             <BoxTile
               href="/admin"
               icon={<Shield className="size-6" />}
