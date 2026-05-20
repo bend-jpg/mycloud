@@ -52,6 +52,12 @@ model User {
   storageUsed   BigInt    @default(0) // octets utilisés
   storageQuota  BigInt    @default(0) // octets alloués (override du plan possible)
 
+  // Sous-comptes : un utilisateur peut créer des sous-comptes avec
+  // une fraction de son quota. Le sous-compte a son propre login.
+  parentUserId  String?
+  parent        User?    @relation("SubAccounts", fields: [parentUserId], references: [id], onDelete: SetNull)
+  subAccounts   User[]   @relation("SubAccounts")
+
   // 2FA
   twoFactorSecret      String?    // base32, vide tant que pas activé
   twoFactorEnabled     Boolean    @default(false)

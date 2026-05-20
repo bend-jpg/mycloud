@@ -32,7 +32,6 @@ export default async function FolderPage({
     if (!cursor.parentId) break;
     cursor = await db.folder.findFirst({ where: { id: cursor.parentId, ownerId: session.id } });
   }
-  // Le dernier est la page courante : pas de lien
   if (crumbs.length > 0) crumbs[crumbs.length - 1].id = null;
 
   const [folders, files] = await Promise.all([
@@ -51,33 +50,39 @@ export default async function FolderPage({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-7xl px-6 py-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
+        <div className="space-y-4">
           <FilesBreadcrumb items={crumbs} />
-          <div className="flex items-center gap-2">
-            <NewFolderButton parentId={folder.id} />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">{folder.name}</h1>
+              <p className="text-sm text-[var(--foreground-muted)] mt-1">
+                {files.length} fichier{files.length > 1 ? "s" : ""} · {folders.length} sous-dossier{folders.length > 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <NewFolderButton parentId={folder.id} />
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-6">
-          <FileList
-            folders={folders.map((f) => ({
-              id: f.id,
-              name: f.name,
-              updatedAt: f.updatedAt.toISOString(),
-            }))}
-            files={files.map((f) => ({
-              id: f.id,
-              name: f.name,
-              size: f.size.toString(),
-              mimeType: f.mimeType,
-              uploadedAt: f.uploadedAt.toISOString(),
-            }))}
-          />
-          <div className="space-y-4">
-            <FileUploader folderId={folder.id} />
-          </div>
-        </div>
+        <FileUploader folderId={folder.id} />
+
+        <FileList
+          folderUrlBase="/files"
+          folders={folders.map((f) => ({
+            id: f.id,
+            name: f.name,
+            updatedAt: f.updatedAt.toISOString(),
+          }))}
+          files={files.map((f) => ({
+            id: f.id,
+            name: f.name,
+            size: f.size.toString(),
+            mimeType: f.mimeType,
+            uploadedAt: f.uploadedAt.toISOString(),
+          }))}
+        />
       </main>
     </>
   );

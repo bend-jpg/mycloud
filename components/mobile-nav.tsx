@@ -21,6 +21,7 @@ import {
   LogIn,
   UserPlus,
   LifeBuoy,
+  UserCog,
 } from "lucide-react";
 
 export function MobileNav({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAdmin: boolean }) {
@@ -68,6 +69,7 @@ export function MobileNav({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAdmi
                   <MobileLink href="/dashboard" icon={LayoutDashboard} label="Mon espace" onClick={() => setOpen(false)} />
                   <MobileLink href="/files" icon={FolderOpen} label="Mes fichiers" onClick={() => setOpen(false)} />
                   <MobileLink href="/family" icon={Users} label="Famille" onClick={() => setOpen(false)} />
+                  <MobileLink href="/accounts" icon={UserCog} label="Sous-comptes" onClick={() => setOpen(false)} />
                   <MobileLink href="/shares" icon={Share2} label="Partages" onClick={() => setOpen(false)} />
                   <MobileLink href="/billing" icon={CreditCard} label="Mon plan" onClick={() => setOpen(false)} />
                   <MobileLink href="/support" icon={LifeBuoy} label="Support" onClick={() => setOpen(false)} />

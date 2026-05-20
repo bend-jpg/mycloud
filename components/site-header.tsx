@@ -14,7 +14,11 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-[var(--background)]/60 border-b border-[var(--border)]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-base sm:text-lg shrink-0">
+        <Link
+          href={isLoggedIn ? "/dashboard" : "/"}
+          className="flex items-center gap-2 font-semibold text-base sm:text-lg shrink-0 hover:opacity-80 transition-opacity"
+          title={isLoggedIn ? "Retour à mon espace" : "Accueil"}
+        >
           <Cloud className="size-5 sm:size-6 text-[var(--accent)]" />
           <span>MyCloud</span>
         </Link>

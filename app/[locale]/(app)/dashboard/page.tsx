@@ -12,6 +12,8 @@ import {
   CreditCard,
   Settings,
   Shield,
+  UserCog,
+  LifeBuoy,
 } from "lucide-react";
 
 export default async function DashboardPage({
@@ -75,6 +77,13 @@ export default async function DashboardPage({
             accent="amber"
           />
           <BoxTile
+            href="/accounts"
+            icon={<UserCog className="size-6" />}
+            title="Sous-comptes"
+            description="Crée des accès pour ta famille avec un quota dédié"
+            accent="cyan"
+          />
+          <BoxTile
             href="/shares"
             icon={<Share2 className="size-6" />}
             title={t("tiles.shares.title")}
@@ -87,6 +96,12 @@ export default async function DashboardPage({
             title={t("tiles.billing.title")}
             description={t("tiles.billing.desc")}
             accent="green"
+          />
+          <BoxTile
+            href="/support"
+            icon={<LifeBuoy className="size-6" />}
+            title="Support"
+            description="Tickets et WhatsApp avec notre équipe"
           />
           <BoxTile
             href="/settings"
