@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Design "Box TV" — fond profond, accents lumineux, grandes tuiles
-   Inspiration : Apple TV, Plex, Netflix
+   Design system "Box TV"
+   4 thèmes : dark-blue (défaut), dark-amber, light, ocean
 ============================================================ */
 
-:root {
-  /* Palette sombre par défaut (Box TV vibes) */
+/* --- Thème par défaut (dark-blue) --- */
+:root,
+[data-theme="dark-blue"] {
+  color-scheme: dark;
   --background: #0a0a14;
   --background-elevated: #14141f;
   --background-tile: #1a1a28;
@@ -14,21 +16,79 @@
   --foreground-muted: #a1a1aa;
   --border: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.18);
-
-  /* Accents */
-  --accent: #38bdf8;            /* cyan cloud */
+  --accent: #38bdf8;             /* cyan */
   --accent-foreground: #0a0a14;
   --accent-glow: rgba(56, 189, 248, 0.35);
-
-  --secondary: #f59e0b;          /* warm sunset (famille) */
+  --secondary: #f59e0b;
   --secondary-glow: rgba(245, 158, 11, 0.25);
-
   --success: #22c55e;
   --warning: #facc15;
   --danger: #ef4444;
+  --hero-glow-1: rgba(56, 189, 248, 0.08);
+  --hero-glow-2: rgba(245, 158, 11, 0.06);
+}
 
-  --radius: 1rem;
-  --radius-tile: 1.5rem;
+[data-theme="dark-amber"] {
+  color-scheme: dark;
+  --background: #14110a;
+  --background-elevated: #1f1a14;
+  --background-tile: #28201a;
+  --foreground: #fffaf2;
+  --foreground-muted: #b8a890;
+  --border: rgba(255, 220, 180, 0.1);
+  --border-hover: rgba(255, 220, 180, 0.22);
+  --accent: #f59e0b;              /* warm amber */
+  --accent-foreground: #14110a;
+  --accent-glow: rgba(245, 158, 11, 0.4);
+  --secondary: #ec4899;           /* pink contrast */
+  --secondary-glow: rgba(236, 72, 153, 0.25);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+  --hero-glow-1: rgba(245, 158, 11, 0.12);
+  --hero-glow-2: rgba(236, 72, 153, 0.08);
+}
+
+[data-theme="ocean"] {
+  color-scheme: dark;
+  --background: #061826;
+  --background-elevated: #0a2536;
+  --background-tile: #0f2f44;
+  --foreground: #e6f4fb;
+  --foreground-muted: #88b3c8;
+  --border: rgba(173, 216, 240, 0.1);
+  --border-hover: rgba(173, 216, 240, 0.22);
+  --accent: #06b6d4;              /* deep teal */
+  --accent-foreground: #061826;
+  --accent-glow: rgba(6, 182, 212, 0.4);
+  --secondary: #14b8a6;
+  --secondary-glow: rgba(20, 184, 166, 0.25);
+  --success: #10b981;
+  --warning: #fbbf24;
+  --danger: #f43f5e;
+  --hero-glow-1: rgba(6, 182, 212, 0.12);
+  --hero-glow-2: rgba(20, 184, 166, 0.08);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #f7f7fb;
+  --background-elevated: #ffffff;
+  --background-tile: #ffffff;
+  --foreground: #18181f;
+  --foreground-muted: #6b7280;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.18);
+  --accent: #0284c7;
+  --accent-foreground: #ffffff;
+  --accent-glow: rgba(2, 132, 199, 0.18);
+  --secondary: #ea580c;
+  --secondary-glow: rgba(234, 88, 12, 0.15);
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --danger: #dc2626;
+  --hero-glow-1: rgba(2, 132, 199, 0.06);
+  --hero-glow-2: rgba(234, 88, 12, 0.04);
 }
 
 @theme inline {
@@ -46,7 +106,7 @@
   --color-danger: var(--danger);
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
-  --radius-tile: var(--radius-tile);
+  --radius-tile: 1.5rem;
 }
 
 html, body {
@@ -55,31 +115,31 @@ html, body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Transition douce au changement de thème */
+  transition: background-color 0.3s ease;
 }
 
-/* Fond avec halo subtil — sensation "box TV" */
+/* Halo dynamique selon le thème */
 body {
   background-image:
-    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(56, 189, 248, 0.08), transparent 60%),
-    radial-gradient(ellipse 800px 400px at 80% 100%, rgba(245, 158, 11, 0.06), transparent 70%);
+    radial-gradient(ellipse 1200px 600px at 50% -10%, var(--hero-glow-1), transparent 60%),
+    radial-gradient(ellipse 800px 400px at 80% 100%, var(--hero-glow-2), transparent 70%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
-/* RTL : on inverse les éléments dépendants de la direction */
 [dir="rtl"] body {
   background-image:
-    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(56, 189, 248, 0.08), transparent 60%),
-    radial-gradient(ellipse 800px 400px at 20% 100%, rgba(245, 158, 11, 0.06), transparent 70%);
+    radial-gradient(ellipse 1200px 600px at 50% -10%, var(--hero-glow-1), transparent 60%),
+    radial-gradient(ellipse 800px 400px at 20% 100%, var(--hero-glow-2), transparent 70%);
 }
 
-/* Scrollbar discrète */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
-/* Tuile "Box TV" — grande, brillante au survol */
+/* ===== Tuile "Box TV" ===== */
 .tile {
   position: relative;
   background: linear-gradient(160deg, var(--background-tile) 0%, var(--background-elevated) 100%);
@@ -106,7 +166,7 @@ body {
 .tile:hover {
   transform: translateY(-4px) scale(1.01);
   border-color: var(--border-hover);
-  box-shadow: 0 20px 60px -20px rgba(56, 189, 248, 0.25);
+  box-shadow: 0 20px 60px -20px var(--accent-glow);
 }
 .tile:hover::before { opacity: 1; }
 
@@ -122,7 +182,7 @@ body {
   color: var(--accent);
 }
 
-/* Bouton primaire vibrant */
+/* ===== Boutons ===== */
 .btn-primary {
   background: var(--accent);
   color: var(--accent-foreground);
@@ -132,10 +192,14 @@ body {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   box-shadow: 0 8px 24px -8px var(--accent-glow);
 }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 32px -8px var(--accent-glow); }
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px -8px var(--accent-glow);
+}
 
 .btn-ghost {
   background: transparent;
@@ -146,6 +210,30 @@ body {
   transition: border-color 0.15s ease, background 0.15s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
 }
-.btn-ghost:hover { border-color: var(--border-hover); background: var(--background-tile); }
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background: var(--background-tile);
+}
+
+/* ===== Mobile responsive helpers ===== */
+@media (max-width: 640px) {
+  .tile { padding: 1.25rem; min-height: 140px; border-radius: 1.25rem; }
+  .btn-primary, .btn-ghost { padding: 0.625rem 1.125rem; font-size: 0.875rem; }
+}
+
+/* ===== Accessibilité ===== */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Réduit les animations si l'utilisateur le souhaite */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

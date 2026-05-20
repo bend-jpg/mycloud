@@ -44,7 +44,7 @@ export default async function AdminTicketsPage({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-hidden">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
         {tickets.length === 0 ? (
           <div className="text-center py-16 text-[var(--foreground-muted)]">
             <TicketIcon className="size-12 mx-auto mb-3 opacity-30" />

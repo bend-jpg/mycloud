@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
+import { rateLimit, rateLimitReset, getClientIp } from "@/lib/rate-limit";
 
 // GET sans mot de passe / POST avec mot de passe
 async function handle(req: Request, token: string, password: string | null) {
@@ -20,8 +21,19 @@ async function handle(req: Request, token: string, password: string | null) {
 
   if (link.passwordHash) {
     if (!password) return NextResponse.json({ error: "PASSWORD_REQUIRED" }, { status: 401 });
+    // Anti brute-force : 8 tentatives/15 min par IP+token
+    const ip = getClientIp(req);
+    const rlKey = `share-pwd:${token}:${ip}`;
+    const rl = rateLimit(rlKey, 8, 15 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "TOO_MANY_ATTEMPTS", message: "Trop de tentatives. Réessaie dans 15 min." },
+        { status: 429, headers: { "Retry-After": Math.ceil((rl.resetAt - Date.now()) / 1000).toString() } }
+      );
+    }
     const ok = await bcrypt.compare(password, link.passwordHash);
     if (!ok) return NextResponse.json({ error: "BAD_PASSWORD" }, { status: 401 });
+    rateLimitReset(rlKey); // mot de passe bon : on remet à zéro le compteur
   }
 
   if (link.kind !== "FILE" || !link.file) {

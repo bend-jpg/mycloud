@@ -7,6 +7,7 @@ import Credentials from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { rateLimit, rateLimitReset, getClientIp } from "@/lib/rate-limit";
 import type { UserRole, UserLocale } from "@prisma/client";
 
 const providers: import("next-auth").NextAuthConfig["providers"] = [
@@ -16,10 +17,20 @@ const providers: import("next-auth").NextAuthConfig["providers"] = [
       email: { label: "Email", type: "email" },
       password: { label: "Mot de passe", type: "password" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       const email = (credentials?.email as string | undefined)?.toLowerCase().trim();
       const password = credentials?.password as string | undefined;
       if (!email || !password) return null;
+
+      // Anti brute-force : 10 tentatives par IP par 15 min, 5 par email par 15 min
+      const ip = request ? getClientIp(request as Request) : "unknown";
+      const ipRl = rateLimit(`login-ip:${ip}`, 10, 15 * 60 * 1000);
+      const emailRl = rateLimit(`login-email:${email}`, 5, 15 * 60 * 1000);
+      if (!ipRl.allowed || !emailRl.allowed) {
+        // On retourne null (NextAuth affichera "credentials invalides"). Le user
+        // doit attendre — pas d'info supplémentaire pour ne pas aider l'attaquant.
+        return null;
+      }
 
       const user = await db.user.findUnique({ where: { email } });
       if (!user || !user.passwordHash) return null;
@@ -27,6 +38,10 @@ const providers: import("next-auth").NextAuthConfig["providers"] = [
 
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return null;
+
+      // Login réussi : on remet les compteurs à zéro pour ce user
+      rateLimitReset(`login-email:${email}`);
+      rateLimitReset(`login-ip:${ip}`);
 
       await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 

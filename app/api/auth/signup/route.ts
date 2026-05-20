@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { ensureBootstrap } from "@/lib/bootstrap";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const schema = z.object({
   name: z.string().min(1).max(120),
@@ -12,6 +13,16 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Anti-bot : 5 signups par IP par heure (large pour les vrais users en NAT)
+  const ip = getClientIp(req);
+  const rl = rateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "TOO_MANY_ATTEMPTS", message: "Trop de tentatives. Réessaie dans 1h." },
+      { status: 429, headers: { "Retry-After": Math.ceil((rl.resetAt - Date.now()) / 1000).toString() } }
+    );
+  }
+
   await ensureBootstrap();
 
   const body = await req.json().catch(() => null);

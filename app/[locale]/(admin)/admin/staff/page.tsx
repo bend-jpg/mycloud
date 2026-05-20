@@ -31,7 +31,7 @@ export default async function AdminStaffPage({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-hidden">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-[var(--background-elevated)] text-[var(--foreground-muted)] text-xs uppercase">
             <tr>

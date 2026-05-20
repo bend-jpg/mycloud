@@ -3,7 +3,8 @@
 import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "@/i18n/navigation";
-import { LogOut, User, Shield, CreditCard, Settings } from "lucide-react";
+import { LogOut, User, Shield, CreditCard, Settings, FolderOpen, Users, Share2 } from "lucide-react";
+import { ThemeCycleButton } from "./theme-picker";
 
 export function UserMenu({
   user,
@@ -44,6 +45,31 @@ export function UserMenu({
             Mon espace
           </Link>
           <Link
+            href="/files"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)]"
+          >
+            <FolderOpen className="size-4" />
+            Mes fichiers
+          </Link>
+          <Link
+            href="/family"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)]"
+          >
+            <Users className="size-4" />
+            Famille
+          </Link>
+          <Link
+            href="/shares"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)]"
+          >
+            <Share2 className="size-4" />
+            Partages
+          </Link>
+          <div className="my-1 h-px bg-[var(--border)]" />
+          <Link
             href="/billing"
             onClick={() => setOpen(false)}
             className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)]"
@@ -59,16 +85,21 @@ export function UserMenu({
             <Settings className="size-4" />
             Paramètres
           </Link>
+          <ThemeCycleButton />
           {user.isAdmin && (
-            <Link
-              href="/admin"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)] text-[var(--accent)]"
-            >
-              <Shield className="size-4" />
-              Administration
-            </Link>
+            <>
+              <div className="my-1 h-px bg-[var(--border)]" />
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)] text-[var(--accent)]"
+              >
+                <Shield className="size-4" />
+                Administration
+              </Link>
+            </>
           )}
+          <div className="my-1 h-px bg-[var(--border)]" />
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)] text-[var(--danger)] text-start"

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getStorage } from "@/lib/storage";
+import { getMembership, canWrite } from "@/lib/teams";
 
 export async function POST(
   _req: Request,
@@ -18,6 +19,17 @@ export async function POST(
   const file = await db.file.findFirst({ where: { id, ownerId: session.id } });
   if (!file) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
+  // Vérification d'autorisation supplémentaire pour les fichiers de team :
+  // - L'uploader doit toujours être EDITOR+ sur le team
+  let quotaUserId = file.ownerId;
+  if (file.teamId) {
+    const m = await getMembership(file.teamId, session.id);
+    if (!m || !canWrite(m.role)) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+    quotaUserId = m.team.ownerId; // quota sur le propriétaire du team (qui paye)
+  }
+
   // Vérifie que l'objet existe bien dans le storage avant de marquer comme finalisé
   const storage = await getStorage(file.storageBackendId);
   const head = await storage.headObject(file.storageKey);
@@ -26,13 +38,12 @@ export async function POST(
     return NextResponse.json({ error: "UPLOAD_NOT_FOUND" }, { status: 404 });
   }
 
-  // Met à jour la taille réelle puis compte le fichier dans le quota
-  // (storageUsed n'inclut que les fichiers finalisés)
+  // Met à jour la taille réelle puis compte le fichier dans le quota du payeur
   const realSize = BigInt(head.size);
   await db.$transaction([
     db.file.update({ where: { id }, data: { size: realSize } }),
     db.user.update({
-      where: { id: session.id },
+      where: { id: quotaUserId },
       data: { storageUsed: { increment: realSize } },
     }),
     db.storageBackend.update({
