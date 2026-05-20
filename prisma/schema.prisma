@@ -130,6 +130,13 @@ model Plan {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  // IDs Stripe — renseignés par /api/admin/billing/sync-stripe (idempotent)
+  stripeProductId         String?
+  stripePriceMonthlyEurId String?
+  stripePriceYearlyEurId  String?
+  stripePriceMonthlyUsdId String?
+  stripePriceYearlyUsdId  String?
+
   users         User[]
   subscriptions Subscription[]
 }

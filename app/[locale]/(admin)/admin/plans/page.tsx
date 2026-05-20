@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
 import { formatBytes } from "@/lib/utils";
 import { Check, X } from "lucide-react";
+import { AdminSyncStripeButton } from "@/components/admin-sync-stripe-button";
 
 export default async function AdminPlansPage({
   params,
@@ -17,11 +18,14 @@ export default async function AdminPlansPage({
 
   return (
     <main className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Plans tarifaires</h1>
-        <p className="text-[var(--foreground-muted)] mt-1">
-          Les plans visibles par les clients sur la page d&apos;accueil.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Plans tarifaires</h1>
+          <p className="text-[var(--foreground-muted)] mt-1">
+            Les plans visibles par les clients sur la page d&apos;accueil.
+          </p>
+        </div>
+        <AdminSyncStripeButton />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -97,10 +101,17 @@ export default async function AdminPlansPage({
         ))}
       </div>
 
-      <p className="text-xs text-[var(--foreground-muted)]">
-        💡 L&apos;éditeur de plans en place sera ajouté en Phase 5 (Stripe sync). En attendant, modifie les plans via{" "}
-        <code className="px-1 py-0.5 bg-[var(--background-elevated)] rounded">lib/plans.ts</code> ou directement en DB.
-      </p>
+      <div className="text-xs text-[var(--foreground-muted)] space-y-1">
+        <p>
+          💡 Le bouton « Synchroniser vers Stripe » crée/met à jour les Products + Prices Stripe à partir de tes plans DB.
+          À lancer une fois après chaque modification de prix.
+        </p>
+        <p>
+          Pour modifier un plan : passe par{" "}
+          <code className="px-1 py-0.5 bg-[var(--background-elevated)] rounded">lib/plans.ts</code> (puis redémarre) ou
+          directement en DB. L&apos;éditeur in-app arrivera en Phase 5.5.
+        </p>
+      </div>
     </main>
   );
 }
