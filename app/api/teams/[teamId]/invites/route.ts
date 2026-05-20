@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getMembership, canManageMembers } from "@/lib/teams";
+import { getAppUrl } from "@/lib/url";
 
 const schema = z.object({
   email: z.string().email(),
@@ -58,7 +59,7 @@ export async function POST(
     },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = getAppUrl();
   // TODO : envoi email (Phase 5)
   return NextResponse.json({
     ok: true,

@@ -53,7 +53,8 @@ export class LocalProvider implements StorageProvider {
     this.id = config.id;
     this.name = config.name;
     this.root = config.rootDir ?? path.resolve(process.cwd(), ".storage", config.bucket);
-    this.baseUrl = config.publicUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    // LocalProvider est dev-only — l'URL pointe sur notre propre Next.js
+    this.baseUrl = config.publicUrl ?? "http://localhost:3000";
   }
 
   private resolveKey(key: string): string {

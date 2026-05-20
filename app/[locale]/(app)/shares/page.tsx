@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { SharesList } from "@/components/shares-list";
+import { getAppUrl } from "@/lib/url";
 
 export default async function SharesPage({
   params,
@@ -22,7 +23,7 @@ export default async function SharesPage({
     include: { file: { select: { name: true, size: true, mimeType: true } } },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = getAppUrl();
   const items = links.map((l) => ({
     token: l.token,
     url: `${baseUrl}/s/${l.token}`,

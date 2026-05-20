@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { getAppUrl } from "@/lib/url";
 
 const schema = z.object({
   fileId: z.string().min(1),
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = getAppUrl();
   return NextResponse.json({
     ok: true,
     share: {
@@ -86,7 +87,7 @@ export async function GET() {
     include: { file: { select: { name: true, size: true, mimeType: true } } },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = getAppUrl();
   return NextResponse.json({
     shares: links.map((l) => ({
       token: l.token,
