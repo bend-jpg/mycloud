@@ -1,0 +1,125 @@
+{
+  "app": {
+    "name": "MyCloud",
+    "tagline": "Your cloud, your family, your files — everywhere."
+  },
+  "nav": {
+    "home": "Home",
+    "pricing": "Pricing",
+    "features": "Features",
+    "login": "Log in",
+    "signup": "Sign up",
+    "logout": "Log out",
+    "dashboard": "Dashboard"
+  },
+  "landing": {
+    "hero": {
+      "title": "Your personal cloud, simple and powerful",
+      "subtitle": "Store, share, and access your files from anywhere. Family space, share links, and soon website hosting.",
+      "ctaStart": "Start free",
+      "ctaPricing": "See pricing"
+    },
+    "features": {
+      "title": "Everything you need",
+      "storage": {
+        "title": "Generous storage",
+        "desc": "Movies, photos, documents — all in one place, available anywhere."
+      },
+      "share": {
+        "title": "One-click sharing",
+        "desc": "Send a file via link with expiration date and password."
+      },
+      "family": {
+        "title": "Family space",
+        "desc": "Share your memories with your family in one common space."
+      },
+      "sync": {
+        "title": "Sync",
+        "desc": "Your cloud on your computer, like a regular hard drive."
+      },
+      "hosting": {
+        "title": "Website hosting",
+        "desc": "Host your websites directly from your cloud (Pro plan)."
+      },
+      "security": {
+        "title": "Maximum security",
+        "desc": "End-to-end encryption, automatic backups."
+      }
+    },
+    "pricing": {
+      "title": "Pick your plan",
+      "subtitle": "No commitment, cancel anytime.",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save": "Save 17%",
+      "perMonth": "/mo",
+      "perYear": "/yr",
+      "popular": "Most popular",
+      "cta": "Choose this plan",
+      "members": "{count, plural, =1 {# member} other {# members}}",
+      "storage": "{size} of storage",
+      "websiteHosting": "Website hosting",
+      "claudeCodeHosting": "Claude Code hosting"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Log in",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "withGoogle": "Continue with Google",
+      "withEmail": "Continue with email",
+      "noAccount": "No account yet?",
+      "createAccount": "Sign up"
+    },
+    "signup": {
+      "title": "Create account",
+      "email": "Email",
+      "password": "Password",
+      "name": "Full name",
+      "submit": "Create my account",
+      "haveAccount": "Already have an account?",
+      "login": "Log in"
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome, {name}",
+    "tiles": {
+      "files": {
+        "title": "My files",
+        "desc": "All your documents, photos and videos"
+      },
+      "family": {
+        "title": "Family",
+        "desc": "Space shared with loved ones"
+      },
+      "shares": {
+        "title": "Shares",
+        "desc": "Links sent and received"
+      },
+      "billing": {
+        "title": "My plan",
+        "desc": "Plan, payments, invoices"
+      },
+      "settings": {
+        "title": "Settings",
+        "desc": "Account, security, language"
+      },
+      "admin": {
+        "title": "Administration",
+        "desc": "Clients, support, configuration"
+      }
+    },
+    "usage": "{used} of {total} used"
+  },
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "language": "Language"
+  }
+}

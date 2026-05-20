@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MyCloud
 
-## Getting Started
+SaaS de stockage cloud personnel et familial. Combine pCloud (drive synchronisé),
+WeTransfer (liens de partage), NAS familial, et — à terme — hébergement de sites
+et instances Claude Code.
 
-First, run the development server:
+## État du projet
+
+- **Phase 0 ✅** Scaffold, i18n, design system, schéma DB, abstraction storage
+- **Phase 1 🚧** Upload/download fichiers + dossiers (code prêt, test pendant)
+- **Phase 2 →** Liens de partage, espaces famille, paiements, admin, PWA, etc.
+
+## Démarrer en local
+
+### 1. Configurer la base de données (obligatoire)
+
+L'option la plus simple : **Neon** (Postgres serverless, plan gratuit).
+
+1. Va sur https://neon.tech, crée un compte (Google/GitHub).
+2. Crée un projet "mycloud".
+3. Copie la **connection string** — elle ressemble à :
+   `postgresql://user:pass@ep-xxxx.eu-west-1.aws.neon.tech/mycloud?sslmode=require`
+
+Crée un fichier `.env.local` à la racine (copie `.env.example`) et colle :
+
+```bash
+DATABASE_URL="postgresql://...l'URL Neon..."
+AUTH_SECRET="..."  # génère avec : openssl rand -base64 32
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### 2. Créer les tables
+
+```bash
+npx prisma db push
+```
+
+### 3. Lancer
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvre http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Au premier accès au dashboard, un user demo (`demo@mycloud.local`) et les plans
+par défaut sont créés automatiquement. Tu peux tester l'upload — les fichiers
+sont stockés dans `./.storage/` localement.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. (Optionnel) Brancher Cloudflare R2 pour la prod
 
-## Learn More
+Voir `.env.example` pour les variables R2. En prod, un backend R2 doit remplacer
+le backend LOCAL (qui ne marche pas sur Vercel — filesystem en lecture seule).
 
-To learn more about Next.js, take a look at the following resources:
+## Stack technique
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Couche | Choix |
+|---|---|
+| Frontend + API | Next.js 16 (App Router, Turbopack) |
+| UI | Tailwind v4, design "Box TV" |
+| DB | Postgres via Prisma 6 |
+| Auth | NextAuth v5 (en cours) |
+| Stockage | Cloudflare R2 (prod) / Filesystem (dev) — multi-provider |
+| Paiements | Stripe + Coinbase Commerce (à venir) |
+| i18n | next-intl (FR / EN / ES / HE+RTL) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Roadmap
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [x] Phase 0 — Setup (DB, i18n, design, storage abstraction, landing)
+- [ ] Phase 1 — Files & folders (upload, download, navigation, corbeille)
+- [ ] Phase 2 — Liens de partage WeTransfer-style
+- [ ] Phase 3 — Espaces famille avec permissions
+- [ ] Phase 4 — Dashboard admin (clients, tickets, WhatsApp)
+- [ ] Phase 5 — Paiements (Stripe + crypto + espèces manuel)
+- [ ] Phase 6 — PWA mobile + upload auto photos
+- [ ] Phase 7 — App desktop (drive monté)
+- [ ] Phase 8 — Multi-storage admin UI
+- [ ] Phase 9 — Hébergement sites + Claude Code (infra séparée)

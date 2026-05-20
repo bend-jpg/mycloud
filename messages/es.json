@@ -1,0 +1,125 @@
+{
+  "app": {
+    "name": "MyCloud",
+    "tagline": "Tu nube, tu familia, tus archivos — en cualquier lugar."
+  },
+  "nav": {
+    "home": "Inicio",
+    "pricing": "Precios",
+    "features": "Funciones",
+    "login": "Iniciar sesión",
+    "signup": "Crear cuenta",
+    "logout": "Cerrar sesión",
+    "dashboard": "Panel"
+  },
+  "landing": {
+    "hero": {
+      "title": "Tu nube personal, simple y potente",
+      "subtitle": "Almacena, comparte y accede a tus archivos desde cualquier lugar. Espacio familiar, enlaces de compartir y pronto alojamiento de sitios web.",
+      "ctaStart": "Empezar gratis",
+      "ctaPricing": "Ver precios"
+    },
+    "features": {
+      "title": "Todo lo que necesitas",
+      "storage": {
+        "title": "Almacenamiento generoso",
+        "desc": "Películas, fotos, documentos — todo en un solo lugar, disponible en cualquier sitio."
+      },
+      "share": {
+        "title": "Compartir con un clic",
+        "desc": "Envía un archivo por enlace con fecha de expiración y contraseña."
+      },
+      "family": {
+        "title": "Espacio familiar",
+        "desc": "Comparte tus recuerdos con tu familia en un espacio común."
+      },
+      "sync": {
+        "title": "Sincronización",
+        "desc": "Tu nube en tu ordenador, como un disco duro."
+      },
+      "hosting": {
+        "title": "Alojamiento web",
+        "desc": "Aloja tus sitios web directamente desde tu nube (plan Pro)."
+      },
+      "security": {
+        "title": "Seguridad máxima",
+        "desc": "Cifrado de extremo a extremo, copias de seguridad automáticas."
+      }
+    },
+    "pricing": {
+      "title": "Elige tu plan",
+      "subtitle": "Sin compromiso, cancela cuando quieras.",
+      "monthly": "Mensual",
+      "yearly": "Anual",
+      "save": "Ahorra 17%",
+      "perMonth": "/mes",
+      "perYear": "/año",
+      "popular": "Más popular",
+      "cta": "Elegir este plan",
+      "members": "{count, plural, =1 {# miembro} other {# miembros}}",
+      "storage": "{size} de almacenamiento",
+      "websiteHosting": "Alojamiento de sitios web",
+      "claudeCodeHosting": "Alojamiento Claude Code"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "email": "Email",
+      "password": "Contraseña",
+      "submit": "Iniciar sesión",
+      "withGoogle": "Continuar con Google",
+      "withEmail": "Continuar con email",
+      "noAccount": "¿Aún no tienes cuenta?",
+      "createAccount": "Crear cuenta"
+    },
+    "signup": {
+      "title": "Crear cuenta",
+      "email": "Email",
+      "password": "Contraseña",
+      "name": "Nombre completo",
+      "submit": "Crear mi cuenta",
+      "haveAccount": "¿Ya tienes cuenta?",
+      "login": "Iniciar sesión"
+    }
+  },
+  "dashboard": {
+    "welcome": "Bienvenido, {name}",
+    "tiles": {
+      "files": {
+        "title": "Mis archivos",
+        "desc": "Todos tus documentos, fotos y vídeos"
+      },
+      "family": {
+        "title": "Familia",
+        "desc": "Espacio compartido con tus seres queridos"
+      },
+      "shares": {
+        "title": "Compartidos",
+        "desc": "Enlaces enviados y recibidos"
+      },
+      "billing": {
+        "title": "Mi plan",
+        "desc": "Plan, pagos, facturas"
+      },
+      "settings": {
+        "title": "Ajustes",
+        "desc": "Cuenta, seguridad, idioma"
+      },
+      "admin": {
+        "title": "Administración",
+        "desc": "Clientes, soporte, configuración"
+      }
+    },
+    "usage": "{used} de {total} usados"
+  },
+  "common": {
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Atrás",
+    "language": "Idioma"
+  }
+}

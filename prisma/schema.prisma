@@ -1,0 +1,460 @@
+// mycloud — schéma de base de données
+// SaaS cloud storage avec famille, partage, multi-storage, admin
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// AUTH & USERS
+// ============================================================
+
+enum UserRole {
+  USER          // client final
+  ADMIN         // super-admin (toi)
+  STAFF_SUPPORT // équipe support (peut voir/gérer tickets)
+  STAFF_BILLING // équipe comptable (peut voir paiements)
+  STAFF_OPS     // équipe ops (peut gérer storage backends)
+}
+
+enum UserLocale {
+  fr
+  en
+  es
+  he
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  passwordHash  String?
+  role          UserRole  @default(USER)
+  locale        UserLocale @default(fr)
+  phone         String?
+  whatsapp      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  suspendedAt   DateTime?
+
+  // Plan & quota
+  planId        String?
+  plan          Plan?     @relation(fields: [planId], references: [id])
+  subscription  Subscription?
+  storageUsed   BigInt    @default(0) // octets utilisés
+  storageQuota  BigInt    @default(0) // octets alloués (override du plan possible)
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  ownedFiles    File[]    @relation("FileOwner")
+  ownedFolders  Folder[]  @relation("FolderOwner")
+  shareLinks    ShareLink[]
+  memberships   Membership[]
+  invitesSent   Invite[]  @relation("InviteSender")
+  ticketsOpened Ticket[]  @relation("TicketOpener")
+  ticketsAssigned Ticket[] @relation("TicketAssignee")
+  ticketMessages TicketMessage[]
+  payments      Payment[]
+  auditLogs     AdminAuditLog[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================
+// PLANS & ABONNEMENTS
+// ============================================================
+
+model Plan {
+  id              String    @id @default(cuid())
+  slug            String    @unique  // "starter", "family", "pro", "business"
+  name            String
+  descriptionFr   String?
+  descriptionEn   String?
+  descriptionEs   String?
+  descriptionHe   String?
+  storageBytes    BigInt    // quota
+  maxMembers      Int       @default(1)       // membres famille inclus
+  maxShareLinks   Int       @default(100)
+  maxShareDays    Int       @default(30)
+  websiteHosting  Boolean   @default(false)   // peut héberger des sites
+  claudeCodeHosting Boolean @default(false)
+  priceMonthlyEur Int       // centimes
+  priceYearlyEur  Int       // centimes
+  priceMonthlyUsd Int
+  priceYearlyUsd  Int
+  active          Boolean   @default(true)
+  highlighted     Boolean   @default(false)   // mis en avant sur landing
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  users         User[]
+  subscriptions Subscription[]
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIAL
+  PAUSED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+model Subscription {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  planId           String
+  status           SubscriptionStatus @default(ACTIVE)
+  cycle            BillingCycle       @default(MONTHLY)
+  currency         String   @default("EUR")
+  stripeCustomerId String?
+  stripeSubId      String?  @unique
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean @default(false)
+  trialEndsAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id])
+}
+
+enum PaymentMethod {
+  CARD_STRIPE
+  CRYPTO
+  CASH
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  amount          Int           // centimes
+  currency        String        @default("EUR")
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  externalRef     String?       // stripe payment intent, tx hash, etc.
+  notes           String?       // saisie manuelle admin (espèces, virement...)
+  recordedById    String?       // admin qui a saisi
+  invoiceNumber   String?       @unique
+  invoiceUrl      String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// FAMILY / TEAM SPACES
+// ============================================================
+
+enum TeamType {
+  FAMILY
+  WORKSPACE
+}
+
+enum MemberRole {
+  OWNER   // créateur (= titulaire du plan)
+  ADMIN   // peut inviter / gérer
+  EDITOR  // peut écrire
+  VIEWER  // lecture seule
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  type        TeamType @default(FAMILY)
+  ownerId     String   // user qui paye le plan
+  rootFolderId String? @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     Membership[]
+  invites     Invite[]
+  folders     Folder[]
+  files       File[]
+}
+
+model Membership {
+  id        String     @id @default(cuid())
+  teamId    String
+  userId    String
+  role      MemberRole @default(VIEWER)
+  joinedAt  DateTime   @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model Invite {
+  id        String     @id @default(cuid())
+  teamId    String
+  email     String
+  role      MemberRole @default(VIEWER)
+  token     String     @unique
+  invitedById String
+  expiresAt DateTime
+  acceptedAt DateTime?
+  createdAt DateTime   @default(now())
+
+  team       Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy  User @relation("InviteSender", fields: [invitedById], references: [id])
+}
+
+// ============================================================
+// FILES & FOLDERS
+// ============================================================
+
+model Folder {
+  id          String   @id @default(cuid())
+  name        String
+  ownerId     String
+  teamId      String?  // si null = espace perso, sinon partagé dans team
+  parentId    String?
+  path        String   // chemin matérialisé "/foo/bar" pour requêtes rapides
+  isTrash     Boolean  @default(false)
+  isRoot      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  owner    User     @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  team     Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  parent   Folder?  @relation("FolderTree", fields: [parentId], references: [id])
+  children Folder[] @relation("FolderTree")
+  files    File[]
+
+  @@index([ownerId, teamId, parentId])
+  @@index([path])
+}
+
+model File {
+  id            String   @id @default(cuid())
+  name          String
+  ownerId       String
+  teamId        String?
+  folderId      String?
+  storageBackendId String
+  storageKey    String   // clé objet dans le bucket
+  size          BigInt
+  mimeType      String
+  checksum      String?  // SHA-256 pour dedup éventuel
+  thumbnailKey  String?  // miniature dans storage
+  metadata      Json?    // EXIF, durée vidéo, etc.
+  isTrash       Boolean  @default(false)
+  uploadedAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  owner          User           @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  team           Team?          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  folder         Folder?        @relation(fields: [folderId], references: [id])
+  storageBackend StorageBackend @relation(fields: [storageBackendId], references: [id])
+  shareLinks     ShareLink[]
+
+  @@index([ownerId, teamId, folderId])
+  @@index([checksum])
+}
+
+// ============================================================
+// SHARE LINKS (WeTransfer-style)
+// ============================================================
+
+enum ShareKind {
+  FILE
+  FOLDER
+  MULTI       // sélection de fichiers groupés en zip à la volée
+}
+
+model ShareLink {
+  id              String    @id @default(cuid())
+  token           String    @unique  // segment URL court
+  createdById     String
+  kind            ShareKind @default(FILE)
+  fileId          String?
+  folderId        String?
+  fileIds         String[]  // pour MULTI
+  passwordHash    String?
+  expiresAt       DateTime?
+  maxDownloads    Int?
+  downloadCount   Int       @default(0)
+  notifyOnDownload Boolean  @default(true)
+  customMessage   String?
+  createdAt       DateTime  @default(now())
+  revokedAt       DateTime?
+
+  createdBy User  @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  file      File? @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model ShareDownload {
+  id          String   @id @default(cuid())
+  shareToken  String
+  ipHash      String   // hash de l'IP pour analytics sans PII
+  userAgent   String?
+  downloadedAt DateTime @default(now())
+}
+
+// ============================================================
+// STORAGE BACKENDS (multi-provider)
+// ============================================================
+
+enum StorageProviderType {
+  LOCAL       // filesystem local (dev uniquement)
+  R2          // Cloudflare R2
+  S3          // AWS S3
+  B2          // Backblaze B2
+  MINIO       // self-hosted MinIO
+  WASABI
+  CUSTOM_S3   // tout endpoint S3-compatible
+}
+
+model StorageBackend {
+  id            String              @id @default(cuid())
+  name          String              // "R2 principal", "NAS bureau", etc.
+  type          StorageProviderType
+  endpoint      String?             // pour custom S3, R2, MinIO
+  region        String?
+  bucket        String
+  accessKeyId   String              // chiffré au repos idéalement
+  secretAccessKey String            // chiffré au repos idéalement
+  publicUrl     String?             // CDN devant le bucket
+  isDefault     Boolean             @default(false)
+  isActive      Boolean             @default(true)
+  priority      Int                 @default(0)
+  capacityBytes BigInt?
+  usedBytes     BigInt              @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  files File[]
+}
+
+// ============================================================
+// SUPPORT (tickets + chat WhatsApp)
+// ============================================================
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  number      Int            @unique @default(autoincrement())
+  subject     String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(NORMAL)
+  openedById  String
+  assignedToId String?
+  channel     String         @default("web")  // web | whatsapp | email
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  closedAt    DateTime?
+
+  openedBy   User            @relation("TicketOpener", fields: [openedById], references: [id])
+  assignedTo User?           @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  messages   TicketMessage[]
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  body      String
+  isInternal Boolean @default(false)  // note interne admin/staff
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+}
+
+// ============================================================
+// AUDIT LOG (admin actions)
+// ============================================================
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  actorId     String   // admin qui a fait l'action
+  action      String   // "plan.change", "user.suspend", "payment.record_cash", ...
+  targetType  String?  // "User", "Plan", "Payment", ...
+  targetId    String?
+  metadata    Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+}
