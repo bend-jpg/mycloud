@@ -34,8 +34,35 @@ export function NotificationBell() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 60_000);
-    return () => clearInterval(t);
+    // Polling intelligent : 90s quand la page est visible, pause sinon.
+    // Reload immédiat quand l'utilisateur revient sur l'onglet.
+    let timer: ReturnType<typeof setInterval> | null = null;
+    function start() {
+      if (timer) return;
+      timer = setInterval(() => {
+        if (document.visibilityState === "visible") load();
+      }, 90_000);
+    }
+    function stop() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    }
+    function onVisibility() {
+      if (document.visibilityState === "visible") {
+        load();
+        start();
+      } else {
+        stop();
+      }
+    }
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load]);
 
   useEffect(() => {
