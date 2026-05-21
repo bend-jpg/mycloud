@@ -4,6 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { logActivity } from "@/lib/activity";
 
 const schema = z.object({ password: z.string().min(1) });
 
@@ -27,5 +28,6 @@ export async function POST(req: Request) {
     where: { id: session.id },
     data: { twoFactorSecret: null, twoFactorEnabled: false, twoFactorBackupCodes: [] },
   });
+  await logActivity({ userId: session.id, action: "twofa.disable", req });
   return NextResponse.json({ ok: true });
 }

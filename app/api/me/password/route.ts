@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { logActivity } from "@/lib/activity";
 
 const schema = z.object({
   currentPassword: z.string().min(1),
@@ -30,5 +31,6 @@ export async function POST(req: Request) {
 
   const newHash = await bcrypt.hash(newPassword, 12);
   await db.user.update({ where: { id: session.id }, data: { passwordHash: newHash } });
+  await logActivity({ userId: session.id, action: "password.change", req });
   return NextResponse.json({ ok: true });
 }

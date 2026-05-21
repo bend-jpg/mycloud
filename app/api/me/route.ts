@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { logActivity } from "@/lib/activity";
 
 const schema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -28,6 +29,12 @@ export async function PATCH(req: Request) {
       ...(parsed.data.whatsapp !== undefined && { whatsapp: parsed.data.whatsapp || null }),
       ...(parsed.data.locale !== undefined && { locale: parsed.data.locale }),
     },
+  });
+  await logActivity({
+    userId: session.id,
+    action: "account.update",
+    req,
+    metadata: { fields: Object.keys(parsed.data) },
   });
   return NextResponse.json({ ok: true });
 }

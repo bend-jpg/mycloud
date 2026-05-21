@@ -3,7 +3,7 @@
 import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "@/i18n/navigation";
-import { LogOut, User, Shield, CreditCard, Settings, FolderOpen, Users, Share2, LifeBuoy, UserCog, Trash2, Bell } from "lucide-react";
+import { LogOut, User, Shield, CreditCard, Settings, FolderOpen, Users, Share2, LifeBuoy, UserCog, Trash2, Bell, ShieldCheck } from "lucide-react";
 import { ThemeCycleButton } from "./theme-picker";
 
 export function UserMenu({
@@ -116,6 +116,14 @@ export function UserMenu({
           >
             <Settings className="size-4" />
             Paramètres
+          </Link>
+          <Link
+            href="/security"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)]"
+          >
+            <ShieldCheck className="size-4" />
+            Sécurité & activité
           </Link>
           <ThemeCycleButton />
           {user.isAdmin && (

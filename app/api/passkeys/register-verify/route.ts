@@ -7,6 +7,7 @@ import type { RegistrationResponseJSON } from "@simplewebauthn/types";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getRpId, getRpOrigin } from "@/lib/webauthn";
+import { logActivity } from "@/lib/activity";
 
 export const runtime = "nodejs";
 
@@ -69,6 +70,13 @@ export async function POST(req: Request) {
     }),
     db.webauthnChallenge.delete({ where: { id: stored.id } }),
   ]);
+
+  await logActivity({
+    userId: session.id,
+    action: "passkey.add",
+    req,
+    metadata: { deviceName: parsed.data.deviceName ?? null },
+  });
 
   return NextResponse.json({ ok: true });
 }

@@ -154,4 +154,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  events: {
+    async signIn({ user }) {
+      if (user?.id) {
+        try {
+          await db.activityLog.create({
+            data: { userId: user.id, action: "login" },
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+    async signOut(message) {
+      // message peut être { token } (jwt) ou { session } (db)
+      const userId =
+        "token" in message ? (message.token?.id as string | undefined) : message.session?.userId;
+      if (userId) {
+        try {
+          await db.activityLog.create({ data: { userId, action: "logout" } });
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+  },
 });

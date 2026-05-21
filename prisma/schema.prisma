@@ -78,6 +78,7 @@ model User {
   auditLogs     AdminAuditLog[]
   passkeys      Passkey[]
   notifications Notification[]
+  activityLogs  ActivityLog[]
 }
 
 model Account {
@@ -544,6 +545,25 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt])
+}
+
+// ============================================================
+// ACTIVITY LOG — Activité utilisateur visible par l'utilisateur lui-même
+// (différent de AdminAuditLog qui trace les actions admin)
+// ============================================================
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // login | login.failed | password.change | twofa.enable | twofa.disable | passkey.add | passkey.remove | share.view | share.download | account.update
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 // ============================================================

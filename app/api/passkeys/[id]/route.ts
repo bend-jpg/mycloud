@@ -2,9 +2,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { logActivity } from "@/lib/activity";
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   let session;
@@ -17,5 +18,11 @@ export async function DELETE(
   const passkey = await db.passkey.findFirst({ where: { id, userId: session.id } });
   if (!passkey) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   await db.passkey.delete({ where: { id } });
+  await logActivity({
+    userId: session.id,
+    action: "passkey.remove",
+    req,
+    metadata: { deviceName: passkey.deviceName },
+  });
   return NextResponse.json({ ok: true });
 }

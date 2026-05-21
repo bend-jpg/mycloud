@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { db } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { rateLimit, rateLimitReset, getClientIp } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/activity";
 
 // GET sans mot de passe / POST avec mot de passe
 async function handle(req: Request, token: string, password: string | null) {
@@ -50,6 +51,14 @@ async function handle(req: Request, token: string, password: string | null) {
     }),
     db.shareLink.update({ where: { token }, data: { downloadCount: { increment: 1 } } }),
   ]);
+
+  // Trace pour le propriétaire du lien (visible dans son activity log)
+  await logActivity({
+    userId: link.createdById,
+    action: "share.download",
+    req,
+    metadata: { fileName: file.name, shareToken: token },
+  });
 
   const storage = await getStorage(file.storageBackendId);
   const presigned = await storage.createPresignedDownload(file.storageKey, file.name, 600);

@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { verifyTotpCode, generateBackupCodes } from "@/lib/totp";
+import { logActivity } from "@/lib/activity";
 
 const schema = z.object({
   secret: z.string().min(16),
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
       twoFactorBackupCodes: hashedBackupCodes,
     },
   });
+
+  await logActivity({ userId: session.id, action: "twofa.enable", req });
 
   return NextResponse.json({
     ok: true,
