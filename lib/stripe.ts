@@ -9,7 +9,7 @@ export function getStripe(): Stripe {
   cached = new Stripe(key, {
     // Pas de fixed apiVersion → utilise la dernière (recommandé par Stripe)
     typescript: true,
-    appInfo: { name: "MyCloud", version: "0.1.0" },
+    appInfo: { name: "MyTitanCloud", version: "0.1.0" },
   });
   return cached;
 }

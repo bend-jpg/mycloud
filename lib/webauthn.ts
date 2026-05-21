@@ -11,7 +11,7 @@ export function getRpOrigin(): string {
   return getAppUrl();
 }
 
-export const RP_NAME = "MyCloud";
+export const RP_NAME = "MyTitanCloud";
 
 /** Vérifie qu'on est bien sur un environnement supporté (HTTPS ou localhost) */
 export function webauthnAvailable(): boolean {

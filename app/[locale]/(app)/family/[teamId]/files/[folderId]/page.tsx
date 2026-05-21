@@ -96,6 +96,7 @@ export default async function TeamFolderPage({
           <FileList
             folderUrlBase={`/family/${teamId}/files`}
             canShareToTeams={false}
+            teamId={teamId}
             folders={folders.map((f) => ({
               id: f.id,
               name: f.name,

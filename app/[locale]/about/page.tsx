@@ -18,7 +18,7 @@ export default async function AboutPage({
       <PublicHeader />
       <main className="mx-auto max-w-4xl px-6 py-16">
         <div className="text-center">
-          <h1 className="text-4xl md:text-5xl font-bold">À propos de MyCloud</h1>
+          <h1 className="text-4xl md:text-5xl font-bold">À propos de MyTitanCloud</h1>
           <p className="text-lg text-[var(--foreground-muted)] mt-4 max-w-2xl mx-auto">
             Un cloud pensé pour les vraies familles : simple, sûr, abordable et qui appartient à toi —
             pas à un géant qui revend tes données.

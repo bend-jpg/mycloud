@@ -1,6 +1,6 @@
 {
-  "name": "MyCloud",
-  "short_name": "MyCloud",
+  "name": "MyTitanCloud",
+  "short_name": "MyTitanCloud",
   "description": "Ton cloud personnel : stockage, partage et famille en un seul espace.",
   "start_url": "/",
   "scope": "/",

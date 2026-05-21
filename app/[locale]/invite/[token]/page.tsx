@@ -32,7 +32,7 @@ export default async function InvitePage({
     <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <Link href="/" className="flex items-center gap-2 text-lg font-semibold mb-10">
         <Cloud className="size-6 text-[var(--accent)]" />
-        MyCloud
+        MyTitanCloud
       </Link>
 
       <div className="w-full max-w-md">

@@ -12,11 +12,11 @@ export function generateTotpSecret(): string {
   return authenticator.generateSecret();
 }
 
-export function getTotpUri(email: string, secret: string, issuer = "MyCloud"): string {
+export function getTotpUri(email: string, secret: string, issuer = "MyTitanCloud"): string {
   return authenticator.keyuri(email, issuer, secret);
 }
 
-export async function getTotpQrCodeDataUrl(email: string, secret: string, issuer = "MyCloud"): Promise<string> {
+export async function getTotpQrCodeDataUrl(email: string, secret: string, issuer = "MyTitanCloud"): Promise<string> {
   const uri = getTotpUri(email, secret, issuer);
   return QRCode.toDataURL(uri, { errorCorrectionLevel: "M", width: 240, margin: 1 });
 }

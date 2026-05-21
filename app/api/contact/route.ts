@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     for (const a of admins) {
       sendEmail({
         to: a.email,
-        subject: `[MyCloud Contact] ${data.data.subject}`,
+        subject: `[MyTitanCloud Contact] ${data.data.subject}`,
         html: `
           <p>Nouveau message du formulaire de contact :</p>
           <p><strong>De :</strong> ${data.data.name} &lt;${data.data.email}&gt;<br>

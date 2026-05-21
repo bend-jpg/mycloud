@@ -18,7 +18,7 @@ export default async function LoginPage({
       <div className="w-full max-w-md">
         <Link href="/" className="flex items-center justify-center gap-2 mb-8 text-lg font-semibold">
           <Cloud className="size-6 text-[var(--accent)]" />
-          MyCloud
+          MyTitanCloud
         </Link>
         <div className="tile cursor-default">
           <h1 className="text-2xl font-bold">{t("title")}</h1>

@@ -23,7 +23,7 @@ export default async function TermsPage({
           <section>
             <h2 className="text-xl font-semibold text-[var(--foreground)]">1. Objet</h2>
             <p>
-              Les présentes conditions régissent l&apos;utilisation du service MyCloud, plateforme de stockage et
+              Les présentes conditions régissent l&apos;utilisation du service MyTitanCloud, plateforme de stockage et
               de partage de fichiers en ligne accessible à mycloud.app (ci-après « le Service »).
             </p>
           </section>
@@ -50,7 +50,7 @@ export default async function TermsPage({
               Les tarifs en vigueur sont indiqués sur la page <a href="/#pricing" className="text-[var(--accent)]">Tarifs</a>.
               Les paiements sont acceptés par <strong>carte bancaire</strong> (via Stripe), <strong>cryptomonnaies</strong>
               (BTC, ETH, USDC, etc. via Coinbase Commerce) ou par d&apos;autres moyens accordés à la discrétion de
-              l&apos;équipe MyCloud (virement, espèces). L&apos;abonnement est mensuel ou annuel, renouvelé automatiquement
+              l&apos;équipe MyTitanCloud (virement, espèces). L&apos;abonnement est mensuel ou annuel, renouvelé automatiquement
               sauf annulation.
             </p>
           </section>
@@ -59,7 +59,7 @@ export default async function TermsPage({
             <h2 className="text-xl font-semibold text-[var(--foreground)]">5. Contenu utilisateur</h2>
             <p>
               Tu restes propriétaire des fichiers que tu uploades. Tu garantis disposer des droits nécessaires sur
-              ces fichiers. MyCloud se réserve le droit de suspendre tout compte hébergeant du contenu illégal
+              ces fichiers. MyTitanCloud se réserve le droit de suspendre tout compte hébergeant du contenu illégal
               (atteinte au droit d&apos;auteur, contenu pédopornographique, etc.) après notification.
             </p>
           </section>
@@ -67,7 +67,7 @@ export default async function TermsPage({
           <section>
             <h2 className="text-xl font-semibold text-[var(--foreground)]">6. Disponibilité du Service</h2>
             <p>
-              MyCloud s&apos;efforce d&apos;assurer une disponibilité maximale mais ne peut garantir une absence
+              MyTitanCloud s&apos;efforce d&apos;assurer une disponibilité maximale mais ne peut garantir une absence
               totale d&apos;interruption. Aucune indemnité ne sera due en cas d&apos;indisponibilité ponctuelle.
             </p>
           </section>
@@ -91,7 +91,7 @@ export default async function TermsPage({
           <section>
             <h2 className="text-xl font-semibold text-[var(--foreground)]">9. Modifications</h2>
             <p>
-              MyCloud se réserve le droit de modifier ces conditions. Les utilisateurs seront informés des
+              MyTitanCloud se réserve le droit de modifier ces conditions. Les utilisateurs seront informés des
               changements substantiels au moins 30 jours avant leur entrée en vigueur.
             </p>
           </section>

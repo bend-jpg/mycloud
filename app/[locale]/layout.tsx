@@ -12,9 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: { default: "MyCloud", template: "%s · MyCloud" },
+  title: { default: "MyTitanCloud", template: "%s · MyTitanCloud" },
   description: "Ton cloud personnel, simple et puissant. Stockage, partage et famille en un seul espace.",
-  applicationName: "MyCloud",
+  applicationName: "MyTitanCloud",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.ico",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "MyCloud",
+    title: "MyTitanCloud",
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false },

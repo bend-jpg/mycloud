@@ -135,7 +135,7 @@ export function TicketThread({
                   </span>
                   {isStaff && (
                     <span className="text-xs rounded-full bg-[var(--accent)]/20 text-[var(--accent)] px-2 py-0.5">
-                      Équipe MyCloud
+                      Équipe MyTitanCloud
                     </span>
                   )}
                   {m.isInternal && (

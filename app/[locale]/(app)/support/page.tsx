@@ -53,7 +53,7 @@ export default async function SupportPage({
           </div>
           {whatsappNumber && (
             <a
-              href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, "")}?text=Bonjour,%20je%20suis%20${encodeURIComponent(session.name)}%20et%20j'ai%20une%20question%20sur%20mon%20compte%20MyCloud.`}
+              href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, "")}?text=Bonjour,%20je%20suis%20${encodeURIComponent(session.name)}%20et%20j'ai%20une%20question%20sur%20mon%20compte%20MyTitanCloud.`}
               target="_blank"
               rel="noopener noreferrer"
               className="tile group cursor-pointer"

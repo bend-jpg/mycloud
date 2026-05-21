@@ -29,7 +29,7 @@ export default async function PublicSharePage({
     <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <Link href="/" className="flex items-center gap-2 text-lg font-semibold mb-10">
         <Cloud className="size-6 text-[var(--accent)]" />
-        MyCloud
+        MyTitanCloud
       </Link>
 
       <div className="w-full max-w-md">
@@ -92,7 +92,7 @@ export default async function PublicSharePage({
         <p className="text-center text-xs text-[var(--foreground-muted)] mt-6">
           Partagé via{" "}
           <Link href="/" className="text-[var(--accent)] hover:underline">
-            MyCloud
+            MyTitanCloud
           </Link>
         </p>
       </div>

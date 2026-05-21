@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      name: `MyCloud ${plan.name} (${cycle === "MONTHLY" ? "1 mois" : "1 an"})`,
+      name: `MyTitanCloud ${plan.name} (${cycle === "MONTHLY" ? "1 mois" : "1 an"})`,
       description: `Abonnement ${plan.name} payé en crypto`,
       pricing_type: "fixed_price",
       local_price: {

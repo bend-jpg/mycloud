@@ -8,7 +8,7 @@ export function SiteFooter() {
         <div className="col-span-2 md:col-span-1">
           <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
             <Cloud className="size-5 text-[var(--accent)]" />
-            MyCloud
+            MyTitanCloud
           </Link>
           <p className="text-[var(--foreground-muted)] mt-3 text-xs leading-relaxed">
             Ton cloud personnel et familial : stockage, partage et collaboration en un seul espace.
@@ -53,7 +53,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-[var(--border)]">
         <div className="mx-auto max-w-7xl px-6 py-4 text-xs text-[var(--foreground-muted)] flex flex-col sm:flex-row justify-between gap-2">
-          <p>© {new Date().getFullYear()} MyCloud. Tous droits réservés.</p>
+          <p>© {new Date().getFullYear()} MyTitanCloud. Tous droits réservés.</p>
           <p>Hébergement Cloudflare R2 · DB Neon · CDN Vercel · Made with 💙</p>
         </div>
       </div>

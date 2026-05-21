@@ -1,3 +1,6 @@
+// Page admin : toujours dynamique (depend de la session + queries lourdes)
+export const dynamic = "force-dynamic";
+
 import { setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";

@@ -80,7 +80,7 @@ export function AdminSidebar() {
         <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-[var(--border)]">
           <Link href="/" className="flex items-center gap-2 font-semibold min-w-0">
             <Cloud className="size-5 text-[var(--accent)] shrink-0" />
-            <span className="truncate">MyCloud</span>
+            <span className="truncate">MyTitanCloud</span>
             <span className="text-xs rounded-full bg-[var(--accent)]/20 text-[var(--accent)] px-2 py-0.5 shrink-0">
               Admin
             </span>

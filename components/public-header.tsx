@@ -18,7 +18,7 @@ export async function PublicHeader() {
           className="flex items-center gap-2 font-semibold text-base sm:text-lg shrink-0 hover:opacity-80 transition-opacity"
         >
           <Cloud className="size-5 sm:size-6 text-[var(--accent)]" />
-          <span>MyCloud</span>
+          <span>MyTitanCloud</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm text-[var(--foreground-muted)]">

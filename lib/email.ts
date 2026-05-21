@@ -1,5 +1,6 @@
 // Envoi d'emails transactionnels via Resend (optionnel — pas d'env vars = no-op).
 import { Resend } from "resend";
+import { getAppUrl } from "./url";
 
 let cached: Resend | null = null;
 
@@ -15,7 +16,7 @@ function getResend(): Resend | null {
   return cached;
 }
 
-const FROM = process.env.EMAIL_FROM ?? "MyCloud <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM ?? "MyTitanCloud <noreply@mytitancloud.com>";
 
 interface SendEmailParams {
   to: string;
@@ -60,11 +61,11 @@ function stripHtml(html: string): string {
 function baseLayout(content: string, ctaLabel?: string, ctaUrl?: string): string {
   return `
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>MyCloud</title></head>
+<html><head><meta charset="utf-8"><title>MyTitanCloud</title></head>
 <body style="margin:0;padding:24px;background:#0a0a14;color:#f5f5f7;font-family:-apple-system,Helvetica,Arial,sans-serif;">
   <div style="max-width:480px;margin:0 auto;background:#14141f;border-radius:16px;padding:32px;border:1px solid rgba(255,255,255,0.08);">
     <div style="font-size:20px;font-weight:600;margin-bottom:24px;">
-      <span style="color:#38bdf8;">☁</span> MyCloud
+      <span style="color:#38bdf8;">☁</span> MyTitanCloud
     </div>
     ${content}
     ${ctaLabel && ctaUrl ? `
@@ -75,7 +76,7 @@ function baseLayout(content: string, ctaLabel?: string, ctaUrl?: string): string
       </div>
     ` : ""}
     <p style="margin-top:32px;font-size:12px;color:#a1a1aa;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;">
-      Tu reçois cet email parce que tu as un compte MyCloud. Si ce n'est pas toi, ignore.
+      Tu reçois cet email parce que tu as un compte MyTitanCloud. Si ce n'est pas toi, ignore.
     </p>
   </div>
 </body></html>`;
@@ -83,11 +84,11 @@ function baseLayout(content: string, ctaLabel?: string, ctaUrl?: string): string
 
 export function welcomeEmail(name: string): { subject: string; html: string } {
   return {
-    subject: "Bienvenue sur MyCloud 🎉",
+    subject: "Bienvenue sur MyTitanCloud 🎉",
     html: baseLayout(
       `<h1 style="font-size:22px;margin:0 0 12px;">Bienvenue ${name} !</h1>
       <p style="color:#a1a1aa;line-height:1.6;">
-        Ton compte MyCloud est prêt. Tu as 50 Go de stockage gratuit pour commencer,
+        Ton compte MyTitanCloud est prêt. Tu as 50 Go de stockage gratuit pour commencer,
         un espace famille en bonus si tu upgrades, et la possibilité de partager n'importe
         quel fichier en un clic avec date d'expiration.
       </p>
@@ -95,7 +96,7 @@ export function welcomeEmail(name: string): { subject: string; html: string } {
         Pense à activer la 2FA dans tes paramètres pour sécuriser ton compte.
       </p>`,
       "Ouvrir mon espace",
-      "https://mycloud-smoky.vercel.app/dashboard"
+      `${getAppUrl()}/dashboard`
     ),
   };
 }
@@ -108,7 +109,7 @@ export function inviteEmail(
 ): { subject: string; html: string } {
   const roleLabel = role === "VIEWER" ? "lecture" : role === "EDITOR" ? "édition" : "admin";
   return {
-    subject: `${inviterName} t'invite à rejoindre ${teamName} sur MyCloud`,
+    subject: `${inviterName} t'invite à rejoindre ${teamName} sur MyTitanCloud`,
     html: baseLayout(
       `<h1 style="font-size:22px;margin:0 0 12px;">Invitation à rejoindre ${teamName}</h1>
       <p style="color:#a1a1aa;line-height:1.6;">
@@ -139,7 +140,7 @@ export function shareDownloadedEmail(
         vient d'être téléchargé.
       </p>`,
       "Voir mes partages",
-      "https://mycloud-smoky.vercel.app/shares"
+      `${getAppUrl()}/shares`
     ),
   };
 }

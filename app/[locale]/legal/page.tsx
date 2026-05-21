@@ -22,7 +22,7 @@ export default async function LegalPage({
           <section>
             <h2 className="text-xl font-semibold text-[var(--foreground)]">Éditeur du site</h2>
             <p>
-              MyCloud<br />
+              MyTitanCloud<br />
               [Forme juridique : à compléter — SAS / SARL / auto-entrepreneur]<br />
               [Adresse complète : à compléter]<br />
               [SIRET : à compléter]<br />
