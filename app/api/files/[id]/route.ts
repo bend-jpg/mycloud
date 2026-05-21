@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getStorage } from "@/lib/storage";
 import { getMembership, canWrite } from "@/lib/teams";
+import { logActivity } from "@/lib/activity";
 
 // Le quota est crédité à l'owner du team (perso = uploader, team = team.ownerId)
 async function quotaUserIdForFile(file: { ownerId: string; teamId: string | null }): Promise<string> {
@@ -68,6 +69,17 @@ export async function DELETE(
   } else {
     await db.file.update({ where: { id }, data: { isTrash: true, deletedAt: new Date() } });
   }
+
+  // Trace si team
+  if (file.teamId) {
+    await logActivity({
+      userId: session.id,
+      teamId: file.teamId,
+      action: "team.file.delete",
+      metadata: { fileName: file.name, hard },
+    });
+  }
+
   return NextResponse.json({ ok: true });
 }
 

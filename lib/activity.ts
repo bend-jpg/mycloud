@@ -15,22 +15,34 @@ export type ActivityAction =
   | "passkey.remove"
   | "account.update"
   | "share.view"
-  | "share.download";
+  | "share.download"
+  // Team actions (visible dans /family/[teamId]/activity)
+  | "team.file.upload"
+  | "team.file.delete"
+  | "team.file.move"
+  | "team.folder.create"
+  | "team.folder.delete"
+  | "team.member.join"
+  | "team.member.leave"
+  | "team.member.invite"
+  | "team.member.remove";
 
 /**
  * Enregistre une activité. Throw-safe : on log mais on ne fait jamais planter
  * l'appelant (les actions principales doivent toujours réussir).
  *
  * Extrait l'IP et le User-Agent depuis le Request si fourni.
+ * Si teamId est passé, l'action est aussi visible dans l'activité du team.
  */
 export async function logActivity(params: {
   userId: string;
   action: ActivityAction;
+  teamId?: string | null;
   req?: Request;
   metadata?: Record<string, unknown>;
 }) {
   try {
-    const { userId, action, req, metadata } = params;
+    const { userId, action, teamId, req, metadata } = params;
     let ip: string | null = null;
     let userAgent: string | null = null;
     if (req) {
@@ -43,6 +55,7 @@ export async function logActivity(params: {
     await db.activityLog.create({
       data: {
         userId,
+        teamId: teamId ?? null,
         action,
         ip: ip ?? undefined,
         userAgent: userAgent?.slice(0, 500) ?? undefined,

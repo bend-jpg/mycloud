@@ -290,6 +290,7 @@ model Team {
   invites     Invite[]
   folders     Folder[]
   files       File[]
+  activityLogs ActivityLog[]
 }
 
 model Membership {
@@ -560,16 +561,19 @@ model Notification {
 
 model ActivityLog {
   id        String   @id @default(cuid())
-  userId    String
-  action    String   // login | login.failed | password.change | twofa.enable | twofa.disable | passkey.add | passkey.remove | share.view | share.download | account.update
+  userId    String   // l'utilisateur QUI a fait l'action (auteur)
+  teamId    String?  // si l'action est dans le contexte d'un team familial
+  action    String   // login | password.change | share.download | team.file.upload | team.file.delete | team.member.join | etc.
   ip        String?
   userAgent String?
   metadata  Json?
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([teamId, createdAt])
 }
 
 // ============================================================

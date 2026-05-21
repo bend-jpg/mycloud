@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { TeamMembers } from "@/components/team-members";
 import { TeamInvites } from "@/components/team-invites";
 import { InviteMemberButton } from "@/components/invite-member-button";
-import { FolderOpen, Users, Briefcase } from "lucide-react";
+import { FolderOpen, Users, Briefcase, Activity } from "lucide-react";
 
 export default async function TeamHomePage({
   params,
@@ -59,21 +59,37 @@ export default async function TeamHomePage({
           {canManage && <InviteMemberButton teamId={teamId} />}
         </div>
 
-        <Link href={`/family/${teamId}/files`} className="tile group">
-          <div className="tile-icon">
-            <FolderOpen className="size-6" />
-          </div>
-          <div className="mt-auto flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold">Fichiers partagés</h2>
-              <p className="text-sm text-[var(--foreground-muted)] mt-1">
-                {fileCount} fichier{fileCount > 1 ? "s" : ""} · {folderCount} dossier
-                {folderCount > 1 ? "s" : ""}
-              </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link href={`/family/${teamId}/files`} className="tile group">
+            <div className="tile-icon">
+              <FolderOpen className="size-6" />
             </div>
-            <span className="text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-          </div>
-        </Link>
+            <div className="mt-auto flex items-end justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Fichiers partagés</h2>
+                <p className="text-sm text-[var(--foreground-muted)] mt-1">
+                  {fileCount} fichier{fileCount > 1 ? "s" : ""} · {folderCount} dossier
+                  {folderCount > 1 ? "s" : ""}
+                </p>
+              </div>
+              <span className="text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+            </div>
+          </Link>
+          <Link href={`/family/${teamId}/activity`} className="tile group">
+            <div className="tile-icon text-violet-400">
+              <Activity className="size-6" />
+            </div>
+            <div className="mt-auto flex items-end justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Activité</h2>
+                <p className="text-sm text-[var(--foreground-muted)] mt-1">
+                  Qui upload / supprime quoi dans la famille
+                </p>
+              </div>
+              <span className="text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+            </div>
+          </Link>
+        </div>
 
         <div>
           <h2 className="text-xl font-semibold mb-4">Membres ({members.length})</h2>

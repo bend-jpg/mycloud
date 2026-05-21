@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/session";
 import { getStorage } from "@/lib/storage";
 import { getMembership, canWrite } from "@/lib/teams";
 import { checkQuotaAlert } from "@/lib/notifications";
+import { logActivity } from "@/lib/activity";
 
 export async function POST(
   _req: Request,
@@ -55,6 +56,16 @@ export async function POST(
 
   // Notification quota si seuil franchi (80%, 95%, 100%)
   await checkQuotaAlert(quotaUserId).catch(() => undefined);
+
+  // Trace dans l'activity log si fichier team
+  if (file.teamId) {
+    await logActivity({
+      userId: session.id,
+      teamId: file.teamId,
+      action: "team.file.upload",
+      metadata: { fileName: file.name, size: realSize.toString() },
+    });
+  }
 
   return NextResponse.json({ ok: true, file: { id: file.id, name: file.name, size: realSize.toString() } });
 }
