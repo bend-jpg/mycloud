@@ -6,9 +6,11 @@ import { Download, Loader2 } from "lucide-react";
 export function PublicDownloadForm({
   token,
   requiresPassword,
+  accentColor,
 }: {
   token: string;
   requiresPassword: boolean;
+  accentColor?: string | null;
 }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -67,6 +69,11 @@ export function PublicDownloadForm({
         type="submit"
         disabled={busy}
         className="btn-primary w-full justify-center disabled:opacity-60"
+        style={
+          accentColor
+            ? ({ background: accentColor, color: "#000" } as React.CSSProperties)
+            : undefined
+        }
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
         {busy ? "Téléchargement…" : "Télécharger"}

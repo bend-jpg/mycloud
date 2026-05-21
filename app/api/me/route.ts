@@ -9,6 +9,11 @@ const schema = z.object({
   phone: z.string().max(30).optional().nullable(),
   whatsapp: z.string().max(30).optional().nullable(),
   locale: z.enum(["fr", "en", "es", "he"]).optional(),
+  // Brand (partages personnalisés)
+  brandLogoUrl: z.string().url().max(500).optional().nullable(),
+  brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Hex couleur invalide").optional().nullable(),
+  brandSenderName: z.string().max(80).optional().nullable(),
+  brandWatermark: z.boolean().optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -28,6 +33,10 @@ export async function PATCH(req: Request) {
       ...(parsed.data.phone !== undefined && { phone: parsed.data.phone || null }),
       ...(parsed.data.whatsapp !== undefined && { whatsapp: parsed.data.whatsapp || null }),
       ...(parsed.data.locale !== undefined && { locale: parsed.data.locale }),
+      ...(parsed.data.brandLogoUrl !== undefined && { brandLogoUrl: parsed.data.brandLogoUrl || null }),
+      ...(parsed.data.brandColor !== undefined && { brandColor: parsed.data.brandColor || null }),
+      ...(parsed.data.brandSenderName !== undefined && { brandSenderName: parsed.data.brandSenderName || null }),
+      ...(parsed.data.brandWatermark !== undefined && { brandWatermark: parsed.data.brandWatermark }),
     },
   });
   await logActivity({

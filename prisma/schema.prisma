@@ -63,6 +63,12 @@ model User {
   twoFactorEnabled     Boolean    @default(false)
   twoFactorBackupCodes String[]   @default([])  // 10 codes hashés bcrypt, usage unique
 
+  // Branding pour les liens de partage (logo + couleur + nom affiché)
+  brandLogoUrl         String?
+  brandColor           String?    // hex "#38bdf8"
+  brandSenderName      String?    // si vide → user.name
+  brandWatermark       Boolean    @default(false) // overlay PDF + filigrane image
+
   // Relations
   accounts      Account[]
   sessions      Session[]

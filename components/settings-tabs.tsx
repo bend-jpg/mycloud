@@ -8,6 +8,7 @@ import {
   Globe,
   Smartphone,
   Fingerprint,
+  Sparkles,
 } from "lucide-react";
 import { ThemePicker } from "./theme-picker";
 import { ProfileForm } from "./settings-profile-form";
@@ -27,14 +28,19 @@ interface Props {
     locale: string;
     hasPassword: boolean;
     twoFactorEnabled: boolean;
+    brandLogoUrl: string | null;
+    brandColor: string | null;
+    brandSenderName: string | null;
+    brandWatermark: boolean;
   };
 }
 
-type Tab = "profile" | "appearance" | "password" | "twofactor" | "passkeys" | "language";
+type Tab = "profile" | "appearance" | "brand" | "password" | "twofactor" | "passkeys" | "language";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "profile", label: "Profil", icon: UserIcon },
   { id: "appearance", label: "Apparence", icon: Palette },
+  { id: "brand", label: "Branding partages", icon: Sparkles },
   { id: "password", label: "Mot de passe", icon: Lock },
   { id: "twofactor", label: "Authentification 2FA", icon: Smartphone },
   { id: "passkeys", label: "Passkeys / Empreinte", icon: Fingerprint },
@@ -111,6 +117,17 @@ export function SettingsTabs({ user }: Props) {
             </p>
             <ThemePicker />
           </div>
+        )}
+
+        {tab === "brand" && (
+          <BrandTab
+            initial={{
+              brandLogoUrl: user.brandLogoUrl,
+              brandColor: user.brandColor,
+              brandSenderName: user.brandSenderName,
+              brandWatermark: user.brandWatermark,
+            }}
+          />
         )}
 
         {tab === "password" && (
@@ -191,6 +208,146 @@ function LanguageTab() {
             <p className="text-xs text-[var(--foreground-muted)]">{loc.toUpperCase()}</p>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// BRAND TAB — personnalisation des liens de partage
+// ============================================================
+function BrandTab({
+  initial,
+}: {
+  initial: {
+    brandLogoUrl: string | null;
+    brandColor: string | null;
+    brandSenderName: string | null;
+    brandWatermark: boolean;
+  };
+}) {
+  const [brandLogoUrl, setBrandLogoUrl] = useState(initial.brandLogoUrl ?? "");
+  const [brandColor, setBrandColor] = useState(initial.brandColor ?? "#38bdf8");
+  const [brandSenderName, setBrandSenderName] = useState(initial.brandSenderName ?? "");
+  const [brandWatermark, setBrandWatermark] = useState(initial.brandWatermark);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save() {
+    setBusy(true);
+    setErr(null);
+    setSaved(false);
+    const res = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brandLogoUrl: brandLogoUrl.trim() || null,
+        brandColor: brandColor || null,
+        brandSenderName: brandSenderName.trim() || null,
+        brandWatermark,
+      }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setErr(data?.error ?? "Erreur");
+      return;
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div className="tile cursor-default !min-h-0">
+      <h2 className="text-lg font-semibold mb-1">Branding des liens partagés</h2>
+      <p className="text-sm text-[var(--foreground-muted)] mb-4">
+        Personnalise l&apos;apparence des pages que voient les destinataires de tes liens. Ton logo
+        remplace celui de MyTitanCloud, ta couleur teinte le bouton de téléchargement et les accents.
+      </p>
+
+      <div className="space-y-4 max-w-lg">
+        <div>
+          <label className="text-sm font-medium mb-1 block">URL du logo (PNG / SVG)</label>
+          <input
+            type="url"
+            value={brandLogoUrl}
+            onChange={(e) => setBrandLogoUrl(e.target.value)}
+            placeholder="https://moncloud.com/logo.png"
+            className="w-full rounded-xl bg-[var(--background)] border border-[var(--border)] px-3 py-2 text-sm"
+          />
+          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+            Hauteur fixe 32px. Idéalement format PNG/SVG transparent.
+          </p>
+          {brandLogoUrl.trim() && (
+            <div className="mt-2 rounded-lg bg-[var(--background-elevated)] p-3 inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brandLogoUrl} alt="" className="h-8 object-contain" />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="text-sm font-medium mb-1 block">Couleur principale</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={brandColor}
+              onChange={(e) => setBrandColor(e.target.value)}
+              className="w-12 h-10 rounded cursor-pointer border border-[var(--border)] bg-transparent"
+            />
+            <input
+              type="text"
+              value={brandColor}
+              onChange={(e) => setBrandColor(e.target.value)}
+              placeholder="#38bdf8"
+              className="flex-1 rounded-xl bg-[var(--background)] border border-[var(--border)] px-3 py-2 text-sm font-mono"
+            />
+            <div
+              className="size-10 rounded-xl border border-[var(--border)]"
+              style={{ background: brandColor }}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium mb-1 block">Nom affiché comme expéditeur</label>
+          <input
+            type="text"
+            value={brandSenderName}
+            onChange={(e) => setBrandSenderName(e.target.value)}
+            maxLength={80}
+            placeholder="ex: Studio Tom"
+            className="w-full rounded-xl bg-[var(--background)] border border-[var(--border)] px-3 py-2 text-sm"
+          />
+          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+            Vide = ton nom de compte. Le destinataire verra « {brandSenderName.trim() || "ton nom"} t&apos;a partagé un fichier ».
+          </p>
+        </div>
+
+        <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-[var(--border)] p-3 hover:bg-[var(--background-elevated)]">
+          <input
+            type="checkbox"
+            checked={brandWatermark}
+            onChange={(e) => setBrandWatermark(e.target.checked)}
+            className="mt-1 accent-[var(--accent)]"
+          />
+          <div>
+            <p className="text-sm font-medium">Watermark sur les fichiers téléchargés</p>
+            <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+              Ajoute « Partagé via {brandSenderName.trim() || "MyTitanCloud"} » en bas des PDFs et
+              images téléchargées via tes liens. Utile pour les contrats / devis / photos pro.
+            </p>
+          </div>
+        </label>
+
+        <div className="flex items-center gap-3 pt-2">
+          <button onClick={save} disabled={busy} className="btn-primary">
+            {busy ? "Sauvegarde…" : "Enregistrer"}
+          </button>
+          {saved && <span className="text-xs text-[var(--success)]">✓ Sauvegardé</span>}
+          {err && <span className="text-xs text-[var(--danger)]">{err}</span>}
+        </div>
       </div>
     </div>
   );

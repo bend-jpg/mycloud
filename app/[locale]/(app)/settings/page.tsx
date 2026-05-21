@@ -27,6 +27,10 @@ export default async function SettingsPage({
       locale: true,
       passwordHash: true,
       twoFactorEnabled: true,
+      brandLogoUrl: true,
+      brandColor: true,
+      brandSenderName: true,
+      brandWatermark: true,
     },
   });
   if (!user) redirect(`/${locale}/login`);
@@ -51,6 +55,10 @@ export default async function SettingsPage({
             locale: user.locale,
             hasPassword: !!user.passwordHash,
             twoFactorEnabled: user.twoFactorEnabled,
+            brandLogoUrl: user.brandLogoUrl,
+            brandColor: user.brandColor,
+            brandSenderName: user.brandSenderName,
+            brandWatermark: user.brandWatermark,
           }}
         />
       </main>
