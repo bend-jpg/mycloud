@@ -5,12 +5,18 @@ import { db } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { rateLimit, rateLimitReset, getClientIp } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/activity";
+import { addPdfWatermark, isWatermarkable } from "@/lib/watermark";
+
+export const maxDuration = 30; // assez pour DL + watermark même sur gros PDF
 
 // GET sans mot de passe / POST avec mot de passe
 async function handle(req: Request, token: string, password: string | null) {
   const link = await db.shareLink.findUnique({
     where: { token },
-    include: { file: true },
+    include: {
+      file: true,
+      createdBy: { select: { name: true, email: true, brandWatermark: true, brandSenderName: true } },
+    },
   });
   if (!link || link.revokedAt) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   if (link.expiresAt && link.expiresAt < new Date()) {
@@ -61,9 +67,41 @@ async function handle(req: Request, token: string, password: string | null) {
   });
 
   const storage = await getStorage(file.storageBackendId);
+
+  // Si watermark activé ET fichier watermarkable → on proxifie + overlay
+  const wantWatermark = !!link.createdBy?.brandWatermark && isWatermarkable(file.mimeType);
+  if (wantWatermark) {
+    const presigned = await storage.createPresignedDownload(file.storageKey, undefined, 300);
+    const upstream = await fetch(presigned.url);
+    if (!upstream.ok) {
+      return NextResponse.json({ error: "STORAGE_FETCH_FAILED" }, { status: 502 });
+    }
+    const buffer = new Uint8Array(await upstream.arrayBuffer());
+    const senderName =
+      link.createdBy?.brandSenderName?.trim() ||
+      link.createdBy?.name ||
+      link.createdBy?.email?.split("@")[0] ||
+      "MyTitanCloud";
+    const stamped = await addPdfWatermark(buffer, senderName);
+    return new Response(stamped as BodyInit, {
+      status: 200,
+      headers: {
+        "Content-Type": file.mimeType,
+        "Content-Disposition": `attachment; filename="${encodeFileName(file.name)}"`,
+        "Content-Length": String(stamped.byteLength),
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
+
   const presigned = await storage.createPresignedDownload(file.storageKey, file.name, 600);
   // 303 See Other → force le client à faire un GET sur l'URL signée même après un POST
   return NextResponse.redirect(presigned.url, 303);
+}
+
+function encodeFileName(name: string): string {
+  // Échappe les guillemets pour Content-Disposition
+  return name.replace(/"/g, "").slice(0, 200);
 }
 
 export async function GET(
