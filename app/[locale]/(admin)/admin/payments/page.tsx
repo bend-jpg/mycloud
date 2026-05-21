@@ -1,28 +1,85 @@
 import { setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
-import { formatPrice } from "@/lib/utils";
+import { AdminPaymentRow } from "@/components/admin-payment-row";
+import { Search, Filter } from "lucide-react";
 
 export default async function AdminPaymentsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ q?: string; status?: string; method?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const { q, status, method } = await searchParams;
 
-  const payments = await db.payment.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    include: { user: { select: { id: true, email: true, name: true } } },
-  });
+  const where: Record<string, unknown> = {};
+  if (status) where.status = status;
+  if (method) where.method = method;
+  if (q) {
+    where.OR = [
+      { invoiceNumber: { contains: q, mode: "insensitive" } },
+      { notes: { contains: q, mode: "insensitive" } },
+      { user: { OR: [{ email: { contains: q, mode: "insensitive" } }, { name: { contains: q, mode: "insensitive" } }] } },
+    ];
+  }
+
+  const [payments, stats] = await Promise.all([
+    db.payment.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: { user: { select: { id: true, email: true, name: true } } },
+    }),
+    db.payment.aggregate({
+      where: { ...where, status: "SUCCEEDED" },
+      _sum: { amount: true },
+      _count: true,
+    }),
+  ]);
+
+  const totalEur = (stats._sum.amount ?? 0) / 100;
 
   return (
-    <main className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Paiements</h1>
-        <p className="text-[var(--foreground-muted)] mt-1">200 derniers mouvements.</p>
+    <main className="p-4 sm:p-8 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Paiements</h1>
+          <p className="text-[var(--foreground-muted)] mt-1">
+            {payments.length} résultat(s) · Total encaissés : <strong>{totalEur.toFixed(2)} €</strong> ({stats._count} paiements)
+          </p>
+        </div>
       </div>
+
+      <form className="flex flex-wrap items-end gap-3">
+        <div className="relative flex-1 min-w-60">
+          <Search className="size-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)]" />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Email, nom, facture, note…"
+            className="w-full rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] ps-10 pe-4 py-2 text-sm"
+          />
+        </div>
+        <select name="status" defaultValue={status ?? ""} className="rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] px-3 py-2 text-sm">
+          <option value="">Tous statuts</option>
+          <option value="SUCCEEDED">Payé</option>
+          <option value="PENDING">En attente</option>
+          <option value="FAILED">Échoué</option>
+          <option value="REFUNDED">Remboursé</option>
+        </select>
+        <select name="method" defaultValue={method ?? ""} className="rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] px-3 py-2 text-sm">
+          <option value="">Toutes méthodes</option>
+          <option value="CARD_STRIPE">Carte (Stripe)</option>
+          <option value="CRYPTO">Crypto</option>
+          <option value="CASH">Espèces</option>
+          <option value="BANK_TRANSFER">Virement</option>
+          <option value="OTHER">Autre</option>
+        </select>
+        <button type="submit" className="btn-primary text-sm"><Filter className="size-4" /> Filtrer</button>
+      </form>
 
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
         <table className="w-full text-sm">
@@ -34,43 +91,33 @@ export default async function AdminPaymentsPage({
               <th className="text-start px-4 py-3">Méthode</th>
               <th className="text-start px-4 py-3">Statut</th>
               <th className="text-start px-4 py-3">Note</th>
+              <th className="w-12"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
             {payments.map((p) => (
-              <tr key={p.id}>
-                <td className="px-4 py-3 text-xs">{new Date(p.createdAt).toLocaleString(locale)}</td>
-                <td className="px-4 py-3">
-                  <Link href={`/admin/clients/${p.user.id}`} className="hover:text-[var(--accent)]">
-                    {p.user.name ?? p.user.email}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-end font-semibold">
-                  {formatPrice(p.amount, p.currency as "EUR" | "USD")}
-                </td>
-                <td className="px-4 py-3 text-xs">{p.method}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`text-xs rounded-full px-2 py-1 ${
-                      p.status === "SUCCEEDED"
-                        ? "text-[var(--success)] bg-[var(--success)]/10"
-                        : p.status === "PENDING"
-                        ? "text-yellow-400 bg-yellow-400/10"
-                        : "text-[var(--danger)] bg-[var(--danger)]/10"
-                    }`}
-                  >
-                    {p.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] max-w-xs truncate" title={p.notes ?? ""}>
-                  {p.notes}
-                </td>
-              </tr>
+              <AdminPaymentRow
+                key={p.id}
+                payment={{
+                  id: p.id,
+                  userId: p.user.id,
+                  userName: p.user.name ?? p.user.email,
+                  amount: p.amount,
+                  currency: p.currency,
+                  method: p.method,
+                  status: p.status,
+                  notes: p.notes,
+                  invoiceNumber: p.invoiceNumber,
+                  invoiceUrl: p.invoiceUrl,
+                  paidAt: p.paidAt?.toISOString() ?? null,
+                  createdAt: p.createdAt.toISOString(),
+                }}
+              />
             ))}
           </tbody>
         </table>
         {payments.length === 0 && (
-          <p className="text-center text-sm text-[var(--foreground-muted)] py-12">Aucun paiement enregistré.</p>
+          <p className="text-center text-sm text-[var(--foreground-muted)] py-12">Aucun paiement.</p>
         )}
       </div>
     </main>

@@ -1,54 +1,84 @@
 import { setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
-import { Ticket as TicketIcon } from "lucide-react";
-
-const STATUS_COLORS: Record<string, string> = {
-  OPEN: "text-yellow-400 bg-yellow-400/10",
-  IN_PROGRESS: "text-[var(--accent)] bg-[var(--accent)]/10",
-  WAITING_USER: "text-violet-400 bg-violet-400/10",
-  RESOLVED: "text-[var(--success)] bg-[var(--success)]/10",
-  CLOSED: "text-[var(--foreground-muted)] bg-[var(--background-elevated)]",
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  LOW: "text-[var(--foreground-muted)]",
-  NORMAL: "text-[var(--foreground)]",
-  HIGH: "text-yellow-400",
-  URGENT: "text-[var(--danger)]",
-};
+import { Ticket as TicketIcon, Search, Filter } from "lucide-react";
+import { AdminTicketRow } from "@/components/admin-ticket-row";
 
 export default async function AdminTicketsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ q?: string; status?: string; priority?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const { q, status, priority } = await searchParams;
+
+  const where: Record<string, unknown> = {};
+  if (status) where.status = status;
+  if (priority) where.priority = priority;
+  if (q) {
+    where.OR = [
+      { subject: { contains: q, mode: "insensitive" } },
+      { openedBy: { OR: [{ email: { contains: q, mode: "insensitive" } }, { name: { contains: q, mode: "insensitive" } }] } },
+    ];
+  }
 
   const tickets = await db.ticket.findMany({
+    where,
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
     include: {
       openedBy: { select: { id: true, email: true, name: true } },
       _count: { select: { messages: true } },
     },
-    take: 100,
+    take: 200,
   });
 
   return (
-    <main className="p-8 space-y-6">
+    <main className="p-4 sm:p-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Support</h1>
         <p className="text-[var(--foreground-muted)] mt-1">
-          Tickets de tes clients. Clique sur une ligne pour répondre.
+          {tickets.length} ticket(s). Clique sur une ligne pour répondre.
         </p>
       </div>
+
+      <form className="flex flex-wrap items-end gap-3">
+        <div className="relative flex-1 min-w-60">
+          <Search className="size-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)]" />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Sujet, email, nom client…"
+            className="w-full rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] ps-10 pe-4 py-2 text-sm"
+          />
+        </div>
+        <select name="status" defaultValue={status ?? ""} className="rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] px-3 py-2 text-sm">
+          <option value="">Tous statuts</option>
+          <option value="OPEN">Ouvert</option>
+          <option value="IN_PROGRESS">En cours</option>
+          <option value="WAITING_USER">Attente client</option>
+          <option value="RESOLVED">Résolu</option>
+          <option value="CLOSED">Fermé</option>
+        </select>
+        <select name="priority" defaultValue={priority ?? ""} className="rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] px-3 py-2 text-sm">
+          <option value="">Toutes priorités</option>
+          <option value="LOW">Basse</option>
+          <option value="NORMAL">Normale</option>
+          <option value="HIGH">Haute</option>
+          <option value="URGENT">Urgente</option>
+        </select>
+        <button type="submit" className="btn-primary text-sm"><Filter className="size-4" /> Filtrer</button>
+      </form>
 
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
         {tickets.length === 0 ? (
           <div className="text-center py-16 text-[var(--foreground-muted)]">
             <TicketIcon className="size-12 mx-auto mb-3 opacity-30" />
-            <p>Aucun ticket pour l&apos;instant.</p>
+            <p>Aucun ticket.</p>
+            <p className="text-xs mt-2">Pour envoyer un message à un client, va sur sa fiche → onglet « Message client ».</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -60,38 +90,25 @@ export default async function AdminTicketsPage({
                 <th className="text-start px-4 py-3">Priorité</th>
                 <th className="text-start px-4 py-3">Statut</th>
                 <th className="text-end px-4 py-3">MAJ</th>
+                <th className="w-12"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
               {tickets.map((t) => (
-                <tr key={t.id} className="hover:bg-[var(--background-elevated)]">
-                  <td className="px-4 py-3 font-mono text-xs">
-                    <Link href={`/admin/tickets/${t.id}`} className="hover:text-[var(--accent)]">
-                      #{t.number}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 font-medium">
-                    <Link href={`/admin/tickets/${t.id}`} className="hover:text-[var(--accent)]">
-                      {t.subject}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    <Link href={`/admin/clients/${t.openedBy.id}`} className="hover:text-[var(--accent)]">
-                      {t.openedBy.name ?? t.openedBy.email}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    <span className={PRIORITY_COLORS[t.priority]}>{t.priority}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs rounded-full px-2 py-1 ${STATUS_COLORS[t.status]}`}>
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-end text-xs text-[var(--foreground-muted)]">
-                    {new Date(t.updatedAt).toLocaleDateString(locale)}
-                  </td>
-                </tr>
+                <AdminTicketRow
+                  key={t.id}
+                  ticket={{
+                    id: t.id,
+                    number: t.number,
+                    subject: t.subject,
+                    status: t.status,
+                    priority: t.priority,
+                    updatedAt: t.updatedAt.toISOString(),
+                    openedBy: { id: t.openedBy.id, name: t.openedBy.name, email: t.openedBy.email },
+                    messagesCount: t._count.messages,
+                  }}
+                  locale={locale}
+                />
               ))}
             </tbody>
           </table>
