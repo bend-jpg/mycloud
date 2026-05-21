@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Vue d'ensemble", icon: LayoutDashboard, exact: true },
   { href: "/admin/clients", label: "Clients", icon: Users },
   { href: "/admin/plans", label: "Plans", icon: Tag },
+  { href: "/admin/coupons", label: "Codes promo", icon: Tag },
   { href: "/admin/payments", label: "Paiements", icon: CreditCard },
   { href: "/admin/tickets", label: "Support", icon: Ticket },
   { href: "/admin/storage", label: "Stockage", icon: HardDrive },
