@@ -172,6 +172,7 @@ model Plan {
   maxMembers      Int       @default(1)       // membres famille inclus
   maxShareLinks   Int       @default(100)
   maxShareDays    Int       @default(30)
+  maxUploadSizeBytes BigInt @default(5368709120) // 5 GB par fichier — anti-abus
   websiteHosting  Boolean   @default(false)   // peut héberger des sites
   claudeCodeHosting Boolean @default(false)
   priceMonthlyEur Int       // centimes

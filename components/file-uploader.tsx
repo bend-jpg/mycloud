@@ -46,7 +46,14 @@ export function FileUploader({
         });
         if (!initRes.ok) {
           const err = await initRes.json().catch(() => ({ error: "Erreur" }));
-          throw new Error(err.error ?? "Erreur d'initialisation");
+          // Messages explicites pour les erreurs courantes
+          if (err.error === "FILE_TOO_LARGE") {
+            throw new Error(err.message ?? "Fichier trop volumineux pour ton plan");
+          }
+          if (err.error === "QUOTA_EXCEEDED") {
+            throw new Error("Quota de stockage dépassé. Libère de l'espace ou upgrade ton plan.");
+          }
+          throw new Error(err.message ?? err.error ?? "Erreur d'initialisation");
         }
         const { fileId, uploadUrl, method, headers } = await initRes.json();
 

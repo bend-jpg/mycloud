@@ -43,12 +43,26 @@ export async function POST(req: Request) {
     quotaUserId = m.team.ownerId;
   }
 
-  // Quota check sur le bon user
+  // Quota check sur le bon user + limite par fichier (du plan)
   const quotaUser = await db.user.findUnique({
     where: { id: quotaUserId },
-    select: { storageUsed: true, storageQuota: true },
+    select: { storageUsed: true, storageQuota: true, plan: { select: { maxUploadSizeBytes: true } } },
   });
   if (!quotaUser) return NextResponse.json({ error: "USER_NOT_FOUND" }, { status: 404 });
+
+  // Limite par fichier (du plan du payeur)
+  const maxPerFile = quotaUser.plan?.maxUploadSizeBytes ?? BigInt(5 * 1024 * 1024 * 1024); // 5 GB par défaut
+  if (BigInt(size) > maxPerFile) {
+    return NextResponse.json(
+      {
+        error: "FILE_TOO_LARGE",
+        message: `Fichier trop volumineux. Maximum ${Math.round(Number(maxPerFile) / 1024 / 1024)} Mo par fichier sur ce plan.`,
+        maxBytes: maxPerFile.toString(),
+      },
+      { status: 413 },
+    );
+  }
+
   if (quotaUser.storageUsed + BigInt(size) > quotaUser.storageQuota) {
     return NextResponse.json({ error: "QUOTA_EXCEEDED" }, { status: 413 });
   }
