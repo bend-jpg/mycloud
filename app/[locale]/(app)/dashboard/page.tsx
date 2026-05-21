@@ -7,6 +7,8 @@ import { BoxTile } from "@/components/box-tile";
 import { SiteHeader } from "@/components/site-header";
 import { FileIcon } from "@/components/file-icon";
 import { WelcomeModal } from "@/components/welcome-modal";
+import { StorageDonut, UploadsBarChart } from "@/components/stats-charts";
+import { getUserStorageStats } from "@/lib/storage-stats";
 import { formatBytes } from "@/lib/utils";
 import {
   FolderOpen,
@@ -32,7 +34,7 @@ export default async function DashboardPage({
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
 
-  const [user, recentFiles] = await Promise.all([
+  const [user, recentFiles, stats] = await Promise.all([
     db.user.findUnique({
       where: { id: session.id },
       select: { name: true, storageUsed: true, storageQuota: true },
@@ -43,6 +45,7 @@ export default async function DashboardPage({
       take: 6,
       select: { id: true, name: true, mimeType: true, size: true, uploadedAt: true },
     }),
+    getUserStorageStats(session.id),
   ]);
 
   const used = Number(user?.storageUsed ?? BigInt(0));
@@ -133,6 +136,14 @@ export default async function DashboardPage({
             />
           )}
         </div>
+
+        {/* Stats : donut + bar chart côte à côte */}
+        {stats.totalFiles > 0 && (
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <StorageDonut categories={stats.categories} totalBytes={stats.totalBytes} />
+            <UploadsBarChart months={stats.months} />
+          </div>
+        )}
 
         {/* Récemment uploadés */}
         {recentFiles.length > 0 && (
