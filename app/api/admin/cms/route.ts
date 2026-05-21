@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 const SUPPORTED_LOCALES = ["fr", "en", "es", "he"] as const;
 
@@ -17,7 +17,7 @@ const schema = z.object({
 export async function PUT(req: Request) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("cms.write");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

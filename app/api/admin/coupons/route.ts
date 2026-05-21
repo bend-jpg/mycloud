@@ -6,7 +6,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requireSession, requirePermission } from "@/lib/session";
+import { hasPermission } from "@/lib/permissions";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 
 const createSchema = z.object({
@@ -24,7 +25,8 @@ const createSchema = z.object({
 
 export async function GET() {
   try {
-    await requireAdmin();
+    const s = await requireSession();
+    if (!hasPermission(s.role, "page.coupons")) throw new Error("FORBIDDEN");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
@@ -68,7 +70,7 @@ export async function GET() {
 export async function POST(req: Request) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("coupon.write");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
@@ -150,7 +152,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("coupon.write");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

@@ -16,30 +16,34 @@ import {
   X,
   ChevronLeft,
 } from "lucide-react";
+import { hasPermission, type Permission } from "@/lib/permissions";
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
+  /** Permission requise pour voir ce lien (ADMIN bypass tout) */
+  perm: Permission;
 }
 
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Vue d'ensemble", icon: LayoutDashboard, exact: true },
-  { href: "/admin/clients", label: "Clients", icon: Users },
-  { href: "/admin/plans", label: "Plans", icon: Tag },
-  { href: "/admin/coupons", label: "Codes promo", icon: Tag },
-  { href: "/admin/payments", label: "Paiements", icon: CreditCard },
-  { href: "/admin/tickets", label: "Support", icon: Ticket },
-  { href: "/admin/storage", label: "Stockage", icon: HardDrive },
-  { href: "/admin/staff", label: "Équipe interne", icon: Shield },
-  { href: "/admin/cms", label: "CMS landing", icon: FileText },
-  { href: "/admin/audit", label: "Journal", icon: FileText },
+  { href: "/admin", label: "Vue d'ensemble", icon: LayoutDashboard, exact: true, perm: "page.overview" },
+  { href: "/admin/clients", label: "Clients", icon: Users, perm: "page.clients" },
+  { href: "/admin/plans", label: "Plans", icon: Tag, perm: "page.plans" },
+  { href: "/admin/coupons", label: "Codes promo", icon: Tag, perm: "page.coupons" },
+  { href: "/admin/payments", label: "Paiements", icon: CreditCard, perm: "page.payments" },
+  { href: "/admin/tickets", label: "Support", icon: Ticket, perm: "page.tickets" },
+  { href: "/admin/storage", label: "Stockage", icon: HardDrive, perm: "page.storage" },
+  { href: "/admin/staff", label: "Équipe interne", icon: Shield, perm: "page.staff" },
+  { href: "/admin/cms", label: "CMS landing", icon: FileText, perm: "page.cms" },
+  { href: "/admin/audit", label: "Journal", icon: FileText, perm: "page.audit" },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ role }: { role: string }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const visibleNav = NAV.filter((item) => hasPermission(role, item.perm));
 
   // Ferme automatiquement au changement de page (mobile)
   useEffect(() => {
@@ -96,7 +100,7 @@ export function AdminSidebar() {
         </div>
 
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-          {NAV.map((item) => {
+          {visibleNav.map((item) => {
             const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
             return (
               <Link

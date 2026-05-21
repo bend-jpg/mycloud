@@ -1,6 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
 import { Search, Filter } from "lucide-react";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function AdminAuditPage({
   params,
@@ -11,6 +12,7 @@ export default async function AdminAuditPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await guardAdminPage("page.audit", locale);
   const { q, action } = await searchParams;
 
   const where: Record<string, unknown> = {};

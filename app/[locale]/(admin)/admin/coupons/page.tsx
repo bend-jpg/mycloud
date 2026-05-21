@@ -6,6 +6,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { CouponsView } from "@/components/admin-coupons-view";
 import { Tag, AlertTriangle } from "lucide-react";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function AdminCouponsPage({
   params,
@@ -14,6 +15,7 @@ export default async function AdminCouponsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await guardAdminPage("page.coupons", locale);
 
   if (!isStripeConfigured()) {
     return (

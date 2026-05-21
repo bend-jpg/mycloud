@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { CMS_KEYS, getSupportedLocales } from "@/lib/cms";
 import { CmsEditor } from "@/components/admin-cms-editor";
 import { FileText } from "lucide-react";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function AdminCmsPage({
   params,
@@ -16,6 +17,7 @@ export default async function AdminCmsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await guardAdminPage("page.cms", locale);
 
   const locales = getSupportedLocales();
   const allBlocks = await db.cmsBlock.findMany({

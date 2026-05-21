@@ -15,11 +15,11 @@ export default async function AdminLayout({
 
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
-  if (!session.isAdmin) redirect(`/${locale}/dashboard`);
+  if (!session.isStaff) redirect(`/${locale}/dashboard`);
 
   return (
     <div className="min-h-screen flex">
-      <AdminSidebar />
+      <AdminSidebar role={session.role} />
       <div className="flex-1 min-w-0 md:ms-60">
         {/* Espacement pour le bouton menu mobile */}
         <div className="md:hidden h-14" />

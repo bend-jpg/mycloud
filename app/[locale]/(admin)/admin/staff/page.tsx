@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { Shield, Check, X } from "lucide-react";
 import { AdminStaffRow } from "@/components/admin-staff-row";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function AdminStaffPage({
   params,
@@ -11,6 +12,7 @@ export default async function AdminStaffPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await guardAdminPage("page.staff", locale);
 
   const staff = await db.user.findMany({
     where: { role: { not: "USER" } },

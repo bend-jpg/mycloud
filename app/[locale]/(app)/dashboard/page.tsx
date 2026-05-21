@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session";
 import { BoxTile } from "@/components/box-tile";
 import { SiteHeader } from "@/components/site-header";
 import { FileIcon } from "@/components/file-icon";
+import { WelcomeModal } from "@/components/welcome-modal";
 import { formatBytes } from "@/lib/utils";
 import {
   FolderOpen,
@@ -51,6 +52,7 @@ export default async function DashboardPage({
   return (
     <>
       <SiteHeader />
+      <WelcomeModal userName={user?.name ?? session.name} />
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
           <div>

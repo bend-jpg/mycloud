@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
 import { AdminPlansManager } from "@/components/admin-plan-editor";
 import { AdminSyncStripeButton } from "@/components/admin-sync-stripe-button";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function AdminPlansPage({
   params,
@@ -10,6 +11,7 @@ export default async function AdminPlansPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await guardAdminPage("page.plans", locale);
   const plans = await db.plan.findMany({
     orderBy: { sortOrder: "asc" },
     include: { _count: { select: { users: true } } },

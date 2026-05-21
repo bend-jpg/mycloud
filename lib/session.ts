@@ -4,6 +4,7 @@
 import { auth } from "@/auth";
 import { db } from "./db";
 import { ensureBootstrap } from "./bootstrap";
+import { canAccessBackoffice, hasPermission, type Permission } from "./permissions";
 
 const DEV_USER_EMAIL = "demo@mycloud.local";
 const DEV_FALLBACK_ENABLED =
@@ -14,7 +15,10 @@ export interface SessionUser {
   email: string;
   name: string;
   role: "USER" | "ADMIN" | "STAFF_SUPPORT" | "STAFF_BILLING" | "STAFF_OPS";
+  /** True uniquement pour ADMIN. Pour "n'importe quel rôle backoffice", utiliser isStaff. */
   isAdmin: boolean;
+  /** True pour ADMIN + tout STAFF_* (= a accès au back-office) */
+  isStaff: boolean;
   locale: string;
 }
 
@@ -31,6 +35,7 @@ export async function getSession(): Promise<SessionUser | null> {
           name: user.name ?? "User",
           role: user.role,
           isAdmin: user.role === "ADMIN",
+          isStaff: canAccessBackoffice(user.role),
           locale: user.locale,
         };
       }
@@ -51,6 +56,7 @@ export async function getSession(): Promise<SessionUser | null> {
           name: user.name ?? "Demo",
           role: user.role,
           isAdmin: user.role === "ADMIN",
+          isStaff: canAccessBackoffice(user.role),
           locale: user.locale,
         };
       }
@@ -72,4 +78,24 @@ export async function requireAdmin(): Promise<SessionUser> {
   const s = await requireSession();
   if (!s.isAdmin) throw new Error("FORBIDDEN");
   return s;
+}
+
+/** N'importe quel rôle backoffice (ADMIN ou STAFF_*). Pour les pages admin. */
+export async function requireStaff(): Promise<SessionUser> {
+  const s = await requireSession();
+  if (!s.isStaff) throw new Error("FORBIDDEN");
+  return s;
+}
+
+/** Exige une permission précise (ADMIN bypass tout). */
+export async function requirePermission(perm: Permission): Promise<SessionUser> {
+  const s = await requireSession();
+  if (!hasPermission(s.role, perm)) throw new Error("FORBIDDEN");
+  return s;
+}
+
+/** Variante non-throw : utile dans les pages server pour décider quoi afficher. */
+export function sessionHasPermission(s: SessionUser | null, perm: Permission): boolean {
+  if (!s) return false;
+  return hasPermission(s.role, perm);
 }
