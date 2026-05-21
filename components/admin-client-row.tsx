@@ -39,10 +39,13 @@ export function AdminClientRow({
   user,
   allPlans,
   locale,
+  selectionCheckbox,
 }: {
   user: ClientLite;
   allPlans: PlanLite[];
   locale: string;
+  /** Slot pour insérer une case à cocher en première colonne (mode bulk select). */
+  selectionCheckbox?: React.ReactNode;
 }) {
   const router = useRouter();
   const i18nRouter = useI18nRouter();
@@ -132,6 +135,11 @@ export function AdminClientRow({
       onClick={openFiche}
       className="hover:bg-[var(--background-elevated)] transition-colors cursor-pointer"
     >
+      {selectionCheckbox && (
+        <td className="w-8 px-2 py-3" onClick={(e) => e.stopPropagation()}>
+          {selectionCheckbox}
+        </td>
+      )}
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="size-9 rounded-full bg-[var(--background-elevated)] flex items-center justify-center text-xs font-semibold">

@@ -1,7 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
 import { Search } from "lucide-react";
-import { AdminClientRow } from "@/components/admin-client-row";
+import { AdminClientsTable } from "@/components/admin-clients-table";
+import { isEmailConfigured } from "@/lib/email";
 
 export default async function ClientsListPage({
   params,
@@ -72,44 +73,23 @@ export default async function ClientsListPage({
         <button type="submit" className="btn-primary text-sm">Filtrer</button>
       </form>
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-[var(--background-elevated)] text-[var(--foreground-muted)] text-xs uppercase">
-            <tr>
-              <th className="text-start px-4 py-3">Client</th>
-              <th className="text-start px-4 py-3">Plan</th>
-              <th className="text-end px-4 py-3">Stockage</th>
-              <th className="text-start px-4 py-3">Inscrit le</th>
-              <th className="text-start px-4 py-3">Statut</th>
-              <th className="w-10 px-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border)]">
-            {users.map((u) => (
-              <AdminClientRow
-                key={u.id}
-                locale={locale}
-                allPlans={allPlans.map((p) => ({ slug: p.slug, name: p.name }))}
-                user={{
-                  id: u.id,
-                  name: u.name,
-                  email: u.email,
-                  planSlug: u.plan?.slug ?? null,
-                  planName: u.plan?.name ?? null,
-                  storageUsed: u.storageUsed.toString(),
-                  storageQuota: u.storageQuota.toString(),
-                  createdAt: u.createdAt.toISOString(),
-                  suspendedAt: u.suspendedAt?.toISOString() ?? null,
-                  role: u.role,
-                }}
-              />
-            ))}
-          </tbody>
-        </table>
-        {users.length === 0 && (
-          <div className="text-center text-sm text-[var(--foreground-muted)] py-12">Aucun client trouvé.</div>
-        )}
-      </div>
+      <AdminClientsTable
+        locale={locale}
+        emailConfigured={isEmailConfigured()}
+        allPlans={allPlans.map((p) => ({ slug: p.slug, name: p.name }))}
+        users={users.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          planSlug: u.plan?.slug ?? null,
+          planName: u.plan?.name ?? null,
+          storageUsed: u.storageUsed.toString(),
+          storageQuota: u.storageQuota.toString(),
+          createdAt: u.createdAt.toISOString(),
+          suspendedAt: u.suspendedAt?.toISOString() ?? null,
+          role: u.role,
+        }))}
+      />
     </main>
   );
 }
