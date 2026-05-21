@@ -11,8 +11,9 @@ const schema = z.object({
   endpoint: z.string().optional().nullable(),
   region: z.string().optional().nullable(),
   bucket: z.string().min(1),
-  accessKeyId: z.string().min(1),
-  secretAccessKey: z.string().min(1),
+  // En édition les secrets sont optionnels (on garde les anciens si absents)
+  accessKeyId: z.string().min(1).optional(),
+  secretAccessKey: z.string().min(1).optional(),
   publicUrl: z.string().optional().nullable(),
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
@@ -30,19 +31,40 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   const data = parsed.data;
 
+  // Création : les secrets sont obligatoires
+  if (!data.id && (!data.accessKeyId || !data.secretAccessKey)) {
+    return NextResponse.json({ error: "MISSING_CREDENTIALS" }, { status: 400 });
+  }
+
   // Si on définit ce backend comme default, dé-défaut tous les autres
   if (data.isDefault) {
     await db.storageBackend.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
   }
 
+  // En update : on n'écrase les secrets que s'ils ont été fournis
+  const dataToSave: Record<string, unknown> = {
+    name: data.name,
+    type: data.type,
+    endpoint: data.endpoint,
+    region: data.region,
+    bucket: data.bucket,
+    publicUrl: data.publicUrl,
+    isDefault: data.isDefault,
+    isActive: data.isActive,
+  };
+  if (data.accessKeyId) dataToSave.accessKeyId = data.accessKeyId;
+  if (data.secretAccessKey) dataToSave.secretAccessKey = data.secretAccessKey;
+
   let saved;
   if (data.id) {
     saved = await db.storageBackend.update({
       where: { id: data.id },
-      data: { ...data, id: undefined },
+      data: dataToSave,
     });
   } else {
-    saved = await db.storageBackend.create({ data: { ...data, id: undefined } });
+    saved = await db.storageBackend.create({
+      data: dataToSave as Parameters<typeof db.storageBackend.create>[0]["data"],
+    });
   }
 
   invalidateStorageCache();
