@@ -32,6 +32,7 @@ const NAV: NavItem[] = [
   { href: "/admin/tickets", label: "Support", icon: Ticket },
   { href: "/admin/storage", label: "Stockage", icon: HardDrive },
   { href: "/admin/staff", label: "Équipe interne", icon: Shield },
+  { href: "/admin/cms", label: "CMS landing", icon: FileText },
   { href: "/admin/audit", label: "Journal", icon: FileText },
 ];
 

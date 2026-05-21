@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { PublicHeader } from "@/components/public-header";
 import { SiteFooter } from "@/components/site-footer";
 import { DEFAULT_PLANS } from "@/lib/plans";
+import { getCmsBlocks, cmsOrFallback } from "@/lib/cms";
 import { formatBytes } from "@/lib/utils";
 import {
   HardDrive,
@@ -23,7 +24,18 @@ export default async function LandingPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("landing");
+  const [t, cms] = await Promise.all([
+    getTranslations("landing"),
+    getCmsBlocks(locale),
+  ]);
+  const heroTagline = cmsOrFallback(cms, "tagline", "Cloud + WeTransfer + NAS familial en une seule app");
+  const heroTitle = cmsOrFallback(cms, "hero.title", t("hero.title"));
+  const heroSubtitle = cmsOrFallback(cms, "hero.subtitle", t("hero.subtitle"));
+  const heroCtaStart = cmsOrFallback(cms, "hero.ctaStart", t("hero.ctaStart"));
+  const heroCtaPricing = cmsOrFallback(cms, "hero.ctaPricing", t("hero.ctaPricing"));
+  const featuresTitle = cmsOrFallback(cms, "features.title", t("features.title"));
+  const pricingTitle = cmsOrFallback(cms, "pricing.title", t("pricing.title"));
+  const pricingSubtitle = cmsOrFallback(cms, "pricing.subtitle", t("pricing.subtitle"));
 
   const features = [
     { key: "storage", icon: HardDrive, accent: "text-[var(--accent)]" },
@@ -42,21 +54,21 @@ export default async function LandingPage({
         <section className="py-24 md:py-32 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background-elevated)] px-4 py-1.5 text-xs text-[var(--foreground-muted)] mb-8">
             <Sparkles className="size-3.5 text-[var(--accent)]" />
-            <span>Cloud + WeTransfer + NAS familial en une seule app</span>
+            <span>{heroTagline}</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight max-w-4xl mx-auto leading-[1.1]">
-            {t("hero.title")}
+            {heroTitle}
           </h1>
           <p className="mt-6 text-lg text-[var(--foreground-muted)] max-w-2xl mx-auto">
-            {t("hero.subtitle")}
+            {heroSubtitle}
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Link href="/signup" className="btn-primary">
-              {t("hero.ctaStart")}
+              {heroCtaStart}
               <ArrowRight className="size-4" />
             </Link>
             <Link href="/#pricing" className="btn-ghost">
-              {t("hero.ctaPricing")}
+              {heroCtaPricing}
             </Link>
           </div>
         </section>
@@ -64,7 +76,7 @@ export default async function LandingPage({
         {/* FEATURES — disposition Box TV */}
         <section id="features" className="py-16">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
-            {t("features.title")}
+            {featuresTitle}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map(({ key, icon: Icon, accent }) => (
@@ -85,8 +97,8 @@ export default async function LandingPage({
 
         {/* PRICING */}
         <section id="pricing" className="py-24">
-          <h2 className="text-3xl md:text-4xl font-bold text-center">{t("pricing.title")}</h2>
-          <p className="mt-3 text-center text-[var(--foreground-muted)]">{t("pricing.subtitle")}</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-center">{pricingTitle}</h2>
+          <p className="mt-3 text-center text-[var(--foreground-muted)]">{pricingSubtitle}</p>
 
           <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {DEFAULT_PLANS.map((plan) => (

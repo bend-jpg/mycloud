@@ -545,3 +545,19 @@ model Notification {
 
   @@index([userId, read, createdAt])
 }
+
+// ============================================================
+// CMS — Textes de la landing éditables depuis l'admin
+// ============================================================
+
+model CmsBlock {
+  id        String   @id @default(cuid())
+  locale    String   // "fr" | "en" | "es" | "he"
+  key       String   // ex: "hero.title", "hero.subtitle", "tagline"
+  value     String   @db.Text
+  updatedAt DateTime @default(now()) @updatedAt
+  updatedBy String?
+
+  @@unique([locale, key])
+  @@index([locale])
+}
