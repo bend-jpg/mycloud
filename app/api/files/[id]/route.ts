@@ -38,16 +38,32 @@ export async function DELETE(
   if (!allowed) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
 
   if (hard) {
-    const storage = await getStorage(file.storageBackendId);
-    await storage.deleteObject(file.storageKey).catch(() => {});
+    // Ref counting : on ne supprime physiquement le blob R2 que si plus aucune autre
+    // File row ne référence ce storageKey (cas du "partage famille" qui crée une copie DB
+    // avec le même storageKey pour économiser le stockage).
+    const otherRefs = await db.file.count({
+      where: {
+        storageKey: file.storageKey,
+        storageBackendId: file.storageBackendId,
+        NOT: { id },
+      },
+    });
     const quotaUserId = await quotaUserIdForFile(file);
+    if (otherRefs === 0) {
+      const storage = await getStorage(file.storageBackendId);
+      await storage.deleteObject(file.storageKey).catch(() => {});
+    }
     await db.$transaction([
       db.file.delete({ where: { id } }),
       db.user.update({ where: { id: quotaUserId }, data: { storageUsed: { decrement: file.size } } }),
-      db.storageBackend.update({
-        where: { id: file.storageBackendId },
-        data: { usedBytes: { decrement: file.size } },
-      }),
+      ...(otherRefs === 0
+        ? [
+            db.storageBackend.update({
+              where: { id: file.storageBackendId },
+              data: { usedBytes: { decrement: file.size } },
+            }),
+          ]
+        : []),
     ]);
   } else {
     await db.file.update({ where: { id }, data: { isTrash: true, deletedAt: new Date() } });

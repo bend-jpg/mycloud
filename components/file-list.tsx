@@ -18,9 +18,12 @@ import {
   List,
   ArrowUpDown,
   ChevronDown,
+  Users,
+  Eye,
 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { ShareDialog } from "./share-dialog";
+import { FilePreviewModal } from "./file-preview-modal";
 import { formatBytes } from "@/lib/utils";
 
 export interface FileRow {
@@ -29,12 +32,19 @@ export interface FileRow {
   size: string;
   mimeType: string;
   uploadedAt: string;
+  /** Teams (que l'utilisateur a) avec lesquels ce fichier est partagé (même storageKey) */
+  sharedToTeams?: { id: string; name: string }[];
 }
 
 export interface FolderRow {
   id: string;
   name: string;
   updatedAt: string;
+}
+
+export interface TeamLite {
+  id: string;
+  name: string;
 }
 
 type SortKey = "name-asc" | "name-desc" | "date-desc" | "date-asc" | "size-desc" | "size-asc";
@@ -49,18 +59,29 @@ const SORT_LABEL: Record<SortKey, string> = {
   "size-asc": "Plus petit",
 };
 
+function isImageMime(mime: string) {
+  return mime.startsWith("image/");
+}
+
 export function FileList({
   folders,
   files,
   folderUrlBase = "/files",
+  myTeams = [],
+  canShareToTeams = true,
 }: {
   folders: FolderRow[];
   files: FileRow[];
   folderUrlBase?: string;
+  /** Liste des teams (famille) où l'utilisateur peut partager */
+  myTeams?: TeamLite[];
+  /** Si false, masque l'action "Partager dans famille" (ex: dans une vue team) */
+  canShareToTeams?: boolean;
 }) {
   const router = useRouter();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [shareFile, setShareFile] = useState<{ id: string; name: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileRow | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date-desc");
   const [view, setView] = useState<ViewMode>("grid");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -90,7 +111,7 @@ export function FileList({
       switch (sortKey) {
         case "name-asc": return a.name.localeCompare(b.name);
         case "name-desc": return b.name.localeCompare(a.name);
-        default: return a.name.localeCompare(b.name); // les dossiers : toujours par nom
+        default: return a.name.localeCompare(b.name);
       }
     });
     return arr;
@@ -139,6 +160,27 @@ export function FileList({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
+    if (res.ok) router.refresh();
+    setOpenMenu(null);
+  }
+
+  async function handleShareToTeam(id: string, teamId: string) {
+    const res = await fetch(`/api/files/${id}/share-to-team`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId }),
+    });
+    if (res.ok) router.refresh();
+    else {
+      const data = await res.json().catch(() => null);
+      alert("Impossible de partager : " + (data?.error ?? "erreur"));
+    }
+    setOpenMenu(null);
+  }
+
+  async function handleUnshareFromTeam(id: string, teamId: string) {
+    if (!confirm("Retirer le fichier de cette famille ?")) return;
+    const res = await fetch(`/api/files/${id}/share-to-team?teamId=${teamId}`, { method: "DELETE" });
     if (res.ok) router.refresh();
     setOpenMenu(null);
   }
@@ -236,6 +278,8 @@ export function FileList({
           folders={sortedFolders}
           files={sortedFiles}
           folderUrlBase={folderUrlBase}
+          myTeams={myTeams}
+          canShareToTeams={canShareToTeams}
           selected={selected}
           selectFolders={selectFolders}
           selectMode={selectMode}
@@ -243,22 +287,32 @@ export function FileList({
           toggleFolder={toggleFolder}
           openMenu={openMenu}
           setOpenMenu={setOpenMenu}
+          onPreview={(f) => setPreviewFile(f)}
           onShare={(id, name) => { setShareFile({ id, name }); setOpenMenu(null); }}
           onRename={handleRename}
           onDelete={handleDelete}
+          onShareToTeam={handleShareToTeam}
+          onUnshareFromTeam={handleUnshareFromTeam}
         />
       ) : (
         <ListView
           folders={sortedFolders}
           files={sortedFiles}
           folderUrlBase={folderUrlBase}
+          myTeams={myTeams}
+          canShareToTeams={canShareToTeams}
           selected={selected}
           selectFolders={selectFolders}
           selectMode={selectMode}
           toggleFile={toggleFile}
           toggleFolder={toggleFolder}
+          openMenu={openMenu}
+          setOpenMenu={setOpenMenu}
+          onPreview={(f) => setPreviewFile(f)}
           onShare={(id, name) => setShareFile({ id, name })}
           onDelete={handleDelete}
+          onShareToTeam={handleShareToTeam}
+          onUnshareFromTeam={handleUnshareFromTeam}
         />
       )}
 
@@ -269,20 +323,31 @@ export function FileList({
           onClose={() => setShareFile(null)}
         />
       )}
+
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
     </>
   );
 }
 
 // ============================================================
-// GRID VIEW
+// GRID VIEW — affiche les thumbnails inline pour les images
 // ============================================================
 function GridView({
-  folders, files, folderUrlBase, selected, selectFolders, selectMode,
-  toggleFile, toggleFolder, openMenu, setOpenMenu, onShare, onRename, onDelete,
+  folders, files, folderUrlBase, myTeams, canShareToTeams,
+  selected, selectFolders, selectMode,
+  toggleFile, toggleFolder, openMenu, setOpenMenu,
+  onPreview, onShare, onRename, onDelete, onShareToTeam, onUnshareFromTeam,
 }: {
   folders: FolderRow[];
   files: FileRow[];
   folderUrlBase: string;
+  myTeams: TeamLite[];
+  canShareToTeams: boolean;
   selected: Set<string>;
   selectFolders: Set<string>;
   selectMode: boolean;
@@ -290,9 +355,12 @@ function GridView({
   toggleFolder: (id: string) => void;
   openMenu: string | null;
   setOpenMenu: (id: string | null) => void;
+  onPreview: (f: FileRow) => void;
   onShare: (id: string, name: string) => void;
   onRename: (id: string, current: string) => void;
   onDelete: (id: string) => void;
+  onShareToTeam: (id: string, teamId: string) => void;
+  onUnshareFromTeam: (id: string, teamId: string) => void;
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -329,33 +397,89 @@ function GridView({
 
       {files.map((f) => {
         const isSelected = selected.has(f.id);
+        const isImage = isImageMime(f.mimeType);
+        const sharedTeams = f.sharedToTeams ?? [];
+        const availableTeams = myTeams.filter((t) => !sharedTeams.some((s) => s.id === t.id));
         return (
-          <div key={f.id} className={`tile cursor-default !min-h-32 !p-4 relative group ${isSelected ? "ring-2 ring-[var(--accent)]" : ""}`}>
-            {(selectMode || isSelected) && (
+          <div
+            key={f.id}
+            className={`tile !min-h-44 !p-0 relative group overflow-hidden cursor-pointer ${isSelected ? "ring-2 ring-[var(--accent)]" : ""}`}
+            onClick={(e) => {
+              // En mode sélection, le clic sélectionne — sinon il ouvre la preview
+              if (selectMode) { toggleFile(f.id); return; }
+              const target = e.target as HTMLElement;
+              if (target.closest("button, a, [data-stop]")) return;
+              onPreview(f);
+            }}
+          >
+            {/* Zone visuelle : thumbnail image OU icône */}
+            <div className="relative h-28 bg-[var(--background-elevated)] flex items-center justify-center overflow-hidden">
+              {isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/files/${f.id}/preview`}
+                  alt={f.name}
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // En cas d'échec, on retombe sur l'icône
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              ) : (
+                <FileIcon mimeType={f.mimeType} className="size-12" />
+              )}
+
+              {(selectMode || isSelected) && (
+                <button
+                  data-stop
+                  onClick={(e) => { e.stopPropagation(); toggleFile(f.id); }}
+                  className={`absolute top-2 start-2 size-6 rounded-md flex items-center justify-center transition-all ${
+                    isSelected
+                      ? "bg-[var(--accent)] text-[var(--accent-foreground)] opacity-100"
+                      : "bg-[var(--background-elevated)] border border-[var(--border)] opacity-0 group-hover:opacity-100"
+                  }`}
+                >
+                  {isSelected && <Check className="size-3.5" />}
+                </button>
+              )}
+
+              {/* Icône partage famille en haut à droite si partagé */}
+              {sharedTeams.length > 0 && (
+                <div
+                  className="absolute top-2 end-2 bg-[var(--accent)]/90 text-[var(--accent-foreground)] rounded-full px-1.5 py-0.5 text-[10px] font-medium flex items-center gap-1 shadow"
+                  title={`Partagé avec : ${sharedTeams.map((t) => t.name).join(", ")}`}
+                >
+                  <Users className="size-3" />
+                  <span className="hidden sm:inline">{sharedTeams.length === 1 ? sharedTeams[0].name : sharedTeams.length}</span>
+                </div>
+              )}
+
+              {/* Bouton menu */}
               <button
-                onClick={() => toggleFile(f.id)}
-                className={`absolute top-2 start-2 z-10 size-6 rounded-md flex items-center justify-center transition-all ${
-                  isSelected
-                    ? "bg-[var(--accent)] text-[var(--accent-foreground)] opacity-100"
-                    : "bg-[var(--background-elevated)] border border-[var(--border)] opacity-0 group-hover:opacity-100"
-                }`}
+                data-stop
+                onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === f.id ? null : f.id); }}
+                className="absolute bottom-1 end-1 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-1 bg-[var(--background-elevated)]/80 hover:bg-[var(--background-elevated)]"
               >
-                {isSelected && <Check className="size-3.5" />}
+                <MoreVertical className="size-4" />
               </button>
-            )}
-            <FileIcon mimeType={f.mimeType} className="size-10" />
-            <div className="mt-auto">
+            </div>
+
+            {/* Bandeau bas : nom + taille */}
+            <div className="p-3">
               <p className="font-medium truncate text-sm" title={f.name}>{f.name}</p>
               <p className="text-xs text-[var(--foreground-muted)]">{formatBytes(Number(f.size))}</p>
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === f.id ? null : f.id); }}
-              className="absolute top-2 end-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-1 hover:bg-[var(--background-elevated)]"
-            >
-              <MoreVertical className="size-4" />
-            </button>
+
             {openMenu === f.id && (
-              <div className="absolute top-10 end-2 w-44 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl z-30 p-1">
+              <div
+                data-stop
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bottom-12 end-2 w-52 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl z-30 p-1 max-h-80 overflow-y-auto"
+              >
+                <button onClick={() => onPreview(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start">
+                  <Eye className="size-4" /> Aperçu
+                </button>
                 <a href={`/api/files/${f.id}/download`} className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)]">
                   <Download className="size-4" /> Télécharger
                 </a>
@@ -365,6 +489,39 @@ function GridView({
                 <button onClick={() => onRename(f.id, f.name)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start">
                   <Pencil className="size-4" /> Renommer
                 </button>
+
+                {/* Donner accès à la famille */}
+                {canShareToTeams && availableTeams.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-[10px] uppercase text-[var(--foreground-muted)] mt-1">Donner accès à</div>
+                    {availableTeams.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => onShareToTeam(f.id, t.id)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
+                      >
+                        <Users className="size-4" /> {t.name}
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {sharedTeams.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-[10px] uppercase text-[var(--foreground-muted)] mt-1">Retirer de</div>
+                    {sharedTeams.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => onUnshareFromTeam(f.id, t.id)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start text-[var(--foreground-muted)]"
+                      >
+                        <X className="size-4" /> {t.name}
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                <div className="border-t border-[var(--border)] my-1" />
                 <button onClick={() => onDelete(f.id)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start">
                   <Trash2 className="size-4" /> Supprimer
                 </button>
@@ -381,19 +538,28 @@ function GridView({
 // LIST VIEW
 // ============================================================
 function ListView({
-  folders, files, folderUrlBase, selected, selectFolders, selectMode,
-  toggleFile, toggleFolder, onShare, onDelete,
+  folders, files, folderUrlBase, myTeams, canShareToTeams,
+  selected, selectFolders, selectMode,
+  toggleFile, toggleFolder, openMenu, setOpenMenu,
+  onPreview, onShare, onDelete, onShareToTeam, onUnshareFromTeam,
 }: {
   folders: FolderRow[];
   files: FileRow[];
   folderUrlBase: string;
+  myTeams: TeamLite[];
+  canShareToTeams: boolean;
   selected: Set<string>;
   selectFolders: Set<string>;
   selectMode: boolean;
   toggleFile: (id: string) => void;
   toggleFolder: (id: string) => void;
+  openMenu: string | null;
+  setOpenMenu: (id: string | null) => void;
+  onPreview: (f: FileRow) => void;
   onShare: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  onShareToTeam: (id: string, teamId: string) => void;
+  onUnshareFromTeam: (id: string, teamId: string) => void;
 }) {
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
@@ -431,33 +597,100 @@ function ListView({
           })}
           {files.map((f) => {
             const isSelected = selected.has(f.id);
+            const isImage = isImageMime(f.mimeType);
+            const sharedTeams = f.sharedToTeams ?? [];
+            const availableTeams = myTeams.filter((t) => !sharedTeams.some((s) => s.id === t.id));
             return (
               <tr key={f.id} className={`hover:bg-[var(--background-elevated)] ${isSelected ? "bg-[var(--accent)]/5" : ""}`}>
                 <td className="px-2 text-center">
                   <input type="checkbox" checked={isSelected} onChange={() => toggleFile(f.id)} className="accent-[var(--accent)]" />
                 </td>
                 <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <FileIcon mimeType={f.mimeType} className="size-5" />
+                  <button
+                    onClick={() => onPreview(f)}
+                    className="flex items-center gap-2 hover:text-[var(--accent)] text-start w-full"
+                  >
+                    {isImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/files/${f.id}/preview`}
+                        alt=""
+                        loading="lazy"
+                        className="size-8 rounded object-cover bg-[var(--background-elevated)]"
+                      />
+                    ) : (
+                      <FileIcon mimeType={f.mimeType} className="size-5" />
+                    )}
                     <span className="truncate">{f.name}</span>
-                  </div>
+                    {sharedTeams.length > 0 && (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] text-[10px]"
+                        title={`Partagé avec : ${sharedTeams.map((t) => t.name).join(", ")}`}
+                      >
+                        <Users className="size-3" />
+                        {sharedTeams.length === 1 ? sharedTeams[0].name : sharedTeams.length}
+                      </span>
+                    )}
+                  </button>
                 </td>
                 <td className="px-4 py-2 text-end text-xs text-[var(--foreground-muted)] hidden sm:table-cell">{formatBytes(Number(f.size))}</td>
                 <td className="px-4 py-2 text-end text-xs text-[var(--foreground-muted)] hidden md:table-cell">
                   {new Date(f.uploadedAt).toLocaleDateString()}
                 </td>
-                <td className="px-2 text-center">
+                <td className="px-2 text-center relative">
                   <div className="flex justify-end gap-1">
                     <a href={`/api/files/${f.id}/download`} className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]" title="Télécharger">
                       <Download className="size-4" />
                     </a>
-                    <button onClick={() => onShare(f.id, f.name)} className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]" title="Partager">
+                    <button onClick={() => onShare(f.id, f.name)} className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]" title="Partager par lien">
                       <LinkIcon className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => setOpenMenu(openMenu === f.id ? null : f.id)}
+                      className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]"
+                      title="Plus"
+                    >
+                      <MoreVertical className="size-4" />
                     </button>
                     <button onClick={() => onDelete(f.id)} className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)]" title="Supprimer">
                       <Trash2 className="size-4" />
                     </button>
                   </div>
+                  {openMenu === f.id && (
+                    <div className="absolute end-2 top-10 w-52 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl z-30 p-1 text-start max-h-80 overflow-y-auto">
+                      {canShareToTeams && availableTeams.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 text-[10px] uppercase text-[var(--foreground-muted)]">Donner accès à</div>
+                          {availableTeams.map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => { onShareToTeam(f.id, t.id); setOpenMenu(null); }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)]"
+                            >
+                              <Users className="size-4" /> {t.name}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                      {sharedTeams.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 text-[10px] uppercase text-[var(--foreground-muted)] mt-1">Retirer de</div>
+                          {sharedTeams.map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => { onUnshareFromTeam(f.id, t.id); setOpenMenu(null); }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)]"
+                            >
+                              <X className="size-4" /> {t.name}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                      {(availableTeams.length === 0 && sharedTeams.length === 0) && (
+                        <p className="px-3 py-2 text-xs text-[var(--foreground-muted)]">Aucune famille disponible.</p>
+                      )}
+                    </div>
+                  )}
                 </td>
               </tr>
             );

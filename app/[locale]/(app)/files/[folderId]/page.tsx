@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { getMyTeams, computeSharedToTeams } from "@/lib/teams";
 import { SiteHeader } from "@/components/site-header";
 import { FileUploader } from "@/components/file-uploader";
 import { FileList } from "@/components/file-list";
@@ -34,7 +35,7 @@ export default async function FolderPage({
   }
   if (crumbs.length > 0) crumbs[crumbs.length - 1].id = null;
 
-  const [folders, files] = await Promise.all([
+  const [folders, files, myTeams] = await Promise.all([
     db.folder.findMany({
       where: { ownerId: session.id, parentId: folder.id, isTrash: false },
       orderBy: { name: "asc" },
@@ -43,9 +44,14 @@ export default async function FolderPage({
     db.file.findMany({
       where: { ownerId: session.id, folderId: folder.id, isTrash: false },
       orderBy: { uploadedAt: "desc" },
-      select: { id: true, name: true, size: true, mimeType: true, uploadedAt: true },
+      select: { id: true, name: true, size: true, mimeType: true, uploadedAt: true, storageKey: true, storageBackendId: true },
     }),
+    getMyTeams(session.id),
   ]);
+  const sharedMap = await computeSharedToTeams(
+    session.id,
+    files.map((f) => ({ id: f.id, storageKey: f.storageKey, storageBackendId: f.storageBackendId })),
+  );
 
   return (
     <>
@@ -70,6 +76,7 @@ export default async function FolderPage({
 
         <FileList
           folderUrlBase="/files"
+          myTeams={myTeams}
           folders={folders.map((f) => ({
             id: f.id,
             name: f.name,
@@ -81,6 +88,7 @@ export default async function FolderPage({
             size: f.size.toString(),
             mimeType: f.mimeType,
             uploadedAt: f.uploadedAt.toISOString(),
+            sharedToTeams: sharedMap[f.id] ?? [],
           }))}
         />
       </main>

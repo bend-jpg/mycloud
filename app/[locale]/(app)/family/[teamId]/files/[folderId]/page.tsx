@@ -95,6 +95,7 @@ export default async function TeamFolderPage({
         <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-6">
           <FileList
             folderUrlBase={`/family/${teamId}/files`}
+            canShareToTeams={false}
             folders={folders.map((f) => ({
               id: f.id,
               name: f.name,

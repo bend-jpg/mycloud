@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { getMyTeams, computeSharedToTeams } from "@/lib/teams";
 import { SiteHeader } from "@/components/site-header";
 import { FileUploader } from "@/components/file-uploader";
 import { FileList } from "@/components/file-list";
@@ -20,7 +21,7 @@ export default async function FilesPage({
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
 
-  const [folders, files, user] = await Promise.all([
+  const [folders, files, user, myTeams] = await Promise.all([
     db.folder.findMany({
       where: { ownerId: session.id, parentId: null, isTrash: false, teamId: null },
       orderBy: { name: "asc" },
@@ -29,13 +30,18 @@ export default async function FilesPage({
     db.file.findMany({
       where: { ownerId: session.id, folderId: null, isTrash: false, teamId: null },
       orderBy: { uploadedAt: "desc" },
-      select: { id: true, name: true, size: true, mimeType: true, uploadedAt: true },
+      select: { id: true, name: true, size: true, mimeType: true, uploadedAt: true, storageKey: true, storageBackendId: true },
     }),
     db.user.findUnique({
       where: { id: session.id },
       select: { storageUsed: true, storageQuota: true, name: true },
     }),
+    getMyTeams(session.id),
   ]);
+  const sharedMap = await computeSharedToTeams(
+    session.id,
+    files.map((f) => ({ id: f.id, storageKey: f.storageKey, storageBackendId: f.storageBackendId })),
+  );
 
   const used = Number(user?.storageUsed ?? BigInt(0));
   const quota = Number(user?.storageQuota ?? BigInt(1));
@@ -83,6 +89,7 @@ export default async function FilesPage({
 
         {/* Liste des fichiers */}
         <FileList
+          myTeams={myTeams}
           folders={folders.map((f) => ({
             id: f.id,
             name: f.name,
@@ -94,6 +101,7 @@ export default async function FilesPage({
             size: f.size.toString(),
             mimeType: f.mimeType,
             uploadedAt: f.uploadedAt.toISOString(),
+            sharedToTeams: sharedMap[f.id] ?? [],
           }))}
         />
       </main>

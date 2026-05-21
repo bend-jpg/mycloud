@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { formatBytes, formatPrice } from "@/lib/utils";
@@ -31,6 +31,11 @@ export default async function ClientDetailPage({
     },
   });
   if (!user) notFound();
+
+  // Si c'est un staff interne, rediriger vers la fiche staff dédiée
+  if (user.role !== "USER") {
+    redirect(`/${locale}/admin/staff/${user.id}`);
+  }
 
   const allPlans = await db.plan.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } });
 
@@ -291,7 +296,7 @@ export default async function ClientDetailPage({
           <div>
             <p className="font-semibold">Voir les fichiers du client</p>
             <p className="text-xs text-[var(--foreground-muted)]">
-              Bientôt : navigation lecture seule dans son cloud.
+              Navigation lecture seule dans son cloud (preview, download).
             </p>
           </div>
         </div>
