@@ -85,6 +85,7 @@ model User {
   passkeys      Passkey[]
   notifications Notification[]
   activityLogs  ActivityLog[]
+  hostingWaitlist HostingWaitlistEntry[]
 }
 
 model Account {
@@ -553,6 +554,22 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt])
+}
+
+// ============================================================
+// HOSTING WAITLIST — Phase 9 préinscriptions (site / Claude Code)
+// ============================================================
+
+model HostingWaitlistEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String   // "site" | "claude-code"
+  notes     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([kind, createdAt])
 }
 
 // ============================================================

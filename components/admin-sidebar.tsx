@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  Rocket,
 } from "lucide-react";
 import { hasPermission, type Permission } from "@/lib/permissions";
 
@@ -37,6 +38,7 @@ const NAV: NavItem[] = [
   { href: "/admin/storage", label: "Stockage", icon: HardDrive, perm: "page.storage" },
   { href: "/admin/staff", label: "Équipe interne", icon: Shield, perm: "page.staff" },
   { href: "/admin/cms", label: "CMS landing", icon: FileText, perm: "page.cms" },
+  { href: "/admin/hosting-waitlist", label: "Hosting waitlist", icon: Rocket, perm: "page.overview" },
   { href: "/admin/audit", label: "Journal", icon: FileText, perm: "page.audit" },
 ];
 
