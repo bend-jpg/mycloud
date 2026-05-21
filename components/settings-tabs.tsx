@@ -14,6 +14,9 @@ import { ProfileForm } from "./settings-profile-form";
 import { PasswordChangeForm } from "./settings-password-form";
 import { TwoFactorSection } from "./two-factor-section";
 import { PasskeysSection } from "./passkeys-section";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import { routing, localeNames, type Locale } from "@/i18n/routing";
+import { useLocale } from "next-intl";
 
 interface Props {
   user: {
@@ -150,19 +153,45 @@ export function SettingsTabs({ user }: Props) {
           </div>
         )}
 
-        {tab === "language" && (
-          <div className="tile cursor-default !min-h-0">
-            <h2 className="text-lg font-semibold mb-1">Langue</h2>
-            <p className="text-sm text-[var(--foreground-muted)] mb-4">
-              Utilise le sélecteur en haut à droite de l&apos;écran pour changer la langue de l&apos;interface
-              (Français, English, Español, עברית).
-            </p>
-            <p className="text-xs text-[var(--foreground-muted)]">
-              Ta langue actuelle : <strong>{user.locale.toUpperCase()}</strong>
-            </p>
-          </div>
-        )}
+        {tab === "language" && <LanguageTab />}
       </section>
+    </div>
+  );
+}
+
+// ============================================================
+// LANGUAGE TAB — embedded switcher (au lieu d'un message qui pointe vers le header)
+// ============================================================
+function LanguageTab() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = useLocale() as Locale;
+
+  return (
+    <div className="tile cursor-default !min-h-0">
+      <h2 className="text-lg font-semibold mb-1">Langue de l&apos;interface</h2>
+      <p className="text-sm text-[var(--foreground-muted)] mb-4">
+        Choisis ta langue. L&apos;application se rechargera automatiquement.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {routing.locales.map((loc) => (
+          <button
+            key={loc}
+            onClick={() => router.replace(pathname, { locale: loc })}
+            className={`rounded-2xl border px-4 py-4 text-start transition-colors ${
+              loc === currentLocale
+                ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+                : "border-[var(--border)] hover:bg-[var(--background-elevated)]"
+            }`}
+          >
+            <p className="text-2xl mb-1">
+              {loc === "fr" ? "🇫🇷" : loc === "en" ? "🇬🇧" : loc === "es" ? "🇪🇸" : "🇮🇱"}
+            </p>
+            <p className="font-medium text-sm">{localeNames[loc]}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">{loc.toUpperCase()}</p>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

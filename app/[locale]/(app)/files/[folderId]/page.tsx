@@ -1,5 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { getMyTeams, computeSharedToTeams } from "@/lib/teams";
@@ -8,6 +9,7 @@ import { FileUploader } from "@/components/file-uploader";
 import { FileList } from "@/components/file-list";
 import { NewFolderButton } from "@/components/new-folder-button";
 import { FilesBreadcrumb, type BreadcrumbItem } from "@/components/files-breadcrumb";
+import { ChevronLeft } from "lucide-react";
 
 export default async function FolderPage({
   params,
@@ -58,6 +60,14 @@ export default async function FolderPage({
       <SiteHeader />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
         <div className="space-y-4">
+          {/* Back link explicite */}
+          <Link
+            href={folder.parentId ? `/files/${folder.parentId}` : "/files"}
+            className="inline-flex items-center gap-1 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+          >
+            <ChevronLeft className="size-4 rtl:rotate-180" />
+            {folder.parentId ? "Retour au dossier parent" : "Retour à mes fichiers"}
+          </Link>
           <FilesBreadcrumb items={crumbs} />
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>

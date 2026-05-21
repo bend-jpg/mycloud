@@ -1,8 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
-import { formatBytes } from "@/lib/utils";
-import { Search, AlertCircle } from "lucide-react";
+import { Search } from "lucide-react";
+import { AdminClientRow } from "@/components/admin-client-row";
 
 export default async function ClientsListPage({
   params,
@@ -82,59 +81,29 @@ export default async function ClientsListPage({
               <th className="text-end px-4 py-3">Stockage</th>
               <th className="text-start px-4 py-3">Inscrit le</th>
               <th className="text-start px-4 py-3">Statut</th>
+              <th className="w-10 px-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {users.map((u) => {
-              const used = Number(u.storageUsed);
-              const quota = Number(u.storageQuota);
-              const pct = quota > 0 ? Math.round((used / quota) * 100) : 0;
-              return (
-                <tr key={u.id} className="hover:bg-[var(--background-elevated)] transition-colors">
-                  <td className="px-4 py-3">
-                    <Link href={`/admin/clients/${u.id}`} className="flex items-center gap-3 hover:text-[var(--accent)]">
-                      <div className="size-9 rounded-full bg-[var(--background-elevated)] flex items-center justify-center text-xs font-semibold">
-                        {(u.name ?? u.email).charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium">{u.name ?? "—"}</p>
-                        <p className="text-xs text-[var(--foreground-muted)]">{u.email}</p>
-                      </div>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs rounded-full border border-[var(--border)] px-2 py-1">
-                      {u.plan?.name ?? "—"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-end">
-                    <p className="text-xs text-[var(--foreground-muted)]">
-                      {formatBytes(used)} / {formatBytes(quota)}
-                    </p>
-                    <div className="h-1 mt-1 rounded-full bg-[var(--background-elevated)] overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--secondary)]"
-                        style={{ width: `${Math.min(100, pct)}%` }}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">
-                    {new Date(u.createdAt).toLocaleDateString(locale)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.suspendedAt ? (
-                      <span className="text-xs text-[var(--danger)] flex items-center gap-1">
-                        <AlertCircle className="size-3" /> Suspendu
-                      </span>
-                    ) : u.role !== "USER" ? (
-                      <span className="text-xs text-[var(--accent)]">{u.role}</span>
-                    ) : (
-                      <span className="text-xs text-[var(--success)]">Actif</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            {users.map((u) => (
+              <AdminClientRow
+                key={u.id}
+                locale={locale}
+                allPlans={allPlans.map((p) => ({ slug: p.slug, name: p.name }))}
+                user={{
+                  id: u.id,
+                  name: u.name,
+                  email: u.email,
+                  planSlug: u.plan?.slug ?? null,
+                  planName: u.plan?.name ?? null,
+                  storageUsed: u.storageUsed.toString(),
+                  storageQuota: u.storageQuota.toString(),
+                  createdAt: u.createdAt.toISOString(),
+                  suspendedAt: u.suspendedAt?.toISOString() ?? null,
+                  role: u.role,
+                }}
+              />
+            ))}
           </tbody>
         </table>
         {users.length === 0 && (

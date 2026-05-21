@@ -62,79 +62,55 @@ export function AdminStorageRow({ backend }: { backend: BackendCard }) {
       : undefined;
 
   return (
-    <div className="tile cursor-default !min-h-0">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="tile-icon">
-            <HardDrive className="size-6" />
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="size-10 rounded-xl bg-[var(--background-elevated)] flex items-center justify-center shrink-0">
+            <HardDrive className="size-5" />
           </div>
-          <div className="min-w-0">
-            <h2 className="text-xl font-bold flex items-center gap-2 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold flex items-center gap-2 flex-wrap">
               <span className="truncate">{backend.name}</span>
               {backend.isDefault && (
-                <span className="inline-flex items-center gap-1 text-xs rounded-full bg-[var(--accent)]/10 text-[var(--accent)] px-2 py-0.5">
-                  <Star className="size-3" /> Défaut
+                <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-[var(--accent)]/10 text-[var(--accent)] px-1.5 py-0.5">
+                  <Star className="size-2.5" /> Défaut
                 </span>
               )}
+              <span
+                className={`text-[10px] rounded-full px-1.5 py-0.5 ${
+                  backend.isActive
+                    ? "bg-[var(--success)]/10 text-[var(--success)]"
+                    : "bg-[var(--danger)]/10 text-[var(--danger)]"
+                }`}
+              >
+                {backend.isActive ? "Actif" : "Inactif"}
+              </span>
             </h2>
-            <p className="text-xs text-[var(--foreground-muted)]">
-              {backend.type} · bucket : <code>{backend.bucket}</code>
+            <p className="text-xs text-[var(--foreground-muted)] truncate">
+              {backend.type} · {backend.bucket} · {backend.filesCount} fichier(s) · {formatBytes(Number(backend.usedBytes))}
             </p>
+            {backend.endpoint && (
+              <p className="text-[10px] text-[var(--foreground-muted)] mt-1 font-mono truncate" title={backend.endpoint}>
+                {backend.endpoint}
+              </p>
+            )}
           </div>
         </div>
+
         <div className="flex items-center gap-1 shrink-0">
-          <span
-            className={`text-xs rounded-full px-2 py-1 ${
-              backend.isActive
-                ? "bg-[var(--success)]/10 text-[var(--success)]"
-                : "bg-[var(--danger)]/10 text-[var(--danger)]"
-            }`}
+          {editInitial && <StorageEditorButton initial={editInitial} variant="icon" />}
+          <button
+            onClick={remove}
+            disabled={busy || backend.filesCount > 0}
+            className="p-1.5 rounded-lg hover:bg-[var(--background-elevated)] text-[var(--danger)] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={backend.filesCount > 0 ? "Migre les fichiers d'abord" : "Supprimer"}
           >
-            {backend.isActive ? "Actif" : "Inactif"}
-          </span>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
-        <div>
-          <p className="text-xs text-[var(--foreground-muted)]">Fichiers</p>
-          <p className="font-semibold">{backend.filesCount}</p>
-        </div>
-        <div>
-          <p className="text-xs text-[var(--foreground-muted)]">Utilisé</p>
-          <p className="font-semibold">{formatBytes(Number(backend.usedBytes))}</p>
-        </div>
-      </div>
-
-      {backend.endpoint && (
-        <p className="text-xs text-[var(--foreground-muted)] mt-3 font-mono truncate" title={backend.endpoint}>
-          Endpoint : {backend.endpoint}
-        </p>
-      )}
-      {backend.publicUrl && (
-        <p className="text-xs text-[var(--foreground-muted)] mt-1 font-mono truncate">
-          CDN : {backend.publicUrl}
-        </p>
-      )}
-
-      {err && <p className="text-xs text-[var(--danger)] mt-3">{err}</p>}
-
-      <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-[var(--border)]">
-        {editInitial ? (
-          <StorageEditorButton initial={editInitial} variant="ghost" />
-        ) : (
-          <span className="text-xs text-[var(--foreground-muted)]">Backend LOCAL (non éditable)</span>
-        )}
-        <button
-          onClick={remove}
-          disabled={busy || backend.filesCount > 0}
-          className="btn-ghost text-xs !text-[var(--danger)] disabled:opacity-40 disabled:cursor-not-allowed"
-          title={backend.filesCount > 0 ? "Migre les fichiers d'abord" : "Supprimer"}
-        >
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-          Supprimer
-        </button>
-      </div>
+      {err && <p className="text-xs text-[var(--danger)] mt-2">{err}</p>}
     </div>
   );
 }

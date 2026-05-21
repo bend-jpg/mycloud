@@ -4,7 +4,8 @@
 // et pour la modification (passer `initial` pour éditer). En édition, les secrets
 // sont gardés inchangés si l'admin laisse les champs vides.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Plus, X, Loader2, Pencil } from "lucide-react";
 
@@ -46,6 +47,8 @@ export function StorageEditorButton({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,15 +154,11 @@ export function StorageEditorButton({
     );
   };
 
-  return (
-    <>
-      <Trigger />
-
-      {open && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto"
-          onClick={() => setOpen(false)}
-        >
+  const modal = open && (
+    <div
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto"
+      onClick={() => setOpen(false)}
+    >
           <div
             className="bg-[var(--background-elevated)] border border-[var(--border)] rounded-2xl w-full max-w-lg my-8 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -294,8 +293,13 @@ export function StorageEditorButton({
               </button>
             </form>
           </div>
-        </div>
-      )}
+    </div>
+  );
+
+  return (
+    <>
+      <Trigger />
+      {mounted && modal && createPortal(modal, document.body)}
     </>
   );
 }

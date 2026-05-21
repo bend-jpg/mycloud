@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { FileIcon } from "./file-icon";
+import { FileThumbnail } from "./file-thumbnail";
 import { ShareDialog } from "./share-dialog";
 import { FilePreviewModal } from "./file-preview-modal";
 import { formatBytes } from "@/lib/utils";
@@ -524,7 +525,11 @@ function GridView({
         return (
           <div
             key={f.id}
-            className="lasso-item relative group"
+            className={`lasso-item relative group rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] transition-all ${
+              isSelected ? "ring-2 ring-[var(--accent)]" : ""
+            } ${
+              isDragTarget ? "ring-4 ring-[var(--secondary)] bg-[var(--secondary)]/10 scale-105" : "hover:scale-[1.02]"
+            }`}
             data-lasso-id={`folder:${f.id}`}
             draggable
             onDragStart={(e) => onItemDragStart(e, "folder", f.id)}
@@ -532,8 +537,29 @@ function GridView({
             onDragLeave={onFolderDragLeave}
             onDrop={(e) => onFolderDrop(e, f.id)}
           >
+            {/* Zone visuelle — clic = ouvrir le dossier */}
+            <Link
+              href={`${folderUrlBase}/${f.id}`}
+              onClick={(e) => { if (selectMode) { e.preventDefault(); toggleFolder(f.id); } }}
+              className="relative block h-28 bg-[var(--background-elevated)] flex items-center justify-center rounded-t-2xl overflow-hidden"
+            >
+              <Folder className="size-12 text-[var(--secondary)]" />
+            </Link>
+            {/* Zone info — clic = sélectionner */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); toggleFolder(f.id); }}
+              className="w-full text-start p-3 cursor-pointer hover:bg-[var(--background-elevated)]/40"
+            >
+              <p className="font-medium truncate text-sm">{f.name}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                {isDragTarget ? "Déposer ici" : "Dossier"}
+              </p>
+            </button>
+            {/* Checkbox sélection */}
             {(selectMode || isSelected) && (
               <button
+                data-stop
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFolder(f.id); }}
                 className={`absolute top-2 start-2 z-10 size-6 rounded-md flex items-center justify-center transition-all ${
                   isSelected
@@ -544,103 +570,98 @@ function GridView({
                 {isSelected && <Check className="size-3.5" />}
               </button>
             )}
-            <Link
-              href={`${folderUrlBase}/${f.id}`}
-              onClick={(e) => { if (selectMode) { e.preventDefault(); toggleFolder(f.id); } }}
-              className={`tile cursor-pointer hover:scale-[1.02] !min-h-32 !p-4 transition-all ${
-                isSelected ? "ring-2 ring-[var(--accent)]" : ""
-              } ${
-                isDragTarget ? "ring-4 ring-[var(--secondary)] bg-[var(--secondary)]/10 scale-105" : ""
-              }`}
-            >
-              <Folder className={`size-10 ${isDragTarget ? "text-[var(--secondary)]" : "text-[var(--secondary)]"}`} />
-              <div className="mt-auto">
-                <p className="font-medium truncate text-sm">{f.name}</p>
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  {isDragTarget ? "Déposer ici" : "Dossier"}
-                </p>
-              </div>
-            </Link>
           </div>
         );
       })}
 
       {files.map((f) => {
         const isSelected = selected.has(f.id);
-        const isImage = isImageMime(f.mimeType);
         const sharedTeams = f.sharedToTeams ?? [];
         const availableTeams = myTeams.filter((t) => !sharedTeams.some((s) => s.id === t.id));
         return (
           <div
             key={f.id}
-            className={`lasso-item tile !min-h-44 !p-0 relative group overflow-hidden cursor-pointer ${isSelected ? "ring-2 ring-[var(--accent)]" : ""}`}
+            className={`lasso-item relative group rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] transition-all hover:scale-[1.02] ${
+              isSelected ? "ring-2 ring-[var(--accent)]" : ""
+            }`}
             data-lasso-id={`file:${f.id}`}
             draggable
             onDragStart={(e) => onItemDragStart(e, "file", f.id)}
-            onClick={(e) => {
-              if (selectMode) { toggleFile(f.id); return; }
-              const target = e.target as HTMLElement;
-              if (target.closest("button, a, [data-stop]")) return;
-              onPreview(f);
-            }}
           >
-            <div className="relative h-28 bg-[var(--background-elevated)] flex items-center justify-center overflow-hidden">
-              {isImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/files/${f.id}/preview`}
-                  alt={f.name}
-                  loading="lazy"
-                  draggable={false}
-                  className="w-full h-full object-cover pointer-events-none"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              ) : (
-                <FileIcon mimeType={f.mimeType} className="size-12" />
-              )}
-              {(selectMode || isSelected) && (
-                <button
-                  data-stop
-                  onClick={(e) => { e.stopPropagation(); toggleFile(f.id); }}
-                  className={`absolute top-2 start-2 size-6 rounded-md flex items-center justify-center transition-all ${
-                    isSelected
-                      ? "bg-[var(--accent)] text-[var(--accent-foreground)] opacity-100"
-                      : "bg-[var(--background-elevated)] border border-[var(--border)] opacity-0 group-hover:opacity-100"
-                  }`}
-                >
-                  {isSelected && <Check className="size-3.5" />}
-                </button>
-              )}
-              {sharedTeams.length > 0 && (
-                <div
-                  className="absolute top-2 end-2 bg-[var(--accent)]/90 text-[var(--accent-foreground)] rounded-full px-1.5 py-0.5 text-[10px] font-medium flex items-center gap-1 shadow"
-                  title={`Partagé avec : ${sharedTeams.map((t) => t.name).join(", ")}`}
-                >
-                  <Users className="size-3" />
-                  <span className="hidden sm:inline">
-                    {sharedTeams.length === 1 ? sharedTeams[0].name : sharedTeams.length}
-                  </span>
-                </div>
-              )}
-              <button
-                data-stop
-                onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === f.id ? null : f.id); }}
-                className="absolute bottom-1 end-1 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-1 bg-[var(--background-elevated)]/80 hover:bg-[var(--background-elevated)]"
-              >
-                <MoreVertical className="size-4" />
-              </button>
-            </div>
-            <div className="p-3">
+            {/* Zone visuelle (vignette) — clic = preview */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectMode) { toggleFile(f.id); return; }
+                onPreview(f);
+              }}
+              className="relative block w-full h-28 bg-[var(--background-elevated)] overflow-hidden cursor-pointer rounded-t-2xl"
+              title="Cliquer pour voir l'aperçu"
+            >
+              <FileThumbnail
+                fileId={f.id}
+                mimeType={f.mimeType}
+                alt={f.name}
+                className="w-full h-full"
+                iconClassName="size-12"
+              />
+            </button>
+
+            {/* Zone info (nom + taille) — clic = sélectionner */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); toggleFile(f.id); }}
+              className="w-full text-start p-3 cursor-pointer hover:bg-[var(--background-elevated)]/40"
+              title="Cliquer pour sélectionner"
+            >
               <p className="font-medium truncate text-sm" title={f.name}>{f.name}</p>
               <p className="text-xs text-[var(--foreground-muted)]">{formatBytes(Number(f.size))}</p>
-            </div>
+            </button>
+
+            {/* Checkbox sélection */}
+            {(selectMode || isSelected) && (
+              <button
+                data-stop
+                onClick={(e) => { e.stopPropagation(); toggleFile(f.id); }}
+                className={`absolute top-2 start-2 z-10 size-6 rounded-md flex items-center justify-center transition-all ${
+                  isSelected
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)] opacity-100"
+                    : "bg-[var(--background-elevated)] border border-[var(--border)] opacity-0 group-hover:opacity-100"
+                }`}
+              >
+                {isSelected && <Check className="size-3.5" />}
+              </button>
+            )}
+
+            {/* Pastille "partagé famille" */}
+            {sharedTeams.length > 0 && (
+              <div
+                className="absolute top-2 end-2 bg-[var(--accent)]/90 text-[var(--accent-foreground)] rounded-full px-1.5 py-0.5 text-[10px] font-medium flex items-center gap-1 shadow"
+                title={`Partagé avec : ${sharedTeams.map((t) => t.name).join(", ")}`}
+              >
+                <Users className="size-3" />
+                <span className="hidden sm:inline">
+                  {sharedTeams.length === 1 ? sharedTeams[0].name : sharedTeams.length}
+                </span>
+              </div>
+            )}
+
+            {/* Bouton menu (toujours visible, pas opacity-0) */}
+            <button
+              data-stop
+              onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === f.id ? null : f.id); }}
+              className="absolute top-20 end-1 rounded-lg p-1.5 bg-[var(--background-elevated)] hover:bg-[var(--background)] border border-[var(--border)] shadow z-10"
+              title="Plus d'actions"
+            >
+              <MoreVertical className="size-4" />
+            </button>
+
             {openMenu === f.id && (
               <div
                 data-stop
                 onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-12 end-2 w-52 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl z-30 p-1 max-h-80 overflow-y-auto"
+                className="absolute top-32 end-2 w-52 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl z-40 p-1 max-h-80 overflow-y-auto"
               >
                 <button onClick={() => onPreview(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start">
                   <Eye className="size-4" /> Aperçu

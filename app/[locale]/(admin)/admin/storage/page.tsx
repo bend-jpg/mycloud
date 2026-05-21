@@ -61,7 +61,7 @@ export default async function AdminStoragePage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="space-y-3">
         {backends.map((b) => (
           <AdminStorageRow
             key={b.id}

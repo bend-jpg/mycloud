@@ -89,47 +89,92 @@ export function AdminPlansManager({ plans }: { plans: Plan[] }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {plans.map((plan) => (
-          <div
-            key={plan.id}
-            className={`tile cursor-default !min-h-0 ${!plan.active ? "opacity-50" : ""}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold">{plan.name}</h3>
-                  {plan.highlighted && (
-                    <span className="inline-flex items-center gap-1 text-xs rounded-full bg-[var(--accent)]/10 text-[var(--accent)] px-2 py-0.5">
-                      <Star className="size-3" /> Mis en avant
-                    </span>
-                  )}
-                  {!plan.active && (
-                    <span className="text-xs rounded-full bg-[var(--danger)]/10 text-[var(--danger)] px-2 py-0.5">Désactivé</span>
-                  )}
-                </div>
-                <p className="text-xs text-[var(--foreground-muted)]">slug : <code>{plan.slug}</code> · {plan.userCount} client(s)</p>
-              </div>
-              <div className="flex gap-1">
-                <button onClick={() => toggleActive(plan)} className="p-1.5 rounded-lg hover:bg-[var(--background-elevated)]" title={plan.active ? "Désactiver" : "Activer"}>
-                  {plan.active ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-                <button onClick={() => setEditingPlan(plan)} className="p-1.5 rounded-lg hover:bg-[var(--background-elevated)]" title="Modifier">
-                  <Pencil className="size-4" />
-                </button>
-                <button onClick={() => setConfirmDelete(plan)} className="p-1.5 rounded-lg hover:bg-[var(--background-elevated)] text-[var(--danger)]" title="Supprimer">
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
-              <div><span className="text-xs text-[var(--foreground-muted)]">Stockage</span><br/><strong>{formatBytes(BigInt(plan.storageBytes))}</strong></div>
-              <div><span className="text-xs text-[var(--foreground-muted)]">Membres</span><br/><strong>{plan.maxMembers}</strong></div>
-              <div><span className="text-xs text-[var(--foreground-muted)]">Mensuel</span><br/><strong>{(plan.priceMonthlyEur/100).toFixed(2)} €</strong> / {(plan.priceMonthlyUsd/100).toFixed(2)} $</div>
-              <div><span className="text-xs text-[var(--foreground-muted)]">Annuel</span><br/><strong>{(plan.priceYearlyEur/100).toFixed(2)} €</strong> / {(plan.priceYearlyUsd/100).toFixed(2)} $</div>
-            </div>
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--background-elevated)] text-[var(--foreground-muted)] text-xs uppercase">
+            <tr>
+              <th className="text-start px-4 py-3">Plan</th>
+              <th className="text-end px-4 py-3 hidden sm:table-cell">Stockage</th>
+              <th className="text-end px-4 py-3 hidden md:table-cell">Membres</th>
+              <th className="text-end px-4 py-3">Mensuel</th>
+              <th className="text-end px-4 py-3 hidden md:table-cell">Annuel</th>
+              <th className="text-end px-4 py-3 hidden sm:table-cell">Clients</th>
+              <th className="w-28 px-2"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {plans.map((plan) => (
+              <tr
+                key={plan.id}
+                className={`hover:bg-[var(--background-elevated)] ${!plan.active ? "opacity-60" : ""}`}
+              >
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold">{plan.name}</span>
+                    {plan.highlighted && (
+                      <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-[var(--accent)]/10 text-[var(--accent)] px-1.5 py-0.5">
+                        <Star className="size-2.5" /> Pop
+                      </span>
+                    )}
+                    {!plan.active && (
+                      <span className="text-[10px] rounded-full bg-[var(--danger)]/10 text-[var(--danger)] px-1.5 py-0.5">Off</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[var(--foreground-muted)] font-mono">{plan.slug}</p>
+                </td>
+                <td className="px-4 py-3 text-end text-xs hidden sm:table-cell">
+                  {formatBytes(BigInt(plan.storageBytes))}
+                </td>
+                <td className="px-4 py-3 text-end text-xs hidden md:table-cell">{plan.maxMembers}</td>
+                <td className="px-4 py-3 text-end text-xs">
+                  <strong>{(plan.priceMonthlyEur / 100).toFixed(2)} €</strong>
+                  <br />
+                  <span className="text-[10px] text-[var(--foreground-muted)]">
+                    {(plan.priceMonthlyUsd / 100).toFixed(2)} $
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-end text-xs hidden md:table-cell">
+                  <strong>{(plan.priceYearlyEur / 100).toFixed(2)} €</strong>
+                  <br />
+                  <span className="text-[10px] text-[var(--foreground-muted)]">
+                    {(plan.priceYearlyUsd / 100).toFixed(2)} $
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-end text-xs hidden sm:table-cell">{plan.userCount}</td>
+                <td className="px-2 text-end">
+                  <div className="flex justify-end gap-1">
+                    <button
+                      onClick={() => toggleActive(plan)}
+                      className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]"
+                      title={plan.active ? "Désactiver" : "Activer"}
+                    >
+                      {plan.active ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                    <button
+                      onClick={() => setEditingPlan(plan)}
+                      className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]"
+                      title="Modifier"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(plan)}
+                      className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)]"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {plans.length === 0 && (
+          <div className="text-center text-sm text-[var(--foreground-muted)] py-8">
+            Aucun plan. Crée-en un.
           </div>
-        ))}
+        )}
       </div>
 
       {(creating || editingPlan) && (

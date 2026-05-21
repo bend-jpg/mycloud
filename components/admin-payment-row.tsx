@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { CreditCard, Bitcoin, Banknote, MoreVertical, Trash2, RefreshCcw, Check } from "lucide-react";
+import { CreditCard, Bitcoin, Banknote, MoreVertical, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
 interface Payment {
@@ -37,28 +37,57 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function AdminPaymentRow({ payment }: { payment: Payment }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [status, setStatus] = useState(payment.status);
-  const [notes, setNotes] = useState(payment.notes ?? "");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
 
-  async function save() {
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  async function changeStatus(newStatus: string) {
+    if (newStatus === payment.status) {
+      setStatusOpen(false);
+      return;
+    }
     setBusy(true);
     await fetch(`/api/admin/payments/${payment.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, notes }),
+      body: JSON.stringify({ status: newStatus }),
     });
     setBusy(false);
-    setEditing(false);
-    setOpen(false);
+    setStatusOpen(false);
+    router.refresh();
+  }
+
+  async function editNotes() {
+    const newNotes = prompt("Notes :", payment.notes ?? "");
+    if (newNotes === null) return;
+    setBusy(true);
+    setMenuOpen(false);
+    await fetch(`/api/admin/payments/${payment.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: newNotes }),
+    });
+    setBusy(false);
     router.refresh();
   }
 
   async function remove() {
     if (!confirm("Supprimer ce paiement ? (à n'utiliser que pour corriger une erreur)")) return;
+    setBusy(true);
+    setMenuOpen(false);
     await fetch(`/api/admin/payments/${payment.id}`, { method: "DELETE" });
+    setBusy(false);
     router.refresh();
   }
 
@@ -77,52 +106,77 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
         <span className="inline-flex items-center gap-1"><MethodIcon className="size-3.5" /> {payment.method}</span>
       </td>
       <td className="px-4 py-3">
-        {editing ? (
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg bg-[var(--background-elevated)] border border-[var(--border)] px-2 py-1 text-xs">
-            <option value="PENDING">En attente</option>
-            <option value="SUCCEEDED">Payé</option>
-            <option value="FAILED">Échoué</option>
-            <option value="REFUNDED">Remboursé</option>
-          </select>
-        ) : (
-          <span className={`text-xs rounded-full px-2 py-1 ${STATUS_COLOR[status]}`}>{STATUS_LABEL[status]}</span>
-        )}
+        {/* Clic sur le badge de statut → ouvre le dropdown */}
+        <div ref={statusRef} className="relative inline-block">
+          <button
+            onClick={() => setStatusOpen((v) => !v)}
+            disabled={busy}
+            className={`text-xs rounded-full px-2 py-1 inline-flex items-center gap-1 hover:opacity-80 ${STATUS_COLOR[payment.status]}`}
+            title="Cliquer pour changer le statut"
+          >
+            {busy ? <Loader2 className="size-3 animate-spin" /> : null}
+            {STATUS_LABEL[payment.status]}
+          </button>
+          {statusOpen && (
+            <div className="absolute start-0 top-full mt-1 w-36 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
+              {(["PENDING", "SUCCEEDED", "FAILED", "REFUNDED"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => changeStatus(s)}
+                  className={`w-full text-start text-xs rounded-lg px-3 py-1.5 ${
+                    payment.status === s
+                      ? "bg-[var(--accent)]/10 text-[var(--accent)]"
+                      : "hover:bg-[var(--background-tile)]"
+                  }`}
+                >
+                  {STATUS_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </td>
       <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] max-w-xs truncate">
-        {editing ? (
-          <input value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded bg-[var(--background-elevated)] border border-[var(--border)] px-2 py-1" />
-        ) : (
-          payment.notes
-        )}
+        {payment.notes ?? "—"}
       </td>
       <td className="px-2 text-end relative">
-        {editing ? (
-          <div className="flex gap-1">
-            <button onClick={save} disabled={busy} className="p-1.5 rounded-lg text-[var(--success)] hover:bg-[var(--background-tile)]">
-              <Check className="size-4" />
-            </button>
-            <button onClick={() => { setEditing(false); setStatus(payment.status); setNotes(payment.notes ?? ""); }} className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-xs">×</button>
-          </div>
-        ) : (
-          <button onClick={() => setOpen(!open)} className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]">
+        <div ref={menuRef} className="relative inline-block">
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]"
+            title="Plus"
+          >
             <MoreVertical className="size-4" />
           </button>
-        )}
-        {open && !editing && (
-          <div className="absolute end-2 top-10 w-40 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
-            <button onClick={() => { setEditing(true); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start">
-              <RefreshCcw className="size-4" /> Changer statut
-            </button>
-            {payment.invoiceUrl && (
-              <a href={payment.invoiceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)]">
-                Voir facture Stripe
-              </a>
-            )}
-            <button onClick={remove} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start">
-              <Trash2 className="size-4" /> Supprimer
-            </button>
-          </div>
-        )}
+          {menuOpen && (
+            <div className="absolute end-0 top-full mt-1 w-48 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
+              <button
+                onClick={editNotes}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
+              >
+                Modifier les notes
+              </button>
+              {payment.invoiceUrl && (
+                <a
+                  href={payment.invoiceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)]"
+                >
+                  <ExternalLink className="size-4" />
+                  Voir facture Stripe
+                </a>
+              )}
+              <button
+                onClick={remove}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start"
+              >
+                <Trash2 className="size-4" />
+                Supprimer
+              </button>
+            </div>
+          )}
+        </div>
       </td>
     </tr>
   );
