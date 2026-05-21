@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { SiteHeader } from "@/components/site-header";
+import { PublicHeader } from "@/components/public-header";
 import { SiteFooter } from "@/components/site-footer";
 import { ContactForm } from "@/components/contact-form";
 import { Mail, MessageCircle, MapPin } from "lucide-react";
@@ -17,7 +17,7 @@ export default async function ContactPage({
 
   return (
     <>
-      <SiteHeader />
+      <PublicHeader />
       <main className="mx-auto max-w-4xl px-6 py-16 space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold">Contacte-nous</h1>

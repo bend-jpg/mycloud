@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { SiteHeader } from "@/components/site-header";
+import { PublicHeader } from "@/components/public-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export const metadata = { title: "Politique de confidentialité" };
@@ -14,7 +14,7 @@ export default async function PrivacyPage({
 
   return (
     <>
-      <SiteHeader />
+      <PublicHeader />
       <main className="mx-auto max-w-3xl px-6 py-16">
         <h1 className="text-4xl font-bold">Politique de confidentialité</h1>
         <p className="text-sm text-[var(--foreground-muted)]">Dernière mise à jour : {new Date().toLocaleDateString("fr")}</p>

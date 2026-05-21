@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { SiteHeader } from "@/components/site-header";
+import { PublicHeader } from "@/components/public-header";
 import { SiteFooter } from "@/components/site-footer";
 import { DEFAULT_PLANS } from "@/lib/plans";
 import { formatBytes } from "@/lib/utils";
@@ -36,7 +36,7 @@ export default async function LandingPage({
 
   return (
     <>
-      <SiteHeader />
+      <PublicHeader />
       <main className="mx-auto max-w-7xl px-6">
         {/* HERO */}
         <section className="py-24 md:py-32 text-center">
