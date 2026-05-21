@@ -1,9 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { BoxTile } from "@/components/box-tile";
 import { SiteHeader } from "@/components/site-header";
+import { FileIcon } from "@/components/file-icon";
 import { formatBytes } from "@/lib/utils";
 import {
   FolderOpen,
@@ -14,6 +16,7 @@ import {
   Shield,
   UserCog,
   LifeBuoy,
+  Clock,
 } from "lucide-react";
 
 export default async function DashboardPage({
@@ -28,10 +31,18 @@ export default async function DashboardPage({
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
 
-  const user = await db.user.findUnique({
-    where: { id: session.id },
-    select: { name: true, storageUsed: true, storageQuota: true },
-  });
+  const [user, recentFiles] = await Promise.all([
+    db.user.findUnique({
+      where: { id: session.id },
+      select: { name: true, storageUsed: true, storageQuota: true },
+    }),
+    db.file.findMany({
+      where: { ownerId: session.id, isTrash: false, teamId: null },
+      orderBy: { uploadedAt: "desc" },
+      take: 6,
+      select: { id: true, name: true, mimeType: true, size: true, uploadedAt: true },
+    }),
+  ]);
 
   const used = Number(user?.storageUsed ?? BigInt(0));
   const total = Number(user?.storageQuota ?? BigInt(1));
@@ -120,6 +131,53 @@ export default async function DashboardPage({
             />
           )}
         </div>
+
+        {/* Récemment uploadés */}
+        {recentFiles.length > 0 && (
+          <div className="mt-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Clock className="size-5 text-[var(--accent)]" />
+                Récemment uploadés
+              </h2>
+              <Link href="/files" className="text-sm text-[var(--accent)] hover:underline">
+                Voir tous mes fichiers →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {recentFiles.map((f) => {
+                const isImage = f.mimeType.startsWith("image/");
+                return (
+                  <Link
+                    key={f.id}
+                    href={`/files`}
+                    className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-hidden hover:scale-[1.02] transition-transform"
+                  >
+                    <div className="h-24 bg-[var(--background-elevated)] flex items-center justify-center overflow-hidden">
+                      {isImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/files/${f.id}/preview`}
+                          alt={f.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <FileIcon mimeType={f.mimeType} className="size-10" />
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <p className="text-xs font-medium truncate" title={f.name}>{f.name}</p>
+                      <p className="text-[10px] text-[var(--foreground-muted)]">
+                        {formatBytes(Number(f.size))}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

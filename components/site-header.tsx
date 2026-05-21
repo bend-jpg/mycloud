@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { LanguageSwitcher } from "./language-switcher";
 import { UserMenu } from "./user-menu";
 import { MobileNav } from "./mobile-nav";
+import { NotifBell } from "./notif-bell";
 import { getSession } from "@/lib/session";
 import { Cloud } from "lucide-react";
 
@@ -56,6 +57,9 @@ export async function SiteHeader() {
             <>
               <div className="hidden sm:block">
                 <LanguageSwitcher />
+              </div>
+              <div className="hidden md:block">
+                <NotifBell userId={session!.id} />
               </div>
               <div className="hidden md:block">
                 <UserMenu

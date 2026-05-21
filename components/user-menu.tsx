@@ -3,7 +3,7 @@
 import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "@/i18n/navigation";
-import { LogOut, User, Shield, CreditCard, Settings, FolderOpen, Users, Share2, LifeBuoy, UserCog, Trash2 } from "lucide-react";
+import { LogOut, User, Shield, CreditCard, Settings, FolderOpen, Users, Share2, LifeBuoy, UserCog, Trash2, Bell } from "lucide-react";
 import { ThemeCycleButton } from "./theme-picker";
 
 export function UserMenu({
@@ -83,6 +83,14 @@ export function UserMenu({
           >
             <Trash2 className="size-4" />
             Corbeille
+          </Link>
+          <Link
+            href="/notifications"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-[var(--background-tile)]"
+          >
+            <Bell className="size-4" />
+            Notifications
           </Link>
           <div className="my-1 h-px bg-[var(--border)]" />
           <Link
