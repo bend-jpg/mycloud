@@ -16,6 +16,7 @@ import {
   Bell,
   Loader2,
 } from "lucide-react";
+import { EmptyState } from "./empty-state";
 
 type NotifType =
   | "QUOTA_WARNING"
@@ -95,14 +96,12 @@ export function NotificationsView({ items }: { items: NotificationItem[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="text-center text-[var(--foreground-muted)] py-16">
-        <Bell className="size-12 mx-auto mb-3 opacity-30" />
-        <p className="text-base">Aucune notification.</p>
-        <p className="text-sm mt-1">
-          Tu seras prévenu ici quand quelque chose se passe : téléchargement d&apos;un lien partagé,
-          paiement, message d&apos;un admin, dépassement de quota…
-        </p>
-      </div>
+      <EmptyState
+        icon={Bell}
+        variant="accent"
+        title="Aucune notification pour l'instant"
+        description="Tu seras prévenu ici quand quelque chose se passe : téléchargement d'un lien partagé, paiement réussi, message d'un admin, ou dépassement de quota."
+      />
     );
   }
 

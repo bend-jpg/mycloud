@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, Trash2, Lock, Clock, Download } from "lucide-react";
+import { Copy, Check, Trash2, Lock, Clock, Download, Share2 } from "lucide-react";
 import { FileIcon } from "./file-icon";
+import { EmptyState } from "./empty-state";
 import { formatBytes } from "@/lib/utils";
 
 export interface ShareItem {
@@ -38,13 +39,18 @@ export function SharesList({ items }: { items: ShareItem[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="text-center text-[var(--foreground-muted)] py-16">
-        Aucun lien partagé pour l&apos;instant. Va sur{" "}
-        <a href="/files" className="text-[var(--accent)] hover:underline">
-          Mes fichiers
-        </a>{" "}
-        et clique sur « Partager par lien ».
-      </div>
+      <EmptyState
+        icon={Share2}
+        variant="violet"
+        title="Aucun lien partagé pour l'instant"
+        description={
+          <>
+            Crée un lien à durée limitée pour envoyer un fichier à n&apos;importe qui.
+            Date d&apos;expiration, mot de passe, limite de téléchargements — tu contrôles tout.
+          </>
+        }
+        cta={{ label: "Aller à mes fichiers", href: "/files" }}
+      />
     );
   }
 

@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { FileIcon } from "./file-icon";
+import { EmptyState } from "./empty-state";
 import { formatBytes } from "@/lib/utils";
 
 interface TrashFile {
@@ -120,11 +121,13 @@ export function TrashView({
 
   if (total === 0) {
     return (
-      <div className="text-center text-[var(--foreground-muted)] py-16">
-        <Trash2 className="size-12 mx-auto mb-3 opacity-30" />
-        <p className="text-base">Corbeille vide.</p>
-        <p className="text-sm mt-1">Les fichiers supprimés apparaîtront ici. Tu pourras les restaurer ou les supprimer définitivement.</p>
-      </div>
+      <EmptyState
+        icon={Trash2}
+        variant="violet"
+        title="Corbeille vide"
+        description="Les fichiers et dossiers supprimés apparaîtront ici. Tu auras 30 jours pour les restaurer avant suppression définitive."
+        cta={{ label: "Retour à mes fichiers", href: "/files" }}
+      />
     );
   }
 

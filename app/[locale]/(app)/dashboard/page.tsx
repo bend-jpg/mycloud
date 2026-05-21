@@ -57,23 +57,36 @@ export default async function DashboardPage({
       <SiteHeader />
       <WelcomeModal userName={user?.name ?? session.name} />
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold">
-              {t("welcome", { name: user?.name ?? session.name })}
-            </h1>
-            <p className="text-[var(--foreground-muted)] mt-1">
-              {t("usage", { used: formatBytes(used), total: formatBytes(total) })}
-            </p>
-          </div>
-          <div className="w-full md:w-80">
-            <div className="h-2 rounded-full bg-[var(--background-elevated)] overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--secondary)] rounded-full transition-all"
-                style={{ width: `${pct}%` }}
-              />
+        {/* Hero header avec gradient subtil */}
+        <div className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-6 sm:p-8 mb-8">
+          <div className="pointer-events-none absolute -top-16 -end-16 size-64 rounded-full bg-[var(--accent)]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 -start-16 size-64 rounded-full bg-[var(--secondary)]/10 blur-3xl" />
+          <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold">
+                {t("welcome", { name: user?.name ?? session.name })}
+              </h1>
+              <p className="text-[var(--foreground-muted)] mt-2 text-sm">
+                {t("usage", { used: formatBytes(used), total: formatBytes(total) })}
+              </p>
             </div>
-            <p className="text-xs text-[var(--foreground-muted)] mt-2 text-end">{pct}%</p>
+            <div className="w-full md:w-96">
+              <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)] mb-1.5">
+                <span>Stockage utilisé</span>
+                <span className="font-semibold text-[var(--foreground)]">{pct}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-[var(--background-elevated)] overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--secondary)] rounded-full transition-all shadow-[0_0_20px_var(--accent-glow)]"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {pct >= 80 && (
+                <p className="text-[10px] text-yellow-400 mt-1.5">
+                  ⚠ Tu approches de ta limite. Pense à upgrade ton plan ou nettoyer la corbeille.
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

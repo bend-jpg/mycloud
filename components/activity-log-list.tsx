@@ -15,7 +15,9 @@ import {
   Trash2,
   Loader2,
   Globe,
+  ShieldCheck,
 } from "lucide-react";
+import { EmptyState } from "./empty-state";
 
 interface ActivityItem {
   id: string;
@@ -55,10 +57,12 @@ export function ActivityLogList({ items }: { items: ActivityItem[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="text-center text-[var(--foreground-muted)] py-16">
-        <p className="text-base">Aucune activité enregistrée pour l&apos;instant.</p>
-        <p className="text-sm mt-1">Les connexions, partages téléchargés et changements de sécurité apparaîtront ici.</p>
-      </div>
+      <EmptyState
+        icon={ShieldCheck}
+        variant="success"
+        title="Aucune activité enregistrée"
+        description="Les connexions, partages téléchargés et changements de sécurité apparaîtront ici. Tu pourras détecter immédiatement toute connexion suspecte."
+      />
     );
   }
 
