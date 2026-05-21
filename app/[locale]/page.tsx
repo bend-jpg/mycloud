@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { DEFAULT_PLANS } from "@/lib/plans";
 import { formatBytes } from "@/lib/utils";
 import {
@@ -151,10 +152,8 @@ export default async function LandingPage({
           </div>
         </section>
 
-        <footer className="py-12 border-t border-[var(--border)] text-sm text-[var(--foreground-muted)] text-center">
-          © {new Date().getFullYear()} MyCloud. Tous droits réservés.
-        </footer>
       </main>
+      <SiteFooter />
     </>
   );
 }

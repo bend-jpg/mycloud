@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { BillingPlans } from "@/components/billing-plans";
 import { ManageSubscriptionButton } from "@/components/manage-subscription-button";
+import { BackLink } from "@/components/back-link";
 import { formatBytes, formatPrice } from "@/lib/utils";
 import { CreditCard, Bitcoin, Receipt, Crown } from "lucide-react";
 
@@ -42,7 +43,8 @@ export default async function BillingPage({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-6xl px-6 py-10 space-y-8">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
+        <BackLink />
         <div>
           <h1 className="text-3xl font-bold">Mon plan</h1>
           <p className="text-[var(--foreground-muted)] mt-1">

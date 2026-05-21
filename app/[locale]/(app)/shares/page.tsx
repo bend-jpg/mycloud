@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { SharesList } from "@/components/shares-list";
+import { BackLink } from "@/components/back-link";
 import { getAppUrl } from "@/lib/url";
 
 export default async function SharesPage({
@@ -41,7 +42,8 @@ export default async function SharesPage({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-5xl px-6 py-10 space-y-6">
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-6">
+        <BackLink />
         <div>
           <h1 className="text-3xl font-bold">Mes partages</h1>
           <p className="text-[var(--foreground-muted)] mt-1">

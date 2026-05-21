@@ -18,6 +18,8 @@ export default async function ClientsListPage({
   const users = await db.user.findMany({
     where: {
       AND: [
+        { role: "USER" }, // exclut le staff interne (visible sur /admin/staff)
+        { parentUserId: null }, // exclut les sous-comptes (visibles depuis fiche client)
         q
           ? {
               OR: [

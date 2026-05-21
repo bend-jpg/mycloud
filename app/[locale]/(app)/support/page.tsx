@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { TicketsClientPanel } from "@/components/tickets-client-panel";
+import { BackLink } from "@/components/back-link";
 import { LifeBuoy, MessageCircle } from "lucide-react";
 
 export default async function SupportPage({
@@ -28,7 +29,8 @@ export default async function SupportPage({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-4xl px-4 sm:px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 py-6 space-y-6">
+        <BackLink />
         <div>
           <h1 className="text-3xl font-bold">Support</h1>
           <p className="text-[var(--foreground-muted)] mt-1">
