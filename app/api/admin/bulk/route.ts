@@ -12,6 +12,7 @@ import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/session";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { sendWhatsappText, isWhatsappConfigured } from "@/lib/whatsapp";
 
 const baseSchema = z.object({
   userIds: z.array(z.string()).min(1).max(500),
@@ -36,12 +37,17 @@ const emailSchema = baseSchema.extend({
   html: z.string().min(1).max(50000),
 });
 
+const whatsappSchema = baseSchema.extend({
+  action: z.literal("whatsapp"),
+  body: z.string().min(1).max(1024),
+});
+
 const suspendSchema = baseSchema.extend({
   action: z.literal("suspend"),
   suspend: z.boolean(),
 });
 
-const schema = z.discriminatedUnion("action", [notifySchema, messageSchema, emailSchema, suspendSchema]);
+const schema = z.discriminatedUnion("action", [notifySchema, messageSchema, emailSchema, whatsappSchema, suspendSchema]);
 
 export async function POST(req: Request) {
   let admin;
@@ -61,7 +67,7 @@ export async function POST(req: Request) {
   // Vérif que les users existent
   const users = await db.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, email: true, name: true },
+    select: { id: true, email: true, name: true, whatsapp: true, phone: true },
   });
   const validIds = users.map((u) => u.id);
 
@@ -132,6 +138,32 @@ export async function POST(req: Request) {
       else failed++;
     }
     result = { ok: true, sent, failed };
+  }
+
+  if (data.action === "whatsapp") {
+    if (!isWhatsappConfigured()) {
+      return NextResponse.json(
+        { error: "WHATSAPP_NOT_CONFIGURED", message: "Configure WHATSAPP_CLOUD_API_TOKEN + WHATSAPP_PHONE_NUMBER_ID." },
+        { status: 400 },
+      );
+    }
+    let sent = 0;
+    let failed = 0;
+    let noNumber = 0;
+    for (const user of users) {
+      const number = user.whatsapp || user.phone;
+      if (!number) {
+        noNumber++;
+        continue;
+      }
+      const personalized = data.body
+        .replaceAll("{{name}}", user.name ?? "")
+        .replaceAll("{{email}}", user.email);
+      const res = await sendWhatsappText(number, personalized);
+      if (res.ok) sent++;
+      else failed++;
+    }
+    result = { ok: true, sent, failed, noNumber };
   }
 
   if (data.action === "suspend") {

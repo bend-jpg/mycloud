@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 const schema = z.object({
   currentPeriodEnd: z.string().datetime().optional(),
@@ -18,7 +18,7 @@ export async function POST(
 ) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("client.modify");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

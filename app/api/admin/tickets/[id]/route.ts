@@ -1,7 +1,7 @@
 // Suppression d'un ticket par admin (cas exceptionnel : spam, doublon).
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 export async function DELETE(
   _req: Request,
@@ -9,7 +9,7 @@ export async function DELETE(
 ) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("ticket.reply");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

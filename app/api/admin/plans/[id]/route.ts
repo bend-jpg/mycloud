@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { invalidateCache } from "@/lib/cached";
 
 const patchSchema = z.object({
@@ -34,7 +34,7 @@ export async function PATCH(
 ) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("plan.write");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
@@ -71,7 +71,7 @@ export async function DELETE(
 ) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("plan.write");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

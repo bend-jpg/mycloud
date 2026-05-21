@@ -6,13 +6,13 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 
 export async function POST() {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("plan.write");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

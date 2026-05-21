@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 const schema = z.object({
   newPassword: z.string().min(8).max(120),
@@ -17,7 +17,7 @@ export async function POST(
 ) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("client.modify");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

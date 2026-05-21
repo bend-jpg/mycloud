@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 const schema = z
   .object({
@@ -23,7 +23,7 @@ export async function PATCH(
 ) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("client.modify");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
@@ -91,7 +91,7 @@ export async function DELETE(
 ) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("client.modify");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }

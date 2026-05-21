@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { Search } from "lucide-react";
 import { AdminClientsTable } from "@/components/admin-clients-table";
 import { isEmailConfigured } from "@/lib/email";
+import { isWhatsappConfigured } from "@/lib/whatsapp";
 
 export default async function ClientsListPage({
   params,
@@ -76,6 +77,7 @@ export default async function ClientsListPage({
       <AdminClientsTable
         locale={locale}
         emailConfigured={isEmailConfigured()}
+        whatsappConfigured={isWhatsappConfigured()}
         allPlans={allPlans.map((p) => ({ slug: p.slug, name: p.name }))}
         users={users.map((u) => ({
           id: u.id,

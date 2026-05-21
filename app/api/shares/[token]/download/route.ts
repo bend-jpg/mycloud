@@ -6,6 +6,8 @@ import { getStorage } from "@/lib/storage";
 import { rateLimit, rateLimitReset, getClientIp } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/activity";
 import { addPdfWatermark, isWatermarkable } from "@/lib/watermark";
+import { sendEmail, shareDownloadedEmail, isEmailConfigured } from "@/lib/email";
+import { getAppUrl } from "@/lib/url";
 
 export const maxDuration = 30; // assez pour DL + watermark même sur gros PDF
 
@@ -65,6 +67,14 @@ async function handle(req: Request, token: string, password: string | null) {
     req,
     metadata: { fileName: file.name, shareToken: token },
   });
+
+  // Email au propriétaire si link.notifyOnDownload (par défaut true) ET Resend configuré
+  if (link.notifyOnDownload && link.createdBy?.email && isEmailConfigured()) {
+    const shareUrl = `${getAppUrl()}/s/${token}`;
+    const tpl = shareDownloadedEmail(file.name, shareUrl);
+    // Best-effort, on bloque pas le download si l'email plante
+    sendEmail({ to: link.createdBy.email, ...tpl }).catch(() => undefined);
+  }
 
   const storage = await getStorage(file.storageBackendId);
 

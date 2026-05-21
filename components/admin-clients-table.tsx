@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, Mail, Bell, Ban, Loader2, Sparkles, MessageSquare } from "lucide-react";
+import { Check, X, Mail, Bell, Ban, Loader2, Sparkles, MessageSquare, MessageCircle } from "lucide-react";
 import { AdminClientRow } from "./admin-client-row";
 
 interface PlanLite {
@@ -28,18 +28,20 @@ interface ClientLite {
   role: string;
 }
 
-type BulkAction = "notify" | "message" | "email";
+type BulkAction = "notify" | "message" | "email" | "whatsapp";
 
 export function AdminClientsTable({
   users,
   allPlans,
   locale,
   emailConfigured,
+  whatsappConfigured = false,
 }: {
   users: ClientLite[];
   allPlans: PlanLite[];
   locale: string;
   emailConfigured: boolean;
+  whatsappConfigured?: boolean;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -100,6 +102,12 @@ export function AdminClientsTable({
               <button onClick={() => setBulkAction("email")} className="btn-ghost text-xs">
                 <Mail className="size-3.5" />
                 Email
+              </button>
+            )}
+            {whatsappConfigured && (
+              <button onClick={() => setBulkAction("whatsapp")} className="btn-ghost text-xs !text-emerald-400">
+                <MessageCircle className="size-3.5" />
+                WhatsApp
               </button>
             )}
             <button
@@ -216,6 +224,9 @@ function BulkActionModal({
     } else if (action === "email") {
       payload.subject = title;
       payload.html = body;
+    } else if (action === "whatsapp") {
+      // WhatsApp : pas de subject, juste le body
+      payload.body = body;
     }
     const res = await fetch("/api/admin/bulk", {
       method: "POST",
@@ -254,6 +265,12 @@ function BulkActionModal({
       bodyLabel: "Contenu HTML (placeholders {{name}} et {{email}} acceptés)",
       desc: "Envoie un email à chaque client via Resend.",
     },
+    whatsapp: {
+      title: "WhatsApp broadcast",
+      subjectLabel: "(non utilisé)",
+      bodyLabel: "Message (max 1024 chars, placeholders {{name}} {{email}})",
+      desc: "Envoie un texte WhatsApp à chaque client qui a un numéro renseigné. Note Meta : les destinataires sans conversation active de moins de 24h ne recevront pas le message sauf si tu utilises un template approuvé.",
+    },
   } as const;
 
   const cfg = labels[action];
@@ -280,16 +297,18 @@ function BulkActionModal({
           </button>
         </div>
         <div className="p-5 space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">{cfg.subjectLabel}</label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl bg-[var(--background)] border border-[var(--border)] px-3 py-2 text-sm"
-            />
-          </div>
+          {action !== "whatsapp" && (
+            <div>
+              <label className="text-sm font-medium mb-1 block">{cfg.subjectLabel}</label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full rounded-xl bg-[var(--background)] border border-[var(--border)] px-3 py-2 text-sm"
+              />
+            </div>
+          )}
           <div>
             <label className="text-sm font-medium mb-1 block">{cfg.bodyLabel}</label>
             <textarea

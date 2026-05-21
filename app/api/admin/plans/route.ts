@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 const planSchema = z.object({
   slug: z.string().min(1).max(40),
@@ -28,7 +28,7 @@ const planSchema = z.object({
 export async function POST(req: Request) {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("plan.write");
   } catch {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
