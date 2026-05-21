@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { TrashView } from "@/components/trash-view";
+import { PageHero } from "@/components/page-hero";
+import { BackLink } from "@/components/back-link";
 import { Trash2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -40,18 +42,18 @@ export default async function TrashPage({
     <>
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              <Trash2 className="size-7 text-[var(--danger)]" />
-              Corbeille
-            </h1>
-            <p className="text-sm text-[var(--foreground-muted)] mt-1">
+        <BackLink />
+        <PageHero
+          icon={Trash2}
+          variant="red"
+          title="Corbeille"
+          description={
+            <>
               {files.length + folders.length} élément(s) — {(totalBytes / 1024 / 1024).toFixed(1)} Mo
               récupérables. Les fichiers en corbeille comptent toujours dans ton quota.
-            </p>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         <TrashView
           files={files.map((f) => ({

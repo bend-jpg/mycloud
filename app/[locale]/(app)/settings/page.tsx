@@ -5,6 +5,8 @@ import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { SettingsTabs } from "@/components/settings-tabs";
 import { BackLink } from "@/components/back-link";
+import { PageHero } from "@/components/page-hero";
+import { Settings } from "lucide-react";
 
 export default async function SettingsPage({
   params,
@@ -40,12 +42,12 @@ export default async function SettingsPage({
       <SiteHeader />
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-6">
         <BackLink />
-        <div>
-          <h1 className="text-3xl font-bold">Paramètres</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            Gère ton profil, ton apparence, ta sécurité et ta langue.
-          </p>
-        </div>
+        <PageHero
+          icon={Settings}
+          variant="cyan"
+          title="Paramètres"
+          description="Gère ton profil, ton apparence, ta sécurité, ta langue et le branding de tes partages."
+        />
         <SettingsTabs
           user={{
             name: user.name ?? "",

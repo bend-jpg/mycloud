@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { BillingPlans } from "@/components/billing-plans";
 import { ManageSubscriptionButton } from "@/components/manage-subscription-button";
 import { BackLink } from "@/components/back-link";
+import { PageHero } from "@/components/page-hero";
 import { formatBytes, formatPrice } from "@/lib/utils";
 import { CreditCard, Bitcoin, Receipt, Crown } from "lucide-react";
 
@@ -45,12 +46,19 @@ export default async function BillingPage({
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
         <BackLink />
-        <div>
-          <h1 className="text-3xl font-bold">Mon plan</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            Gère ton abonnement, change de plan, ou paye en crypto.
-          </p>
-        </div>
+        <PageHero
+          icon={Crown}
+          variant="amber"
+          title="Mon plan"
+          description={
+            <>
+              Plan actuel : <strong className="text-[var(--foreground)]">{user.plan?.name ?? "—"}</strong>
+              {user.subscription?.currentPeriodEnd && (
+                <> · Renouvellement le {new Date(user.subscription.currentPeriodEnd).toLocaleDateString(locale)}</>
+              )}
+            </>
+          }
+        />
 
         {session_id && (
           <div className="rounded-2xl bg-[var(--success)]/10 border border-[var(--success)]/30 p-4 text-sm">

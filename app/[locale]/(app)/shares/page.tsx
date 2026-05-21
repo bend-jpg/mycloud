@@ -5,7 +5,11 @@ import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { SharesList } from "@/components/shares-list";
 import { BackLink } from "@/components/back-link";
+import { PageHero } from "@/components/page-hero";
+import { Share2 } from "lucide-react";
 import { getAppUrl } from "@/lib/url";
+
+export const dynamic = "force-dynamic";
 
 export default async function SharesPage({
   params,
@@ -44,12 +48,16 @@ export default async function SharesPage({
       <SiteHeader />
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-6">
         <BackLink />
-        <div>
-          <h1 className="text-3xl font-bold">Mes partages</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            Tous les liens de téléchargement que tu as créés. Tu peux les révoquer à tout moment.
-          </p>
-        </div>
+        <PageHero
+          icon={Share2}
+          variant="violet"
+          title="Mes partages"
+          description={
+            <>
+              Tous les liens que tu as créés ({items.length}). Tu peux les révoquer à tout moment.
+            </>
+          }
+        />
         <SharesList items={items} />
       </main>
     </>

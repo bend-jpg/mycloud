@@ -4,8 +4,12 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { SubAccountsManager } from "@/components/sub-accounts-manager";
-import { ChevronLeft } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
+import { BackLink } from "@/components/back-link";
+import { ChevronLeft, UserCog } from "lucide-react";
 import { Link } from "@/i18n/navigation";
+
+export const dynamic = "force-dynamic";
 
 export default async function AccountsPage({
   params,
@@ -73,21 +77,19 @@ export default async function AccountsPage({
     <>
       <SiteHeader />
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-8 space-y-6">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-1 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-        >
-          <ChevronLeft className="size-4 rtl:rotate-180" />
-          Retour à mon espace
-        </Link>
-
-        <div>
-          <h1 className="text-3xl font-bold">Mes utilisateurs</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            Donne à d&apos;autres personnes un accès à une portion de ton stockage.
-            Elles auront leur propre login et leur propre espace.
-          </p>
-        </div>
+        <BackLink />
+        <PageHero
+          icon={UserCog}
+          variant="cyan"
+          title="Mes sous-comptes"
+          description={
+            <>
+              Donne à d&apos;autres personnes un accès à une portion de ton stockage.
+              Elles auront leur propre login et leur propre espace. Pratique pour les
+              enfants, le conjoint, ou l&apos;équipe.
+            </>
+          }
+        />
 
         <SubAccountsManager
           parentQuotaBytes={me.storageQuota.toString()}

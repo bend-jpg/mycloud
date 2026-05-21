@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { ActivityLogList } from "@/components/activity-log-list";
+import { PageHero } from "@/components/page-hero";
+import { BackLink } from "@/components/back-link";
 import { ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -32,17 +34,19 @@ export default async function SecurityPage({
     <>
       <SiteHeader />
       <main className="mx-auto max-w-4xl px-4 sm:px-6 py-6 space-y-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <ShieldCheck className="size-7 text-[var(--accent)]" />
-            Sécurité & activité
-          </h1>
-          <p className="text-sm text-[var(--foreground-muted)] mt-1">
-            Toutes les actions sensibles sur ton compte : connexions, changements de mot de passe,
-            partages téléchargés. Si tu vois une connexion que tu ne reconnais pas, change ton
-            mot de passe immédiatement.
-          </p>
-        </div>
+        <BackLink />
+        <PageHero
+          icon={ShieldCheck}
+          variant="green"
+          title="Sécurité & activité"
+          description={
+            <>
+              Toutes les actions sensibles sur ton compte : connexions, changements de mot de passe,
+              partages téléchargés. Si tu vois une connexion que tu ne reconnais pas, change ton mot
+              de passe immédiatement.
+            </>
+          }
+        />
 
         <ActivityLogList
           items={items.map((a) => ({

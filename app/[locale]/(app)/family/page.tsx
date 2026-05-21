@@ -5,6 +5,8 @@ import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { TeamsList } from "@/components/teams-list";
 import { BackLink } from "@/components/back-link";
+import { PageHero } from "@/components/page-hero";
+import { Users } from "lucide-react";
 
 export default async function FamilyPage({
   params,
@@ -46,14 +48,17 @@ export default async function FamilyPage({
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
         <BackLink />
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Espaces partagés</h1>
-            <p className="text-[var(--foreground-muted)] mt-1">
-              Crée un espace pour partager des fichiers avec ta famille ou ton équipe.
-            </p>
-          </div>
-        </div>
+        <PageHero
+          icon={Users}
+          variant="amber"
+          title="Espaces partagés"
+          description={
+            <>
+              Crée un espace pour partager des fichiers avec ta famille ou ton équipe.{" "}
+              {teams.length} espace(s) actuellement.
+            </>
+          }
+        />
 
         <TeamsList teams={teams} canCreate={canCreate} planName={planName} />
       </main>

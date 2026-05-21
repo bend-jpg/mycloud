@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { TicketsClientPanel } from "@/components/tickets-client-panel";
 import { BackLink } from "@/components/back-link";
+import { PageHero } from "@/components/page-hero";
 import { LifeBuoy, MessageCircle } from "lucide-react";
 
 export default async function SupportPage({
@@ -31,12 +32,17 @@ export default async function SupportPage({
       <SiteHeader />
       <main className="mx-auto max-w-4xl px-4 sm:px-6 py-6 space-y-6">
         <BackLink />
-        <div>
-          <h1 className="text-3xl font-bold">Support</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            Notre équipe te répond généralement sous 24h. Pour les urgences, prends contact via WhatsApp.
-          </p>
-        </div>
+        <PageHero
+          icon={LifeBuoy}
+          variant="pink"
+          title="Support"
+          description={
+            <>
+              Notre équipe te répond généralement sous 24h. Pour les urgences, prends contact via WhatsApp.
+              {tickets.length > 0 && ` ${tickets.length} ticket(s) en cours.`}
+            </>
+          }
+        />
 
         {/* Contact rapide */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { NotificationsView } from "@/components/notifications-view";
+import { PageHero } from "@/components/page-hero";
+import { BackLink } from "@/components/back-link";
 import { Bell } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -30,22 +32,13 @@ export default async function NotificationsPage({
     <>
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 sm:px-6 py-6 space-y-6">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              <Bell className="size-7 text-[var(--accent)]" />
-              Notifications
-              {unreadCount > 0 && (
-                <span className="text-xs rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] px-2 py-0.5">
-                  {unreadCount}
-                </span>
-              )}
-            </h1>
-            <p className="text-sm text-[var(--foreground-muted)] mt-1">
-              {items.length} notification(s) — 100 dernières conservées.
-            </p>
-          </div>
-        </div>
+        <BackLink />
+        <PageHero
+          icon={Bell}
+          variant="cyan"
+          title={`Notifications${unreadCount > 0 ? ` · ${unreadCount} non lue(s)` : ""}`}
+          description={`${items.length} notification(s) — 100 dernières conservées.`}
+        />
 
         <NotificationsView
           items={items.map((n) => ({
