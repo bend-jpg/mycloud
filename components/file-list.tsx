@@ -27,6 +27,7 @@ import { FileIcon } from "./file-icon";
 import { FileThumbnail } from "./file-thumbnail";
 import { ShareDialog } from "./share-dialog";
 import { FilePreviewModal } from "./file-preview-modal";
+import { PortalMenu } from "./portal-menu";
 import { formatBytes } from "@/lib/utils";
 import { useLasso } from "@/lib/use-lasso";
 
@@ -537,7 +538,21 @@ function GridView({
             onDragLeave={onFolderDragLeave}
             onDrop={(e) => onFolderDrop(e, f.id)}
           >
-            {/* Zone visuelle — clic = ouvrir le dossier */}
+            {/* Checkbox toujours visible (en haut à gauche) */}
+            <button
+              data-stop
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFolder(f.id); }}
+              className={`absolute top-2 start-2 z-10 size-6 rounded-md flex items-center justify-center border-2 transition-all ${
+                isSelected
+                  ? "bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-foreground)]"
+                  : "bg-[var(--background-elevated)]/80 border-[var(--border)] hover:border-[var(--accent)] backdrop-blur"
+              }`}
+              title={isSelected ? "Désélectionner" : "Sélectionner"}
+            >
+              {isSelected && <Check className="size-3.5" />}
+            </button>
+
+            {/* Zone visuelle — clic = ouvrir le dossier (hauteur fixe 7rem) */}
             <Link
               href={`${folderUrlBase}/${f.id}`}
               onClick={(e) => { if (selectMode) { e.preventDefault(); toggleFolder(f.id); } }}
@@ -545,31 +560,18 @@ function GridView({
             >
               <Folder className="size-12 text-[var(--secondary)]" />
             </Link>
-            {/* Zone info — clic = sélectionner */}
+
+            {/* Zone info — hauteur fixe pour matcher les fichiers */}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); toggleFolder(f.id); }}
-              className="w-full text-start p-3 cursor-pointer hover:bg-[var(--background-elevated)]/40"
+              className="w-full text-start px-3 py-2.5 h-14 cursor-pointer hover:bg-[var(--background-elevated)]/40"
             >
-              <p className="font-medium truncate text-sm">{f.name}</p>
+              <p className="font-medium truncate text-sm leading-tight">{f.name}</p>
               <p className="text-xs text-[var(--foreground-muted)]">
                 {isDragTarget ? "Déposer ici" : "Dossier"}
               </p>
             </button>
-            {/* Checkbox sélection */}
-            {(selectMode || isSelected) && (
-              <button
-                data-stop
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFolder(f.id); }}
-                className={`absolute top-2 start-2 z-10 size-6 rounded-md flex items-center justify-center transition-all ${
-                  isSelected
-                    ? "bg-[var(--accent)] text-[var(--accent-foreground)] opacity-100"
-                    : "bg-[var(--background-elevated)] border border-[var(--border)] opacity-0 group-hover:opacity-100"
-                }`}
-              >
-                {isSelected && <Check className="size-3.5" />}
-              </button>
-            )}
           </div>
         );
       })}
@@ -588,56 +590,24 @@ function GridView({
             draggable
             onDragStart={(e) => onItemDragStart(e, "file", f.id)}
           >
-            {/* Zone visuelle (vignette) — clic = preview */}
+            {/* Checkbox toujours visible (en haut à gauche) */}
             <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (selectMode) { toggleFile(f.id); return; }
-                onPreview(f);
-              }}
-              className="relative block w-full h-28 bg-[var(--background-elevated)] overflow-hidden cursor-pointer rounded-t-2xl"
-              title="Cliquer pour voir l'aperçu"
+              data-stop
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFile(f.id); }}
+              className={`absolute top-2 start-2 z-10 size-6 rounded-md flex items-center justify-center border-2 transition-all ${
+                isSelected
+                  ? "bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-foreground)]"
+                  : "bg-[var(--background-elevated)]/80 border-[var(--border)] hover:border-[var(--accent)] backdrop-blur"
+              }`}
+              title={isSelected ? "Désélectionner" : "Sélectionner"}
             >
-              <FileThumbnail
-                fileId={f.id}
-                mimeType={f.mimeType}
-                alt={f.name}
-                className="w-full h-full"
-                iconClassName="size-12"
-              />
+              {isSelected && <Check className="size-3.5" />}
             </button>
-
-            {/* Zone info (nom + taille) — clic = sélectionner */}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); toggleFile(f.id); }}
-              className="w-full text-start p-3 cursor-pointer hover:bg-[var(--background-elevated)]/40"
-              title="Cliquer pour sélectionner"
-            >
-              <p className="font-medium truncate text-sm" title={f.name}>{f.name}</p>
-              <p className="text-xs text-[var(--foreground-muted)]">{formatBytes(Number(f.size))}</p>
-            </button>
-
-            {/* Checkbox sélection */}
-            {(selectMode || isSelected) && (
-              <button
-                data-stop
-                onClick={(e) => { e.stopPropagation(); toggleFile(f.id); }}
-                className={`absolute top-2 start-2 z-10 size-6 rounded-md flex items-center justify-center transition-all ${
-                  isSelected
-                    ? "bg-[var(--accent)] text-[var(--accent-foreground)] opacity-100"
-                    : "bg-[var(--background-elevated)] border border-[var(--border)] opacity-0 group-hover:opacity-100"
-                }`}
-              >
-                {isSelected && <Check className="size-3.5" />}
-              </button>
-            )}
 
             {/* Pastille "partagé famille" */}
             {sharedTeams.length > 0 && (
               <div
-                className="absolute top-2 end-2 bg-[var(--accent)]/90 text-[var(--accent-foreground)] rounded-full px-1.5 py-0.5 text-[10px] font-medium flex items-center gap-1 shadow"
+                className="absolute top-2 z-10 end-10 bg-[var(--accent)]/90 text-[var(--accent-foreground)] rounded-full px-1.5 py-0.5 text-[10px] font-medium flex items-center gap-1 shadow"
                 title={`Partagé avec : ${sharedTeams.map((t) => t.name).join(", ")}`}
               >
                 <Users className="size-3" />
@@ -647,21 +617,19 @@ function GridView({
               </div>
             )}
 
-            {/* Bouton menu (toujours visible, pas opacity-0) */}
-            <button
-              data-stop
-              onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === f.id ? null : f.id); }}
-              className="absolute top-20 end-1 rounded-lg p-1.5 bg-[var(--background-elevated)] hover:bg-[var(--background)] border border-[var(--border)] shadow z-10"
-              title="Plus d'actions"
-            >
-              <MoreVertical className="size-4" />
-            </button>
-
-            {openMenu === f.id && (
-              <div
-                data-stop
-                onClick={(e) => e.stopPropagation()}
-                className="absolute top-32 end-2 w-52 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl z-40 p-1 max-h-80 overflow-y-auto"
+            {/* Menu 3-points via Portal — top-right, ne déborde plus de la card */}
+            <div className="absolute top-2 end-2 z-10" data-stop>
+              <PortalMenu
+                width={208}
+                trigger={
+                  <button
+                    type="button"
+                    title="Plus d'actions"
+                    className="rounded-md p-1 bg-[var(--background-elevated)]/80 hover:bg-[var(--background-elevated)] border border-[var(--border)] backdrop-blur"
+                  >
+                    <MoreVertical className="size-4" />
+                  </button>
+                }
               >
                 <button onClick={() => onPreview(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start">
                   <Eye className="size-4" /> Aperçu
@@ -707,8 +675,39 @@ function GridView({
                 <button onClick={() => onDelete(f.id)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start">
                   <Trash2 className="size-4" /> Supprimer
                 </button>
-              </div>
-            )}
+              </PortalMenu>
+            </div>
+
+            {/* Zone visuelle (vignette) — clic = preview (hauteur fixe 7rem comme dossier) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectMode) { toggleFile(f.id); return; }
+                onPreview(f);
+              }}
+              className="relative block w-full h-28 bg-[var(--background-elevated)] overflow-hidden cursor-pointer rounded-t-2xl"
+              title="Cliquer pour voir l'aperçu — utilise la case en haut à gauche pour sélectionner"
+            >
+              <FileThumbnail
+                fileId={f.id}
+                mimeType={f.mimeType}
+                alt={f.name}
+                className="w-full h-full"
+                iconClassName="size-12"
+              />
+            </button>
+
+            {/* Zone info — hauteur fixe identique au dossier */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); toggleFile(f.id); }}
+              className="w-full text-start px-3 py-2.5 h-14 cursor-pointer hover:bg-[var(--background-elevated)]/40"
+              title="Cliquer pour sélectionner"
+            >
+              <p className="font-medium truncate text-sm leading-tight" title={f.name}>{f.name}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">{formatBytes(Number(f.size))}</p>
+            </button>
           </div>
         );
       })}
