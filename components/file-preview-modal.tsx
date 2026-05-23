@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { X, Download, ExternalLink, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Download, ExternalLink, FileText, Star } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { formatBytes } from "@/lib/utils";
 
@@ -31,6 +31,47 @@ export function FilePreviewModal({
       document.body.style.overflow = "";
     };
   }, [onClose]);
+
+  // État favori — fetch lazy à l'ouverture
+  const [starred, setStarred] = useState<boolean | null>(null);
+  const [starBusy, setStarBusy] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/favorites")
+      .then((r) => r.json())
+      .then((data: { items?: { targetType: string; targetId: string }[] }) => {
+        if (cancelled) return;
+        const isStarred = !!data.items?.some(
+          (i) => i.targetType === "FILE" && i.targetId === file.id,
+        );
+        setStarred(isStarred);
+      })
+      .catch(() => {
+        if (!cancelled) setStarred(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [file.id]);
+
+  async function toggleStar() {
+    if (starred === null || starBusy) return;
+    setStarBusy(true);
+    const next = !starred;
+    setStarred(next); // optimistic
+    try {
+      const res = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType: "FILE", targetId: file.id }),
+      });
+      if (!res.ok) setStarred(!next); // rollback
+    } catch {
+      setStarred(!next);
+    } finally {
+      setStarBusy(false);
+    }
+  }
 
   const previewUrl = `/api/files/${file.id}/preview`;
   const downloadUrl = `/api/files/${file.id}/download`;
@@ -63,6 +104,18 @@ export function FilePreviewModal({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleStar}
+            disabled={starred === null || starBusy}
+            title={starred ? "Retirer des favoris" : "Ajouter aux favoris"}
+            aria-pressed={!!starred}
+            className={`p-2 rounded-xl text-white transition-colors ${
+              starred ? "bg-[var(--secondary)]/30 hover:bg-[var(--secondary)]/40" : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            <Star className="size-4" fill={starred ? "currentColor" : "none"} />
+          </button>
           <a
             href={downloadUrl}
             className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm flex items-center gap-2"

@@ -25,6 +25,7 @@ import {
   Shield,
   Download,
   ArrowRight,
+  Star,
 } from "lucide-react";
 
 interface Command {
@@ -41,6 +42,7 @@ const COMMANDS: Command[] = [
   // Navigation principale
   { href: "/dashboard", label: "Mon espace", description: "Vue d'ensemble", icon: LayoutDashboard, section: "Navigation" },
   { href: "/files", label: "Mes fichiers", description: "Tous mes documents et photos", icon: FolderOpen, section: "Navigation", keywords: ["documents", "photos"] },
+  { href: "/starred", label: "Favoris", description: "Fichiers et dossiers étoilés", icon: Star, section: "Navigation", keywords: ["favoris", "etoile", "star", "starred", "important"] },
   { href: "/family", label: "Famille", description: "Espaces partagés famille", icon: Users, section: "Navigation", keywords: ["team", "equipe"] },
   { href: "/accounts", label: "Sous-comptes", description: "Crée des accès pour ta famille", icon: UserCog, section: "Navigation", keywords: ["sub", "enfants"] },
   { href: "/shares", label: "Mes partages", description: "Liens téléchargeables", icon: Share2, section: "Navigation", keywords: ["wetransfer", "lien", "link"] },

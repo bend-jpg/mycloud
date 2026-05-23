@@ -86,6 +86,7 @@ model User {
   notifications Notification[]
   activityLogs  ActivityLog[]
   hostingWaitlist HostingWaitlistEntry[]
+  favorites     Favorite[]
 }
 
 model Account {
@@ -585,6 +586,30 @@ model HostingWaitlistEntry {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([kind, createdAt])
+}
+
+// ============================================================
+// FAVORITES — Étoiles utilisateur sur fichiers et dossiers
+// Polymorphique via targetType + targetId — pas de FK pour
+// éviter les jointures complexes ; nettoyage manuel au delete.
+// ============================================================
+
+enum FavoriteTarget {
+  FILE
+  FOLDER
+}
+
+model Favorite {
+  id         String         @id @default(cuid())
+  userId     String
+  targetType FavoriteTarget
+  targetId   String
+  createdAt  DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId, createdAt])
 }
 
 // ============================================================
