@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Upload, X, CheckCircle2, AlertCircle, FileUp, CloudUpload } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, FileUp, CloudUpload, Plus } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 
 interface UploadItem {
@@ -234,6 +234,18 @@ export function FileUploader({
           </div>
         </div>
       )}
+
+      {/* FAB upload mobile uniquement — bouton flottant rond accent, positionné
+          au-dessus du mobile bottom bar (qui prend ~5rem). Sur desktop il est
+          masqué (md:hidden) puisqu'on a déjà la zone dropzone bien visible. */}
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="md:hidden fixed end-4 bottom-24 z-30 size-14 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_8px_24px_-4px_var(--accent-glow)] hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
+        aria-label="Uploader un fichier"
+      >
+        <Plus className="size-7" strokeWidth={2.4} />
+      </button>
 
       {/* Overlay full-page : se déclenche quand un fichier est draggé depuis
           le bureau ou un autre onglet. Animation au scale + couleur accent. */}
