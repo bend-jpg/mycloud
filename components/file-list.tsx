@@ -29,6 +29,7 @@ import { ShareDialog } from "./share-dialog";
 import { FilePreviewModal } from "./file-preview-modal";
 import { PortalMenu } from "./portal-menu";
 import { PromptDialog } from "./prompt-dialog";
+import { ConfirmDialog } from "./confirm-dialog";
 import { useToast } from "./toast";
 import { formatBytes } from "@/lib/utils";
 import { useLasso } from "@/lib/use-lasso";
@@ -99,6 +100,9 @@ export function FileList({
   const [shareFile, setShareFile] = useState<{ id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<FileRow | null>(null);
   const [renameFile, setRenameFile] = useState<{ id: string; name: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [confirmUnshare, setConfirmUnshare] = useState<{ fileId: string; teamId: string; teamName: string } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date-desc");
   const [view, setView] = useState<ViewMode>("grid");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -176,11 +180,21 @@ export function FileList({
     setSelectFolders(new Set());
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Mettre dans la corbeille ?")) return;
-    const res = await fetch(`/api/files/${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+  function openDeleteDialog(id: string, name: string) {
+    setConfirmDelete({ id, name });
     setOpenMenu(null);
+  }
+
+  async function performDelete() {
+    if (!confirmDelete) return;
+    const res = await fetch(`/api/files/${confirmDelete.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Mis dans la corbeille");
+      router.refresh();
+    } else {
+      toast.error("Échec de la suppression");
+    }
+    setConfirmDelete(null);
   }
 
   function openRenameDialog(id: string, current: string) {
@@ -223,23 +237,36 @@ export function FileList({
     setOpenMenu(null);
   }
 
-  async function handleUnshareFromTeam(id: string, tId: string) {
-    if (!confirm("Retirer le fichier de cette famille ?")) return;
-    const res = await fetch(`/api/files/${id}/share-to-team?teamId=${tId}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+  function openUnshareDialog(fileId: string, teamId: string, teamName: string) {
+    setConfirmUnshare({ fileId, teamId, teamName });
     setOpenMenu(null);
   }
 
-  async function bulkDelete() {
-    if (totalSelected === 0) return;
-    if (!confirm(`Mettre ${totalSelected} élément(s) dans la corbeille ?`)) return;
+  async function performUnshare() {
+    if (!confirmUnshare) return;
+    const res = await fetch(
+      `/api/files/${confirmUnshare.fileId}/share-to-team?teamId=${confirmUnshare.teamId}`,
+      { method: "DELETE" },
+    );
+    if (res.ok) {
+      toast.success("Retiré de la famille");
+      router.refresh();
+    } else {
+      toast.error("Échec du retrait");
+    }
+    setConfirmUnshare(null);
+  }
+
+  async function performBulkDelete() {
     setBulkBusy(true);
     await Promise.all([
       ...Array.from(selected).map((id) => fetch(`/api/files/${id}`, { method: "DELETE" })),
       ...Array.from(selectFolders).map((id) => fetch(`/api/folders/${id}`, { method: "DELETE" })),
     ]);
     setBulkBusy(false);
+    setConfirmBulk(false);
     clearSelection();
+    toast.success(`${totalSelected} élément(s) déplacé(s) en corbeille`);
     router.refresh();
   }
 
@@ -396,7 +423,7 @@ export function FileList({
                 Zip ({selected.size})
               </button>
             )}
-            <button onClick={bulkDelete} disabled={bulkBusy} className="btn-ghost text-xs !text-[var(--danger)]">
+            <button onClick={() => setConfirmBulk(true)} disabled={bulkBusy} className="btn-ghost text-xs !text-[var(--danger)]">
               <Trash2 className="size-3.5" />
               Supprimer ({totalSelected})
             </button>
@@ -442,9 +469,15 @@ export function FileList({
             onPreview={(f) => setPreviewFile(f)}
             onShare={(id, name) => { setShareFile({ id, name }); setOpenMenu(null); }}
             onRename={openRenameDialog}
-            onDelete={handleDelete}
+            onDelete={(id) => {
+              const f = files.find((x) => x.id === id);
+              openDeleteDialog(id, f?.name ?? "ce fichier");
+            }}
             onShareToTeam={handleShareToTeam}
-            onUnshareFromTeam={handleUnshareFromTeam}
+            onUnshareFromTeam={(id, tId) => {
+              const t = myTeams.find((x) => x.id === tId);
+              openUnshareDialog(id, tId, t?.name ?? "cette famille");
+            }}
             onItemDragStart={onItemDragStart}
             onFolderDragOver={onFolderDragOver}
             onFolderDragLeave={onFolderDragLeave}
@@ -480,9 +513,15 @@ export function FileList({
           setOpenMenu={setOpenMenu}
           onPreview={(f) => setPreviewFile(f)}
           onShare={(id, name) => setShareFile({ id, name })}
-          onDelete={handleDelete}
+          onDelete={(id) => {
+            const f = files.find((x) => x.id === id);
+            openDeleteDialog(id, f?.name ?? "ce fichier");
+          }}
           onShareToTeam={handleShareToTeam}
-          onUnshareFromTeam={handleUnshareFromTeam}
+          onUnshareFromTeam={(id, tId) => {
+            const t = myTeams.find((x) => x.id === tId);
+            openUnshareDialog(id, tId, t?.name ?? "cette famille");
+          }}
           onItemDragStart={onItemDragStart}
           onFolderDragOver={onFolderDragOver}
           onFolderDragLeave={onFolderDragLeave}
@@ -512,6 +551,50 @@ export function FileList({
         }}
         onClose={() => setRenameFile(null)}
         onSubmit={submitRename}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Mettre dans la corbeille ?"
+        message={
+          confirmDelete && (
+            <>
+              <strong>{confirmDelete.name}</strong> sera déplacé en corbeille. Tu pourras le
+              récupérer depuis la page « Corbeille » tant qu&apos;il n&apos;est pas purgé.
+            </>
+          )
+        }
+        confirmLabel="Supprimer"
+        destructive
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={performDelete}
+      />
+
+      <ConfirmDialog
+        open={confirmBulk}
+        title={`Mettre ${totalSelected} élément(s) dans la corbeille ?`}
+        message="Tous les éléments sélectionnés seront déplacés en corbeille."
+        confirmLabel="Tout supprimer"
+        destructive
+        onClose={() => setConfirmBulk(false)}
+        onConfirm={performBulkDelete}
+      />
+
+      <ConfirmDialog
+        open={!!confirmUnshare}
+        title="Retirer le fichier de la famille ?"
+        message={
+          confirmUnshare && (
+            <>
+              Les membres de <strong>{confirmUnshare.teamName}</strong> n&apos;auront plus accès à ce
+              fichier. Il restera bien dans ton espace perso.
+            </>
+          )
+        }
+        confirmLabel="Retirer"
+        destructive
+        onClose={() => setConfirmUnshare(null)}
+        onConfirm={performUnshare}
       />
     </>
   );
