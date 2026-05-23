@@ -56,6 +56,7 @@ const COMMANDS: Command[] = [
   { href: "/family", label: "Famille", description: "Espaces partagés famille", icon: Users, section: "Navigation", keywords: ["team", "equipe"] },
   { href: "/accounts", label: "Sous-comptes", description: "Crée des accès pour ta famille", icon: UserCog, section: "Navigation", keywords: ["sub", "enfants"] },
   { href: "/shares", label: "Mes partages", description: "Liens téléchargeables", icon: Share2, section: "Navigation", keywords: ["wetransfer", "lien", "link"] },
+  { href: "/file-requests", label: "Demandes de fichiers", description: "Lien pour qu'on t'envoie des fichiers", icon: Sparkles, section: "Navigation", keywords: ["request", "envoi", "receive", "dropbox"] },
   { href: "/billing", label: "Mon plan", description: "Abonnement, factures, paiements", icon: CreditCard, section: "Navigation", keywords: ["plan", "stripe", "abonnement", "facture"] },
   { href: "/support", label: "Support", description: "Tickets et WhatsApp", icon: LifeBuoy, section: "Navigation", keywords: ["help", "aide", "contact"] },
   { href: "/download", label: "Apps mobile / desktop", description: "Télécharger pour Mac, Windows, Linux, mobile", icon: Download, section: "Navigation", keywords: ["install", "pwa", "webdav"] },
