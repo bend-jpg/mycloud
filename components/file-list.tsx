@@ -28,6 +28,7 @@ import { FileThumbnail } from "./file-thumbnail";
 import { ShareDialog } from "./share-dialog";
 import { FilePreviewModal } from "./file-preview-modal";
 import { PortalMenu } from "./portal-menu";
+import { useToast } from "./toast";
 import { formatBytes } from "@/lib/utils";
 import { useLasso } from "@/lib/use-lasso";
 
@@ -90,6 +91,7 @@ export function FileList({
   teamId?: string | null;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -200,7 +202,7 @@ export function FileList({
     if (res.ok) router.refresh();
     else {
       const data = await res.json().catch(() => null);
-      alert("Impossible de partager : " + (data?.error ?? "erreur"));
+      toast.error("Impossible de partager : " + (data?.error ?? "erreur"));
     }
     setOpenMenu(null);
   }
@@ -236,7 +238,7 @@ export function FileList({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        alert("Téléchargement zip impossible : " + (data?.message ?? data?.error ?? res.status));
+        toast.error("Téléchargement zip impossible : " + (data?.message ?? data?.error ?? res.status));
         return;
       }
       const blob = await res.blob();
@@ -311,7 +313,7 @@ export function FileList({
         router.refresh();
       } else {
         const data = await res.json().catch(() => null);
-        alert("Déplacement impossible : " + (data?.error ?? res.status));
+        toast.error("Déplacement impossible : " + (data?.error ?? res.status));
       }
     } catch {
       // ignore
