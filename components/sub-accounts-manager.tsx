@@ -14,6 +14,9 @@ import {
   Users,
 } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
+import { PromptDialog } from "./prompt-dialog";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface SubAccount {
   id: string;
@@ -48,6 +51,7 @@ export function SubAccountsManager({
   ownedTeams: Team[];
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const parentQuota = Number(parentQuotaBytes);
   const parentUsed = Number(parentUsedBytes);
   const availableBytes = parentQuota - parentUsed;
@@ -60,6 +64,8 @@ export function SubAccountsManager({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [allocatedGb, setAllocatedGb] = useState(5);
+  const [quotaDialog, setQuotaDialog] = useState<{ id: string; name: string; currentGb: number } | null>(null);
+  const [confirmDel, setConfirmDel] = useState<{ id: string; email: string } | null>(null);
 
   async function createSub(e: React.FormEvent) {
     e.preventDefault();
@@ -90,11 +96,21 @@ export function SubAccountsManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ allocatedGb: newGb }),
     });
-    if (res.ok) router.refresh();
-    else {
-      const data = await res.json();
-      alert(data.message ?? data.error ?? "Erreur");
+    if (res.ok) {
+      toast.success(`Quota mis à jour : ${newGb} Go`);
+      router.refresh();
+    } else {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.message ?? data?.error ?? "Erreur");
     }
+  }
+
+  async function submitQuotaChange(value: string) {
+    if (!quotaDialog) return;
+    const parsed = parseFloat(value);
+    if (Number.isNaN(parsed) || parsed <= 0) throw new Error("Nombre invalide");
+    await changeAllocation(quotaDialog.id, parsed);
+    setQuotaDialog(null);
   }
 
   async function toggleSuspend(id: string, suspended: boolean) {
@@ -106,10 +122,16 @@ export function SubAccountsManager({
     if (res.ok) router.refresh();
   }
 
-  async function deleteSub(id: string, email: string) {
-    if (!confirm(`Supprimer le sous-compte ${email} ? Tous ses fichiers seront perdus et le quota retournera dans ton plan.`)) return;
-    const res = await fetch(`/api/sub-accounts/${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+  async function performDelete() {
+    if (!confirmDel) return;
+    const res = await fetch(`/api/sub-accounts/${confirmDel.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success(`Sous-compte ${confirmDel.email} supprimé`);
+      router.refresh();
+    } else {
+      toast.error("Échec de la suppression");
+    }
+    setConfirmDel(null);
   }
 
   async function addToTeam(subAccountId: string, teamId: string) {
@@ -121,9 +143,15 @@ export function SubAccountsManager({
     });
     if (res.ok) {
       const data = await res.json();
-      alert(`Lien d'invitation : ${data.invite.url}\nLe sous-compte peut cliquer dessus pour rejoindre le team.`);
+      // On copie le lien dans le clipboard ET on affiche un toast
+      try {
+        await navigator.clipboard.writeText(data.invite.url);
+        toast.success("Lien d'invitation copié — donne-le au sous-compte");
+      } catch {
+        toast.info(`Lien : ${data.invite.url}`);
+      }
     } else {
-      alert("Erreur lors de l'invitation");
+      toast.error("Erreur lors de l'invitation");
     }
   }
 
@@ -259,13 +287,13 @@ export function SubAccountsManager({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => {
-                        const newGb = prompt(
-                          `Nouvelle allocation en Go pour ${sub.name} ?\nActuel : ${(subQuota / GB).toFixed(1)} Go`,
-                          (subQuota / GB).toString()
-                        );
-                        if (newGb) changeAllocation(sub.id, parseFloat(newGb));
-                      }}
+                      onClick={() =>
+                        setQuotaDialog({
+                          id: sub.id,
+                          name: sub.name,
+                          currentGb: subQuota / GB,
+                        })
+                      }
                       className="btn-ghost text-xs"
                     >
                       <Pencil className="size-3.5" />
@@ -298,7 +326,7 @@ export function SubAccountsManager({
                       {sub.suspended ? "Réactiver" : "Suspendre"}
                     </button>
                     <button
-                      onClick={() => deleteSub(sub.id, sub.email)}
+                      onClick={() => setConfirmDel({ id: sub.id, email: sub.email })}
                       className="btn-ghost text-xs !text-[var(--danger)]"
                     >
                       <Trash2 className="size-3.5" />
@@ -327,6 +355,46 @@ export function SubAccountsManager({
           })}
         </div>
       )}
+
+      <PromptDialog
+        open={!!quotaDialog}
+        title={quotaDialog ? `Quota pour ${quotaDialog.name}` : ""}
+        defaultValue={quotaDialog?.currentGb.toFixed(1) ?? ""}
+        placeholder="Ex : 10"
+        submitLabel="Mettre à jour"
+        hint={
+          quotaDialog
+            ? `Actuel : ${quotaDialog.currentGb.toFixed(1)} Go · Disponible dans le plan parent : ${availableGb.toFixed(1)} Go`
+            : "En gigaoctets, ex: 10 = 10 Go"
+        }
+        validate={(v) => {
+          const n = parseFloat(v);
+          if (Number.isNaN(n) || n <= 0) return "Entrer un nombre positif en Go";
+          if (quotaDialog && n > quotaDialog.currentGb + availableGb) {
+            return `Pas assez de quota dispo (max ${(quotaDialog.currentGb + availableGb).toFixed(1)} Go)`;
+          }
+          return null;
+        }}
+        onClose={() => setQuotaDialog(null)}
+        onSubmit={submitQuotaChange}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title="Supprimer ce sous-compte ?"
+        message={
+          confirmDel && (
+            <>
+              Tous les fichiers de <strong>{confirmDel.email}</strong> seront perdus. Le quota
+              alloué retournera dans ton plan. Action <strong>irréversible</strong>.
+            </>
+          )
+        }
+        confirmLabel="Supprimer définitivement"
+        destructive
+        onClose={() => setConfirmDel(null)}
+        onConfirm={performDelete}
+      />
     </>
   );
 }
