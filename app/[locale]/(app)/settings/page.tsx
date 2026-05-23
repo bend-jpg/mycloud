@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SettingsTabs } from "@/components/settings-tabs";
 import { BackLink } from "@/components/back-link";
 import { PageHero } from "@/components/page-hero";
+import { DesktopSyncCard } from "@/components/desktop-sync-card";
 import { Settings } from "lucide-react";
 
 export default async function SettingsPage({
@@ -48,6 +49,8 @@ export default async function SettingsPage({
           title="Paramètres"
           description="Gère ton profil, ton apparence, ta sécurité, ta langue et le branding de tes partages."
         />
+        {/* Sync desktop — visible UNIQUEMENT dans l'app Electron */}
+        <DesktopSyncCard />
         <SettingsTabs
           user={{
             name: user.name ?? "",

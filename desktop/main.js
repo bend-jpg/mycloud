@@ -7,9 +7,10 @@
 // MyTitanCloud apparaît dans le Finder/Explorateur comme un disque dur,
 // exactement comme pCloud Drive — sans installer de driver tiers.
 
-const { app, BrowserWindow, shell, Menu, Tray, nativeImage, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, shell, Menu, Tray, nativeImage, dialog, ipcMain, session } = require("electron");
 const path = require("path");
 const { spawn, execSync } = require("child_process");
+const syncEngine = require("./sync-engine");
 
 const APP_URL = process.env.MYCLOUD_URL ?? "https://mytitancloud.com";
 const isDev = process.argv.includes("--dev");
@@ -69,6 +70,45 @@ function mountVirtualDrive() {
 
 // IPC pour que le renderer (le site web) puisse déclencher le mount
 ipcMain.handle("mount-virtual-drive", () => mountVirtualDrive());
+
+// =================================================================
+// IPC sync local→cloud — sélection du dossier + démarrage watcher
+// =================================================================
+
+ipcMain.handle("select-sync-folder", async () => {
+  const res = await dialog.showOpenDialog({
+    title: "Choisis le dossier à synchroniser",
+    properties: ["openDirectory", "createDirectory"],
+    message: "Ce dossier sera surveillé — tout nouveau fichier sera uploadé sur MyTitanCloud",
+  });
+  if (res.canceled || res.filePaths.length === 0) return null;
+  return res.filePaths[0];
+});
+
+ipcMain.handle("start-sync", async (_event, { folder }) => {
+  // Récupère le cookie de session du WebView pour autoriser les requêtes API
+  const cookies = await session.defaultSession.cookies.get({ url: APP_URL });
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+  const ok = syncEngine.startWatching({
+    folder,
+    mycloudUrl: APP_URL,
+    cookie: cookieHeader,
+    onEvent: (evt) => {
+      // Renvoie les events de sync au renderer pour affichage UI
+      if (mainWindow) {
+        mainWindow.webContents.send("sync-event", evt);
+      }
+    },
+  });
+  return { ok };
+});
+
+ipcMain.handle("stop-sync", () => {
+  syncEngine.stopWatching();
+  return { ok: true };
+});
+
+ipcMain.handle("get-sync-state", () => syncEngine.getState());
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({

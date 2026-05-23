@@ -24,7 +24,18 @@ interface ElectronBridge {
   platform?: string;
   version?: string;
   mountVirtualDrive?: () => Promise<{ ok: boolean; mountPoint?: string; error?: string }>;
+  selectSyncFolder?: () => Promise<string | null>;
+  startSync?: (folder: string) => Promise<{ ok: boolean }>;
+  stopSync?: () => Promise<{ ok: boolean }>;
+  getSyncState?: () => Promise<{ watching: boolean; folder: string | null; fileCount: number }>;
+  onSyncEvent?: (cb: (evt: SyncEvent) => void) => () => void;
 }
+
+export type SyncEvent =
+  | { type: "info"; message: string }
+  | { type: "error"; message: string }
+  | { type: "uploading"; path: string }
+  | { type: "synced"; path: string; fileId: string };
 
 declare global {
   interface Window {
@@ -182,4 +193,43 @@ export async function mountVirtualDriveDesktop(): Promise<{
     return { ok: false, error: "Pas dans l'app desktop" };
   }
   return electron.mountVirtualDrive();
+}
+
+// =================================================================
+// Sync local → cloud (Electron seulement)
+// =================================================================
+export async function selectSyncFolderDesktop(): Promise<string | null> {
+  const electron = window.mytitancloud;
+  if (!electron?.selectSyncFolder) return null;
+  return electron.selectSyncFolder();
+}
+
+export async function startSyncDesktop(folder: string): Promise<boolean> {
+  const electron = window.mytitancloud;
+  if (!electron?.startSync) return false;
+  const res = await electron.startSync(folder);
+  return res.ok;
+}
+
+export async function stopSyncDesktop(): Promise<boolean> {
+  const electron = window.mytitancloud;
+  if (!electron?.stopSync) return false;
+  const res = await electron.stopSync();
+  return res.ok;
+}
+
+export async function getSyncStateDesktop(): Promise<{
+  watching: boolean;
+  folder: string | null;
+  fileCount: number;
+} | null> {
+  const electron = window.mytitancloud;
+  if (!electron?.getSyncState) return null;
+  return electron.getSyncState();
+}
+
+export function onSyncEventDesktop(cb: (evt: SyncEvent) => void): () => void {
+  const electron = window.mytitancloud;
+  if (!electron?.onSyncEvent) return () => {};
+  return electron.onSyncEvent(cb);
 }
