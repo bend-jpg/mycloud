@@ -18,6 +18,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { EmptyState } from "./empty-state";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface ActivityItem {
   id: string;
@@ -45,13 +47,16 @@ const ACTION_META: Record<string, { icon: React.ComponentType<{ className?: stri
 
 export function ActivityLogList({ items }: { items: ActivityItem[] }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
-  async function clearAll() {
-    if (!confirm("Effacer tout l'historique d'activité ? (les futures connexions seront à nouveau enregistrées)")) return;
+  async function performClear() {
     setBusy(true);
     await fetch("/api/me/activity", { method: "DELETE" });
     setBusy(false);
+    setConfirmClear(false);
+    toast.success("Historique effacé");
     router.refresh();
   }
 
@@ -69,7 +74,7 @@ export function ActivityLogList({ items }: { items: ActivityItem[] }) {
   return (
     <>
       <div className="flex justify-end">
-        <button onClick={clearAll} disabled={busy} className="btn-ghost text-xs !text-[var(--danger)]">
+        <button onClick={() => setConfirmClear(true)} disabled={busy} className="btn-ghost text-xs !text-[var(--danger)]">
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
           Effacer tout l&apos;historique
         </button>
@@ -122,6 +127,16 @@ export function ActivityLogList({ items }: { items: ActivityItem[] }) {
           );
         })}
       </ul>
+
+      <ConfirmDialog
+        open={confirmClear}
+        title="Effacer tout l'historique d'activité ?"
+        message="Toutes les entrées précédentes seront supprimées. Les futures connexions et actions seront à nouveau enregistrées."
+        confirmLabel="Effacer"
+        destructive
+        onClose={() => setConfirmClear(false)}
+        onConfirm={performClear}
+      />
     </>
   );
 }

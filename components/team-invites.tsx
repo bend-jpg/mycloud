@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Check, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface Invite {
   id: string;
@@ -14,7 +16,9 @@ interface Invite {
 
 export function TeamInvites({ teamId, invites }: { teamId: string; invites: Invite[] }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [copied, setCopied] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<{ id: string; email: string } | null>(null);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -24,10 +28,16 @@ export function TeamInvites({ teamId, invites }: { teamId: string; invites: Invi
     setTimeout(() => setCopied(null), 2000);
   }
 
-  async function revoke(id: string) {
-    if (!confirm("Annuler cette invitation ?")) return;
-    const res = await fetch(`/api/teams/${teamId}/invites/${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+  async function performRevoke() {
+    if (!confirmRevoke) return;
+    const res = await fetch(`/api/teams/${teamId}/invites/${confirmRevoke.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Invitation annulée");
+      router.refresh();
+    } else {
+      toast.error("Échec de l'annulation");
+    }
+    setConfirmRevoke(null);
   }
 
   return (
@@ -48,13 +58,31 @@ export function TeamInvites({ teamId, invites }: { teamId: string; invites: Invi
             {copied === inv.token ? "Copié" : "Copier le lien"}
           </button>
           <button
-            onClick={() => revoke(inv.id)}
+            onClick={() => setConfirmRevoke({ id: inv.id, email: inv.email })}
             className="p-1.5 rounded-lg text-[var(--danger)] hover:bg-[var(--background-elevated)]"
           >
             <Trash2 className="size-4" />
           </button>
         </li>
       ))}
+
+      <ConfirmDialog
+        open={!!confirmRevoke}
+        title="Annuler cette invitation ?"
+        message={
+          confirmRevoke && (
+            <>
+              L&apos;invitation envoyée à <strong>{confirmRevoke.email}</strong> ne pourra plus être
+              acceptée. Tu pourras toujours en créer une nouvelle.
+            </>
+          )
+        }
+        confirmLabel="Annuler l'invitation"
+        cancelLabel="Garder"
+        destructive
+        onClose={() => setConfirmRevoke(null)}
+        onConfirm={performRevoke}
+      />
     </ul>
   );
 }

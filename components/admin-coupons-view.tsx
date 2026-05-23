@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Loader2, Tag, Power, Trash2, Sparkles, Calendar, Users as UsersIcon } from "lucide-react";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface CouponItem {
   id: string;
@@ -24,12 +26,20 @@ interface CouponItem {
 
 export function CouponsView({ items }: { items: CouponItem[] }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
+  const [confirmDisable, setConfirmDisable] = useState<{ id: string; code: string } | null>(null);
 
-  async function disable(id: string, code: string) {
-    if (!confirm(`Désactiver le code « ${code} » ? Il ne sera plus utilisable.`)) return;
-    const res = await fetch(`/api/admin/coupons?id=${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+  async function performDisable() {
+    if (!confirmDisable) return;
+    const res = await fetch(`/api/admin/coupons?id=${confirmDisable.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success(`Code « ${confirmDisable.code} » désactivé`);
+      router.refresh();
+    } else {
+      toast.error("Échec de la désactivation");
+    }
+    setConfirmDisable(null);
   }
 
   return (
@@ -93,7 +103,7 @@ export function CouponsView({ items }: { items: CouponItem[] }) {
                   <td className="px-2 text-end">
                     {p.active && (
                       <button
-                        onClick={() => disable(p.id, p.code)}
+                        onClick={() => setConfirmDisable({ id: p.id, code: p.code })}
                         className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)]"
                         title="Désactiver"
                       >
@@ -139,6 +149,16 @@ export function CouponsView({ items }: { items: CouponItem[] }) {
       </div>
 
       {showCreate && <CreateCouponModal onClose={() => setShowCreate(false)} onCreated={() => router.refresh()} />}
+
+      <ConfirmDialog
+        open={!!confirmDisable}
+        title={confirmDisable ? `Désactiver le code « ${confirmDisable.code} » ?` : ""}
+        message="Le code ne sera plus utilisable par les clients. Les abonnements en cours qui l'ont déjà utilisé ne sont pas affectés."
+        confirmLabel="Désactiver"
+        destructive
+        onClose={() => setConfirmDisable(null)}
+        onConfirm={performDisable}
+      />
     </>
   );
 }

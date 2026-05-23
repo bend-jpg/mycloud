@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { MoreVertical, Trash2, Eye } from "lucide-react";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface Ticket {
   id: string;
@@ -33,13 +35,25 @@ const PRIORITY_COLOR: Record<string, string> = {
 
 export function AdminTicketRow({ ticket, locale }: { ticket: Ticket; locale: string }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
 
-  async function remove(e: React.MouseEvent) {
+  function askDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm(`Supprimer le ticket #${ticket.number} ? Cette action est irréversible.`)) return;
-    await fetch(`/api/admin/tickets/${ticket.id}`, { method: "DELETE" });
-    router.refresh();
+    setOpen(false);
+    setConfirmDel(true);
+  }
+
+  async function performDelete() {
+    const res = await fetch(`/api/admin/tickets/${ticket.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success(`Ticket #${ticket.number} supprimé`);
+      router.refresh();
+    } else {
+      toast.error("Échec de la suppression");
+    }
+    setConfirmDel(false);
   }
 
   return (
@@ -68,12 +82,27 @@ export function AdminTicketRow({ ticket, locale }: { ticket: Ticket; locale: str
             <Link href={`/admin/tickets/${ticket.id}`} className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)]">
               <Eye className="size-4" /> Voir
             </Link>
-            <button onClick={remove} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start">
+            <button onClick={askDelete} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start">
               <Trash2 className="size-4" /> Supprimer
             </button>
           </div>
         )}
       </td>
+
+      <ConfirmDialog
+        open={confirmDel}
+        title={`Supprimer le ticket #${ticket.number} ?`}
+        message={
+          <>
+            Le sujet <strong>{ticket.subject}</strong> et tous ses messages seront effacés
+            définitivement. Action irréversible.
+          </>
+        }
+        confirmLabel="Supprimer"
+        destructive
+        onClose={() => setConfirmDel(false)}
+        onConfirm={performDelete}
+      />
     </tr>
   );
 }
