@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Copy, Check, Trash2, Lock, Clock, Download, Share2 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { EmptyState } from "./empty-state";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 import { formatBytes } from "@/lib/utils";
 
 export interface ShareItem {
@@ -23,7 +25,9 @@ export interface ShareItem {
 
 export function SharesList({ items }: { items: ShareItem[] }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [copied, setCopied] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<{ token: string; fileName: string } | null>(null);
 
   async function copy(token: string, url: string) {
     await navigator.clipboard.writeText(url);
@@ -31,10 +35,16 @@ export function SharesList({ items }: { items: ShareItem[] }) {
     setTimeout(() => setCopied(null), 2000);
   }
 
-  async function revoke(token: string) {
-    if (!confirm("Révoquer ce lien ? Il ne sera plus accessible.")) return;
-    const res = await fetch(`/api/shares/${token}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+  async function performRevoke() {
+    if (!confirmRevoke) return;
+    const res = await fetch(`/api/shares/${confirmRevoke.token}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Lien révoqué");
+      router.refresh();
+    } else {
+      toast.error("Échec de la révocation");
+    }
+    setConfirmRevoke(null);
   }
 
   if (items.length === 0) {
@@ -99,7 +109,7 @@ export function SharesList({ items }: { items: ShareItem[] }) {
                 {copied === item.token ? "Copié !" : "Copier"}
               </button>
               <button
-                onClick={() => revoke(item.token)}
+                onClick={() => setConfirmRevoke({ token: item.token, fileName: item.fileName })}
                 className="btn-ghost text-xs !text-[var(--danger)]"
               >
                 <Trash2 className="size-3.5" />
@@ -108,6 +118,22 @@ export function SharesList({ items }: { items: ShareItem[] }) {
           </div>
         );
       })}
+      <ConfirmDialog
+        open={!!confirmRevoke}
+        title="Révoquer ce lien de partage ?"
+        message={
+          confirmRevoke && (
+            <>
+              Le lien de <strong>{confirmRevoke.fileName}</strong> ne sera plus accessible — toute
+              personne qui l&apos;avait verra une page « expiré ».
+            </>
+          )
+        }
+        confirmLabel="Révoquer"
+        destructive
+        onClose={() => setConfirmRevoke(null)}
+        onConfirm={performRevoke}
+      />
     </div>
   );
 }

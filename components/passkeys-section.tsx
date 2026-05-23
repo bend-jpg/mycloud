@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Fingerprint, Loader2, Trash2, Plus, Smartphone, Key } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface Passkey {
   id: string;
@@ -17,12 +19,14 @@ interface Passkey {
 
 export function PasskeysSection() {
   const router = useRouter();
+  const { toast } = useToast();
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceName, setDeviceName] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<{ id: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,13 +83,17 @@ export function PasskeysSection() {
     }
   }
 
-  async function deletePasskey(id: string) {
-    if (!confirm("Supprimer cette passkey ?")) return;
-    const res = await fetch(`/api/passkeys/${id}`, { method: "DELETE" });
+  async function performDeletePasskey() {
+    if (!confirmDel) return;
+    const res = await fetch(`/api/passkeys/${confirmDel.id}`, { method: "DELETE" });
     if (res.ok) {
+      toast.success("Passkey supprimée");
       load();
       router.refresh();
+    } else {
+      toast.error("Échec de la suppression");
     }
+    setConfirmDel(null);
   }
 
   return (
@@ -115,7 +123,7 @@ export function PasskeysSection() {
                   {p.backedUp && " · synchronisée iCloud/Google"}
                 </p>
               </div>
-              <button onClick={() => deletePasskey(p.id)} className="p-1.5 rounded-lg text-[var(--danger)] hover:bg-[var(--background-elevated)]">
+              <button onClick={() => setConfirmDel({ id: p.id, name: p.deviceName ?? "cet appareil" })} className="p-1.5 rounded-lg text-[var(--danger)] hover:bg-[var(--background-elevated)]">
                 <Trash2 className="size-4" />
               </button>
             </li>
@@ -150,6 +158,23 @@ export function PasskeysSection() {
       )}
 
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title="Supprimer cette passkey ?"
+        message={
+          confirmDel && (
+            <>
+              <strong>{confirmDel.name}</strong> ne pourra plus être utilisé pour se connecter.
+              Tu peux toujours en réenregistrer une nouvelle plus tard.
+            </>
+          )
+        }
+        confirmLabel="Supprimer"
+        destructive
+        onClose={() => setConfirmDel(null)}
+        onConfirm={performDeletePasskey}
+      />
     </div>
   );
 }

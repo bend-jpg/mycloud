@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Crown, Shield, Pencil, Eye, UserX } from "lucide-react";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface Member {
   id: string;
@@ -40,6 +43,8 @@ export function TeamMembers({
   members: Member[];
 }) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
 
   async function changeRole(memberId: string, newRole: string) {
     const res = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
@@ -47,15 +52,24 @@ export function TeamMembers({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: newRole }),
     });
-    if (res.ok) router.refresh();
-    else alert("Erreur");
+    if (res.ok) {
+      toast.success("Rôle mis à jour");
+      router.refresh();
+    } else {
+      toast.error("Échec du changement de rôle");
+    }
   }
 
-  async function removeMember(memberId: string) {
-    if (!confirm("Retirer ce membre ?")) return;
-    const res = await fetch(`/api/teams/${teamId}/members/${memberId}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
-    else alert("Erreur");
+  async function performRemove() {
+    if (!confirmRemove) return;
+    const res = await fetch(`/api/teams/${teamId}/members/${confirmRemove.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success(`${confirmRemove.name} retiré du team`);
+      router.refresh();
+    } else {
+      toast.error("Échec du retrait");
+    }
+    setConfirmRemove(null);
   }
 
   return (
@@ -95,7 +109,7 @@ export function TeamMembers({
                   {isOwner && <option value="OWNER">Transférer propriété</option>}
                 </select>
                 <button
-                  onClick={() => removeMember(member.id)}
+                  onClick={() => setConfirmRemove({ id: member.id, name: member.name ?? member.email })}
                   className="p-1.5 rounded-lg text-[var(--danger)] hover:bg-[var(--background-elevated)]"
                 >
                   <UserX className="size-4" />
@@ -105,6 +119,22 @@ export function TeamMembers({
           </li>
         );
       })}
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title="Retirer ce membre du team ?"
+        message={
+          confirmRemove && (
+            <>
+              <strong>{confirmRemove.name}</strong> n&apos;aura plus accès aux fichiers de ce team.
+            </>
+          )
+        }
+        confirmLabel="Retirer"
+        destructive
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={performRemove}
+      />
     </ul>
   );
 }

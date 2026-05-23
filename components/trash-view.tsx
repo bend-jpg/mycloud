@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { EmptyState } from "./empty-state";
+import { ConfirmDialog } from "./confirm-dialog";
 import { formatBytes } from "@/lib/utils";
 
 interface TrashFile {
@@ -43,6 +44,8 @@ export function TrashView({
   const [selFolders, setSelFolders] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<"restore" | "delete" | "empty" | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [confirmHardDel, setConfirmHardDel] = useState(false);
+  const [confirmEmpty, setConfirmEmpty] = useState(false);
 
   const total = files.length + folders.length;
   const totalSelected = selFiles.size + selFolders.size;
@@ -77,8 +80,14 @@ export function TrashView({
   async function doAction(action: "restore" | "delete") {
     if (totalSelected === 0) return;
     if (action === "delete") {
-      if (!confirm(`Supprimer DÉFINITIVEMENT ${totalSelected} élément(s) ? Cette action est irréversible.`)) return;
+      // Délègue à la modale ConfirmDialog
+      setConfirmHardDel(true);
+      return;
     }
+    await runAction(action);
+  }
+
+  async function runAction(action: "restore" | "delete") {
     setBusy(action);
     setErr(null);
     const res = await fetch("/api/trash", {
@@ -98,11 +107,11 @@ export function TrashView({
     }
     setSelFiles(new Set());
     setSelFolders(new Set());
+    setConfirmHardDel(false);
     router.refresh();
   }
 
-  async function emptyTrash() {
-    if (!confirm(`Vider TOUTE la corbeille (${total} élément(s)) ? Cette action est irréversible.`)) return;
+  async function performEmpty() {
     setBusy("empty");
     setErr(null);
     const res = await fetch("/api/trash", {
@@ -116,6 +125,7 @@ export function TrashView({
       setErr(data?.error ?? "Erreur");
       return;
     }
+    setConfirmEmpty(false);
     router.refresh();
   }
 
@@ -167,7 +177,7 @@ export function TrashView({
             </>
           )}
           <button
-            onClick={emptyTrash}
+            onClick={() => setConfirmEmpty(true)}
             disabled={busy !== null}
             className="btn-ghost text-xs !text-[var(--danger)] border border-[var(--danger)]/30"
           >
@@ -272,6 +282,26 @@ export function TrashView({
         Astuce : les fichiers en corbeille comptent dans ton quota tant qu&apos;ils ne sont pas
         définitivement supprimés. Vider la corbeille libère de l&apos;espace.
       </p>
+
+      <ConfirmDialog
+        open={confirmHardDel}
+        title={`Supprimer définitivement ${totalSelected} élément(s) ?`}
+        message="Cette action est irréversible. Les fichiers seront effacés du stockage et leur espace sera libéré dans ton quota."
+        confirmLabel="Supprimer définitivement"
+        destructive
+        onClose={() => setConfirmHardDel(false)}
+        onConfirm={() => runAction("delete")}
+      />
+
+      <ConfirmDialog
+        open={confirmEmpty}
+        title={`Vider toute la corbeille (${total} élément(s)) ?`}
+        message="Tous les fichiers et dossiers en corbeille seront effacés définitivement. Action irréversible."
+        confirmLabel="Tout vider"
+        destructive
+        onClose={() => setConfirmEmpty(false)}
+        onConfirm={performEmpty}
+      />
     </>
   );
 }
