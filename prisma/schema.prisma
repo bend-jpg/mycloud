@@ -261,6 +261,11 @@ model Payment {
   createdAt       DateTime      @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Liste paiements d'un user + filtre status (page admin payments)
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([userId, status])
 }
 
 // ============================================================
@@ -348,6 +353,8 @@ model Folder {
 
   @@index([ownerId, teamId, parentId])
   @@index([path])
+  // Listing rapide d'un dossier (corbeille vs visible)
+  @@index([ownerId, parentId, isTrash])
 }
 
 model File {
@@ -376,6 +383,14 @@ model File {
 
   @@index([ownerId, teamId, folderId])
   @@index([checksum])
+  // Listing rapide d'un dossier (sans corbeille) — utilisé partout
+  @@index([ownerId, folderId, isTrash])
+  // Corbeille d'un user
+  @@index([ownerId, isTrash, deletedAt])
+  // Ref counting sur storageKey pour le partage famille (cf. share-to-team)
+  @@index([storageKey, storageBackendId])
+  // Upload monthly bucket sur /dashboard
+  @@index([ownerId, uploadedAt])
 }
 
 // ============================================================
