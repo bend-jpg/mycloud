@@ -8,7 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { PublicHeader } from "@/components/public-header";
 import { SiteFooter } from "@/components/site-footer";
 import { DownloadCards } from "@/components/download-cards";
-import { Download, Smartphone, Monitor, HardDrive, Sparkles } from "lucide-react";
+import { Download, Smartphone, Monitor, HardDrive, Sparkles, Clock } from "lucide-react";
 
 export const metadata = {
   title: "Télécharger MyTitanCloud",
@@ -17,16 +17,51 @@ export const metadata = {
 
 export default async function DownloadPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ soon?: string; os?: string }>;
 }) {
   const { locale } = await params;
+  const { soon, os } = await searchParams;
   setRequestLocale(locale);
+
+  const showSoonBanner = soon === "1";
+  const osLabel =
+    os === "win" || os === "windows"
+      ? "Windows"
+      : os === "mac" || os === "macos"
+      ? "macOS"
+      : os === "linux"
+      ? "Linux"
+      : os === "android"
+      ? "Android"
+      : "ton appareil";
 
   return (
     <>
       <PublicHeader />
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-12 space-y-12">
+        {/* Banner "build en cours" — affiché quand /api/dl/* redirige ici */}
+        {showSoonBanner && (
+          <div className="rounded-2xl border-2 border-[var(--secondary)]/40 bg-[var(--secondary)]/10 p-5 flex items-start gap-3">
+            <div className="size-10 rounded-xl bg-[var(--secondary)]/20 text-[var(--secondary)] flex items-center justify-center shrink-0">
+              <Clock className="size-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold">Installeur {osLabel} en cours de préparation</p>
+              <p className="text-sm text-[var(--foreground-muted)] mt-1">
+                La première version officielle est en train d&apos;être compilée par notre CI.
+                Tu peux dès maintenant utiliser l&apos;app web installable (PWA) en attendant — toutes
+                les fonctionnalités sont déjà disponibles depuis ton navigateur.
+              </p>
+              <p className="text-xs text-[var(--foreground-muted)] mt-2 italic">
+                Reviens ici dans quelques heures, ou installe la PWA tout de suite (bouton ci-dessous).
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Hero */}
         <section className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-8 sm:p-12 text-center">
           <div className="pointer-events-none absolute -top-20 -end-20 size-72 rounded-full bg-[var(--accent)]/20 blur-3xl" />

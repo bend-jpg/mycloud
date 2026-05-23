@@ -16,10 +16,9 @@ import {
 
 type OS = "ios" | "android" | "macos" | "windows" | "linux" | "unknown";
 
-// URL vers la page Releases où sont les .exe / .dmg / .AppImage produits par CI
-const DESKTOP_RELEASES = "https://github.com/bend-jpg/mycloud/releases/latest";
-// URL future du .apk Android (à brancher quand Capacitor sera prêt)
-const ANDROID_APK = "https://github.com/bend-jpg/mycloud/releases/latest";
+// Les boutons pointent vers /api/dl/[os] qui redirige vers la bonne URL
+// (configurée via env var DOWNLOAD_URL_*) ou montre une page friendly si
+// pas encore configurée (au lieu de 404 GitHub privé).
 
 function detectOS(): OS {
   if (typeof navigator === "undefined") return "unknown";
@@ -114,8 +113,8 @@ const ALL_OPTIONS: Option[] = [
     label: "Télécharger pour Windows",
     platformLabel: "Windows",
     formatLabel: ".exe (installeur)",
-    href: DESKTOP_RELEASES,
-    external: true,
+    href: "/api/dl/win",
+    external: false,
     icon: Monitor,
   },
   {
@@ -123,8 +122,8 @@ const ALL_OPTIONS: Option[] = [
     label: "Télécharger pour Mac",
     platformLabel: "macOS",
     formatLabel: ".dmg (Intel + M1/M2)",
-    href: DESKTOP_RELEASES,
-    external: true,
+    href: "/api/dl/mac",
+    external: false,
     icon: Apple,
   },
   {
@@ -132,8 +131,8 @@ const ALL_OPTIONS: Option[] = [
     label: "Télécharger pour Linux",
     platformLabel: "Linux",
     formatLabel: ".AppImage / .deb",
-    href: DESKTOP_RELEASES,
-    external: true,
+    href: "/api/dl/linux",
+    external: false,
     icon: Terminal,
   },
   {
@@ -141,8 +140,8 @@ const ALL_OPTIONS: Option[] = [
     label: "Télécharger pour Android",
     platformLabel: "Android",
     formatLabel: ".apk (Play Store bientôt)",
-    href: ANDROID_APK,
-    external: true,
+    href: "/api/dl/android",
+    external: false,
     icon: Smartphone,
   },
   {

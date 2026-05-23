@@ -29,7 +29,9 @@ import {
 // URL des releases GitHub où sont publiés les installeurs desktop.
 // Ces fichiers existent une fois qu'on a poussé un tag `desktop-v*` qui
 // déclenche le workflow GitHub Actions.
-const DESKTOP_RELEASES_URL = "https://github.com/bend-jpg/mycloud/releases/latest";
+// Tous les liens passent par /api/dl/[os] qui redirige vers l'URL configurée
+// dans les env vars DOWNLOAD_URL_* (Vercel) — ou fallback friendly si pas prêt.
+const DESKTOP_RELEASES_URL = "/api/dl/win";
 
 type DetectedOS = "ios" | "android" | "macos" | "windows" | "linux" | "unknown";
 
@@ -383,21 +385,16 @@ function DesktopAppCard({ os }: { os: DetectedOS }) {
         </p>
 
         <a
-          href={DESKTOP_RELEASES_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`/api/dl/${os === "macos" ? "mac" : os === "windows" ? "win" : os === "linux" ? "linux" : "win"}`}
           className="btn-primary mt-6 !px-8 !py-4 text-base"
         >
           <Download className="size-5" />
           Télécharger pour {osLabel}
-          <ExternalLink className="size-4 opacity-60" />
         </a>
 
         <div className="mt-6 grid grid-cols-3 gap-2 w-full max-w-md text-xs">
           <a
-            href={DESKTOP_RELEASES_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/api/dl/win"
             className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${
               os === "windows"
                 ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
@@ -409,9 +406,7 @@ function DesktopAppCard({ os }: { os: DetectedOS }) {
             <span className="text-[10px] text-[var(--foreground-muted)]">.exe</span>
           </a>
           <a
-            href={DESKTOP_RELEASES_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/api/dl/mac"
             className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${
               os === "macos"
                 ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
@@ -423,9 +418,7 @@ function DesktopAppCard({ os }: { os: DetectedOS }) {
             <span className="text-[10px] text-[var(--foreground-muted)]">.dmg</span>
           </a>
           <a
-            href={DESKTOP_RELEASES_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/api/dl/linux"
             className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${
               os === "linux"
                 ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
