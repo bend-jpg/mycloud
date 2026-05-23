@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { PublicHeader } from "@/components/public-header";
 import { SiteFooter } from "@/components/site-footer";
+import { HeroDownloadButton } from "@/components/hero-download-button";
 import { DEFAULT_PLANS } from "@/lib/plans";
 import { getCmsBlocks, cmsOrFallback } from "@/lib/cms";
 import { formatBytes } from "@/lib/utils";
@@ -62,14 +63,19 @@ export default async function LandingPage({
           <p className="mt-5 sm:mt-6 text-base sm:text-lg text-[var(--foreground-muted)] max-w-2xl mx-auto">
             {heroSubtitle}
           </p>
-          <div className="mt-8 sm:mt-10 flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className="btn-primary">
-              {heroCtaStart}
-              <ArrowRight className="size-4" />
-            </Link>
-            <Link href="/#pricing" className="btn-ghost">
-              {heroCtaPricing}
-            </Link>
+          {/* Gros bouton TÉLÉCHARGER prioritaire — détecte l'OS et propose le bon installeur en 1 clic.
+              Dropdown attaché pour choisir une autre plateforme. */}
+          <div className="mt-8 sm:mt-10 flex flex-col items-center gap-4 relative">
+            <HeroDownloadButton />
+            <div className="flex flex-wrap justify-center gap-3 mt-2">
+              <Link href="/signup" className="btn-ghost text-sm">
+                {heroCtaStart}
+                <ArrowRight className="size-4" />
+              </Link>
+              <Link href="/#pricing" className="btn-ghost text-sm">
+                {heroCtaPricing}
+              </Link>
+            </div>
           </div>
         </section>
 
