@@ -55,3 +55,9 @@ next-env.d.ts
 desktop/node_modules/
 desktop/dist/
 desktop/package-lock.json
+
+# mobile capacitor wrapper — idem
+mobile/node_modules/
+mobile/android/
+mobile/ios/
+mobile/package-lock.json

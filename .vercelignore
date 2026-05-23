@@ -1,6 +1,7 @@
-# Vercel doit ignorer le wrapper desktop — c'est un projet séparé buildé
-# uniquement via GitHub Actions, jamais déployé sur le web.
+# Vercel doit ignorer les wrappers desktop + mobile — ce sont des projets
+# séparés buildés uniquement via GitHub Actions, jamais déployés sur le web.
 desktop/
+mobile/
 .github/
 
 # Tests E2E et résultats locaux

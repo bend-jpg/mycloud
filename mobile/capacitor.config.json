@@ -1,0 +1,29 @@
+{
+  "appId": "com.mytitancloud.mobile",
+  "appName": "MyTitanCloud",
+  "webDir": "www",
+  "server": {
+    "url": "https://mytitancloud.com",
+    "cleartext": false,
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#0a0a14",
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "backgroundColor": "#0a0a14",
+    "contentInset": "automatic",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#0a0a14",
+      "showSpinner": false
+    }
+  }
+}

@@ -1,0 +1,89 @@
+# Build Android .apk debug à chaque tag `mobile-v*`.
+# Le .apk est sideloadable directement depuis le site (pas besoin Play Store).
+# Pour iOS, voir mobile-ios-release.yml (à créer quand compte Apple Dev dispo).
+
+name: Mobile Android release
+
+on:
+  push:
+    tags:
+      - "mobile-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install npm deps
+        working-directory: mobile
+        run: npm install
+
+      - name: Add Android platform
+        working-directory: mobile
+        run: npx cap add android || echo "Android platform already added"
+
+      - name: Sync Capacitor
+        working-directory: mobile
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: |
+          mkdir -p artifacts
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk artifacts/MyTitanCloud-${{ github.ref_name }}-android.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: artifacts/*.apk
+
+      - name: Create release with APK
+        if: startsWith(github.ref, 'refs/tags/mobile-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MyTitanCloud Mobile ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            ## MyTitanCloud Android ${{ github.ref_name }}
+
+            **Comment installer sur ton Android :**
+
+            1. Télécharge le `.apk` ci-dessous depuis ton téléphone
+            2. Tape sur le fichier téléchargé pour l'ouvrir
+            3. Android va demander la permission d'installer depuis cette source — accepte
+            4. L'app apparaît dans ton tiroir d'apps
+
+            **Pour iOS** : compte Apple Developer requis (en cours de mise en place).
+            En attendant, l'app web installable (PWA) marche en 2 taps depuis Safari.
+          files: artifacts/*.apk
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
