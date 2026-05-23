@@ -14,6 +14,9 @@ import {
   ArrowDownToLine,
   Loader2,
 } from "lucide-react";
+import { PromptDialog } from "./prompt-dialog";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 type Role = "ADMIN" | "STAFF_SUPPORT" | "STAFF_BILLING" | "STAFF_OPS";
 
@@ -47,6 +50,10 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
   const [roleOpen, setRoleOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [confirmSuspend, setConfirmSuspend] = useState(false);
+  const [confirmDemote, setConfirmDemote] = useState(false);
+  const { toast } = useToast();
   const roleRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
 
@@ -79,44 +86,57 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
     router.refresh();
   }
 
-  async function toggleSuspend() {
-    const action = user.suspendedAt ? "réactiver" : "suspendre";
-    if (!confirm(`Vraiment ${action} ce membre ?`)) return;
-    setBusy(true);
+  function askSuspend() {
+    setConfirmSuspend(true);
     setActionsOpen(false);
+  }
+  async function performSuspend() {
+    setBusy(true);
     await fetch(`/api/admin/clients/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ suspended: !user.suspendedAt }),
     });
     setBusy(false);
+    setConfirmSuspend(false);
+    toast.success(user.suspendedAt ? "Membre réactivé" : "Membre suspendu");
     router.refresh();
   }
 
-  async function resetPassword() {
-    const newPwd = prompt("Nouveau mot de passe (min 8) :");
-    if (!newPwd || newPwd.length < 8) return;
-    setBusy(true);
+  function openPwdDialog() {
+    setPwdOpen(true);
     setActionsOpen(false);
-    await fetch(`/api/admin/clients/${user.id}/password`, {
+  }
+  async function submitPassword(newPwd: string) {
+    setBusy(true);
+    const res = await fetch(`/api/admin/clients/${user.id}/password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ newPassword: newPwd }),
     });
     setBusy(false);
-    alert("✓ Mot de passe changé.");
+    if (res.ok) {
+      toast.success("Mot de passe changé");
+      setPwdOpen(false);
+    } else {
+      throw new Error("Échec du changement de mot de passe");
+    }
   }
 
-  async function demoteToUser() {
-    if (!confirm("Convertir en utilisateur classique ? Il perdra ses droits admin.")) return;
-    setBusy(true);
+  function askDemote() {
+    setConfirmDemote(true);
     setActionsOpen(false);
+  }
+  async function performDemote() {
+    setBusy(true);
     await fetch(`/api/admin/clients/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: "USER" }),
     });
     setBusy(false);
+    setConfirmDemote(false);
+    toast.success("Converti en USER");
     router.refresh();
   }
 
@@ -195,7 +215,7 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
           {actionsOpen && (
             <div className="absolute end-0 top-full mt-1 w-44 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
               <button
-                onClick={toggleSuspend}
+                onClick={askSuspend}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
               >
                 {user.suspendedAt ? (
@@ -209,13 +229,13 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
                 )}
               </button>
               <button
-                onClick={resetPassword}
+                onClick={openPwdDialog}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
               >
                 <KeyRound className="size-4" /> Reset mot de passe
               </button>
               <button
-                onClick={demoteToUser}
+                onClick={askDemote}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] text-start"
               >
                 <ArrowDownToLine className="size-4" /> Dégrader en USER
@@ -224,6 +244,41 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
           )}
         </div>
       </td>
+
+      <ConfirmDialog
+        open={confirmSuspend}
+        title={user.suspendedAt ? "Réactiver ce membre ?" : "Suspendre ce membre ?"}
+        message={
+          user.suspendedAt
+            ? "Le membre récupère ses droits d'accès au backoffice."
+            : "Le membre ne pourra plus se connecter au backoffice tant qu'il n'est pas réactivé."
+        }
+        confirmLabel={user.suspendedAt ? "Réactiver" : "Suspendre"}
+        destructive={!user.suspendedAt}
+        onClose={() => setConfirmSuspend(false)}
+        onConfirm={performSuspend}
+      />
+
+      <PromptDialog
+        open={pwdOpen}
+        title="Nouveau mot de passe"
+        placeholder="Min. 8 caractères"
+        submitLabel="Changer"
+        hint="Donne-le ensuite au membre par chat sécurisé. Il pourra le modifier après login."
+        validate={(v) => (v.length < 8 ? "Minimum 8 caractères" : null)}
+        onClose={() => setPwdOpen(false)}
+        onSubmit={submitPassword}
+      />
+
+      <ConfirmDialog
+        open={confirmDemote}
+        title="Dégrader en utilisateur classique ?"
+        message="Le membre perdra tous ses droits backoffice et redeviendra un USER normal."
+        confirmLabel="Dégrader"
+        destructive
+        onClose={() => setConfirmDemote(false)}
+        onConfirm={performDemote}
+      />
     </tr>
   );
 }

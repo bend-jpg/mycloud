@@ -16,6 +16,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
+import { PromptDialog } from "./prompt-dialog";
+import { ConfirmDialog } from "./confirm-dialog";
+import { useToast } from "./toast";
 
 interface PlanLite {
   slug: string;
@@ -56,6 +59,10 @@ export function AdminClientRow({
   const [planOpen, setPlanOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmSuspend, setConfirmSuspend] = useState(false);
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const { toast } = useToast();
   const planRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
 
@@ -88,46 +95,58 @@ export function AdminClientRow({
     if (res.ok) router.refresh();
   }
 
-  async function toggleSuspend() {
-    const action = user.suspendedAt ? "réactiver" : "suspendre";
-    if (!confirm(`Vraiment ${action} ce client ?`)) return;
-    setBusy("suspend");
+  function askSuspend() {
+    setConfirmSuspend(true);
     setActionsOpen(false);
+  }
+  async function performSuspend() {
+    setBusy("suspend");
     await fetch(`/api/admin/clients/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ suspended: !user.suspendedAt }),
     });
     setBusy(null);
+    setConfirmSuspend(false);
+    toast.success(user.suspendedAt ? "Client réactivé" : "Client suspendu");
     router.refresh();
   }
 
-  async function sendMessage() {
-    const message = prompt(`Envoyer un message à ${user.name ?? user.email} ?\n\n(Crée un ticket avec ta réponse côté admin.)`);
-    if (!message || !message.trim()) return;
-    setBusy("message");
+  function openMessage() {
+    setMsgOpen(true);
     setActionsOpen(false);
+  }
+  async function submitMessage(message: string) {
+    setBusy("message");
     await fetch(`/api/admin/clients/${user.id}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),
     });
     setBusy(null);
+    setMsgOpen(false);
+    toast.success("Message envoyé");
     router.refresh();
   }
 
-  async function resetPassword() {
-    const newPwd = prompt("Nouveau mot de passe (min 8) — donne-le ensuite au client par chat sécurisé :");
-    if (!newPwd || newPwd.length < 8) return;
-    setBusy("password");
+  function openPwdDialog() {
+    setPwdOpen(true);
     setActionsOpen(false);
-    await fetch(`/api/admin/clients/${user.id}/password`, {
+  }
+  async function submitPassword(newPwd: string) {
+    setBusy("password");
+    const res = await fetch(`/api/admin/clients/${user.id}/password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ newPassword: newPwd }),
     });
     setBusy(null);
-    alert("✓ Mot de passe changé. Donne-le au client.");
+    if (res.ok) {
+      toast.success("Mot de passe changé. Donne-le au client.");
+      setPwdOpen(false);
+    } else {
+      throw new Error("Échec du changement de mot de passe");
+    }
   }
 
   return (
@@ -217,7 +236,7 @@ export function AdminClientRow({
           {actionsOpen && (
             <div className="absolute end-0 top-full mt-1 w-48 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
               <button
-                onClick={toggleSuspend}
+                onClick={askSuspend}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
               >
                 {user.suspendedAt ? (
@@ -231,13 +250,13 @@ export function AdminClientRow({
                 )}
               </button>
               <button
-                onClick={sendMessage}
+                onClick={openMessage}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
               >
                 <Mail className="size-4" /> Envoyer un message
               </button>
               <button
-                onClick={resetPassword}
+                onClick={openPwdDialog}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
               >
                 <KeyRound className="size-4" /> Reset mot de passe
@@ -246,6 +265,41 @@ export function AdminClientRow({
           )}
         </div>
       </td>
+
+      <ConfirmDialog
+        open={confirmSuspend}
+        title={user.suspendedAt ? "Réactiver ce client ?" : "Suspendre ce client ?"}
+        message={
+          user.suspendedAt
+            ? "Le client pourra de nouveau se connecter et accéder à ses fichiers."
+            : "Le client ne pourra plus se connecter tant qu'il n'est pas réactivé. Ses fichiers restent stockés."
+        }
+        confirmLabel={user.suspendedAt ? "Réactiver" : "Suspendre"}
+        destructive={!user.suspendedAt}
+        onClose={() => setConfirmSuspend(false)}
+        onConfirm={performSuspend}
+      />
+
+      <PromptDialog
+        open={msgOpen}
+        title={`Message à ${user.name ?? user.email}`}
+        hint="Crée un ticket support avec ta réponse — le client recevra une notification."
+        placeholder="Ton message…"
+        submitLabel="Envoyer"
+        onClose={() => setMsgOpen(false)}
+        onSubmit={submitMessage}
+      />
+
+      <PromptDialog
+        open={pwdOpen}
+        title="Nouveau mot de passe"
+        placeholder="Min. 8 caractères"
+        submitLabel="Changer"
+        hint="Donne-le ensuite au client par chat sécurisé. Il pourra le modifier après login."
+        validate={(v) => (v.length < 8 ? "Minimum 8 caractères" : null)}
+        onClose={() => setPwdOpen(false)}
+        onSubmit={submitPassword}
+      />
     </tr>
   );
 }

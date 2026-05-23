@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { CreditCard, Bitcoin, Banknote, MoreVertical, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { PromptDialog } from "./prompt-dialog";
+import { ConfirmDialog } from "./confirm-dialog";
 
 interface Payment {
   id: string;
@@ -40,6 +42,8 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLDivElement>(null);
 
@@ -68,26 +72,33 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
     router.refresh();
   }
 
-  async function editNotes() {
-    const newNotes = prompt("Notes :", payment.notes ?? "");
-    if (newNotes === null) return;
-    setBusy(true);
+  function openNotes() {
+    setNotesOpen(true);
     setMenuOpen(false);
+  }
+
+  async function submitNotes(newNotes: string) {
+    setBusy(true);
     await fetch(`/api/admin/payments/${payment.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes: newNotes }),
     });
     setBusy(false);
+    setNotesOpen(false);
     router.refresh();
   }
 
-  async function remove() {
-    if (!confirm("Supprimer ce paiement ? (à n'utiliser que pour corriger une erreur)")) return;
-    setBusy(true);
+  function askRemove() {
+    setConfirmRemove(true);
     setMenuOpen(false);
+  }
+
+  async function performRemove() {
+    setBusy(true);
     await fetch(`/api/admin/payments/${payment.id}`, { method: "DELETE" });
     setBusy(false);
+    setConfirmRemove(false);
     router.refresh();
   }
 
@@ -151,7 +162,7 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
           {menuOpen && (
             <div className="absolute end-0 top-full mt-1 w-48 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
               <button
-                onClick={editNotes}
+                onClick={openNotes}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
               >
                 Modifier les notes
@@ -168,7 +179,7 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
                 </a>
               )}
               <button
-                onClick={remove}
+                onClick={askRemove}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start"
               >
                 <Trash2 className="size-4" />
@@ -178,6 +189,26 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
           )}
         </div>
       </td>
+
+      <PromptDialog
+        open={notesOpen}
+        title="Modifier les notes du paiement"
+        defaultValue={payment.notes ?? ""}
+        placeholder="Note interne…"
+        submitLabel="Enregistrer"
+        onClose={() => setNotesOpen(false)}
+        onSubmit={submitNotes}
+      />
+
+      <ConfirmDialog
+        open={confirmRemove}
+        title="Supprimer ce paiement ?"
+        message="À n'utiliser que pour corriger une erreur de saisie. Le paiement sera retiré définitivement."
+        confirmLabel="Supprimer"
+        destructive
+        onClose={() => setConfirmRemove(false)}
+        onConfirm={performRemove}
+      />
     </tr>
   );
 }
