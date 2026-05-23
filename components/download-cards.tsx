@@ -23,7 +23,13 @@ import {
   PlusSquare,
   CheckCircle2,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
+
+// URL des releases GitHub où sont publiés les installeurs desktop.
+// Ces fichiers existent une fois qu'on a poussé un tag `desktop-v*` qui
+// déclenche le workflow GitHub Actions.
+const DESKTOP_RELEASES_URL = "https://github.com/bend-jpg/mycloud/releases/latest";
 
 type DetectedOS = "ios" | "android" | "macos" | "windows" | "linux" | "unknown";
 
@@ -107,13 +113,21 @@ export function DownloadCards({ locale: _locale }: { locale: string }) {
     setTimeout(() => setDavCopied(false), 2000);
   }
 
+  const isMobileOs = os === "ios" || os === "android";
+  const isDesktopOs = os === "macos" || os === "windows" || os === "linux";
+
   // ============================================================
-  // RENDU PRINCIPAL — un gros card avec un VRAI bouton Install
+  // RENDU PRINCIPAL — 2 sections selon l'OS détecté
   // ============================================================
   return (
     <div className="space-y-6">
-      {/* Card principal — install direct */}
-      <div className="relative overflow-hidden rounded-3xl border-2 border-[var(--accent)]/40 bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-6 sm:p-8 animate-fade-in-up">
+      {/* DESKTOP : logiciel installable (.exe / .dmg / .AppImage) */}
+      {(isDesktopOs || os === "unknown") && (
+        <DesktopAppCard os={os} />
+      )}
+
+      {/* Card principal — install direct (PWA) — surtout pour mobile */}
+      <div className={`relative overflow-hidden rounded-3xl border-2 ${isMobileOs ? "border-[var(--accent)]/40" : "border-[var(--border)]"} bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-6 sm:p-8 animate-fade-in-up`}>
         <div className="pointer-events-none absolute -top-20 -end-20 size-64 rounded-full bg-[var(--accent)]/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -start-20 size-64 rounded-full bg-[var(--secondary)]/15 blur-3xl" />
 
@@ -303,6 +317,103 @@ function FallbackInstructions({ os }: { os: DetectedOS }) {
         Sur Chrome/Edge desktop : tu verras une petite icône « + » dans la barre d&apos;adresse,
         en haut à droite — clique-la pour installer en un clic.
       </p>
+    </div>
+  );
+}
+
+// ============================================================
+// Card "Vrai logiciel desktop" — .exe Windows, .dmg Mac, .AppImage Linux
+// ============================================================
+function DesktopAppCard({ os }: { os: DetectedOS }) {
+  const osLabel =
+    os === "windows"
+      ? "Windows"
+      : os === "macos"
+      ? "macOS"
+      : os === "linux"
+      ? "Linux"
+      : "ton ordinateur";
+  const osIcon = os === "macos" ? Apple : os === "linux" ? Terminal : Monitor;
+  const Icon = osIcon;
+  return (
+    <div className="relative overflow-hidden rounded-3xl border-2 border-[var(--secondary)]/40 bg-gradient-to-br from-[var(--secondary)]/10 via-[var(--background-tile)] to-violet-500/5 p-6 sm:p-8 animate-fade-in-up">
+      <div className="pointer-events-none absolute -top-20 -end-20 size-64 rounded-full bg-[var(--secondary)]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -start-20 size-64 rounded-full bg-violet-500/15 blur-3xl" />
+
+      <div className="relative flex flex-col items-center text-center">
+        <div className="size-16 rounded-3xl bg-[var(--secondary)]/20 border border-[var(--secondary)]/40 text-[var(--secondary)] flex items-center justify-center mb-4 shadow-2xl">
+          <Icon className="size-8" strokeWidth={1.8} />
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-bold">
+          Télécharge le logiciel desktop pour {osLabel}
+        </h2>
+        <p className="text-sm text-[var(--foreground-muted)] mt-2 max-w-md">
+          Vrai logiciel natif qui s&apos;installe sur ton ordinateur. Icône dans
+          Démarrer/Applications, fenêtre sans navigateur, démarre comme n&apos;importe
+          quel autre programme.
+        </p>
+
+        <a
+          href={DESKTOP_RELEASES_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary mt-6 !px-8 !py-4 text-base"
+        >
+          <Download className="size-5" />
+          Télécharger pour {osLabel}
+          <ExternalLink className="size-4 opacity-60" />
+        </a>
+
+        <div className="mt-6 grid grid-cols-3 gap-2 w-full max-w-md text-xs">
+          <a
+            href={DESKTOP_RELEASES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${
+              os === "windows"
+                ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
+                : "border-[var(--border)] hover:bg-[var(--background-elevated)]"
+            }`}
+          >
+            <Monitor className="size-5" />
+            <span className="font-medium">Windows</span>
+            <span className="text-[10px] text-[var(--foreground-muted)]">.exe</span>
+          </a>
+          <a
+            href={DESKTOP_RELEASES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${
+              os === "macos"
+                ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
+                : "border-[var(--border)] hover:bg-[var(--background-elevated)]"
+            }`}
+          >
+            <Apple className="size-5" />
+            <span className="font-medium">macOS</span>
+            <span className="text-[10px] text-[var(--foreground-muted)]">.dmg</span>
+          </a>
+          <a
+            href={DESKTOP_RELEASES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${
+              os === "linux"
+                ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
+                : "border-[var(--border)] hover:bg-[var(--background-elevated)]"
+            }`}
+          >
+            <Terminal className="size-5" />
+            <span className="font-medium">Linux</span>
+            <span className="text-[10px] text-[var(--foreground-muted)]">.AppImage</span>
+          </a>
+        </div>
+
+        <p className="text-[10px] text-[var(--foreground-muted)] mt-3 italic">
+          Première version en préparation — première release publiée bientôt sur GitHub.
+        </p>
+      </div>
     </div>
   );
 }
