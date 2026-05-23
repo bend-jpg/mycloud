@@ -7,6 +7,7 @@ import { BoxTile } from "@/components/box-tile";
 import { SiteHeader } from "@/components/site-header";
 import { FileIcon } from "@/components/file-icon";
 import { WelcomeModal } from "@/components/welcome-modal";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { StorageDonut, UploadsBarChart } from "@/components/stats-charts";
 import { getUserStorageStats } from "@/lib/storage-stats";
 import { formatBytes } from "@/lib/utils";
@@ -36,7 +37,7 @@ export default async function DashboardPage({
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
 
-  const [user, recentFiles, stats] = await Promise.all([
+  const [user, recentFiles, stats, onboardingStatus] = await Promise.all([
     db.user.findUnique({
       where: { id: session.id },
       select: { name: true, storageUsed: true, storageQuota: true },
@@ -48,6 +49,23 @@ export default async function DashboardPage({
       select: { id: true, name: true, mimeType: true, size: true, uploadedAt: true },
     }),
     getUserStorageStats(session.id),
+    // Données pour la checklist onboarding
+    (async () => {
+      const [filesCount, foldersCount, twoFactor, memberCount, starredCount] = await Promise.all([
+        db.file.count({ where: { ownerId: session.id, isTrash: false } }),
+        db.folder.count({ where: { ownerId: session.id, isTrash: false } }),
+        db.user.findUnique({ where: { id: session.id }, select: { twoFactorEnabled: true } }),
+        db.membership.count({ where: { userId: session.id } }),
+        db.favorite.count({ where: { userId: session.id } }).catch(() => 0),
+      ]);
+      return {
+        hasFiles: filesCount > 0,
+        hasFolders: foldersCount > 0,
+        has2fa: twoFactor?.twoFactorEnabled ?? false,
+        hasFamily: memberCount > 0,
+        hasStarred: starredCount > 0,
+      };
+    })(),
   ]);
 
   const used = Number(user?.storageUsed ?? BigInt(0));
@@ -91,6 +109,10 @@ export default async function DashboardPage({
             </div>
           </div>
         </div>
+
+        {/* Onboarding checklist — caché automatiquement quand tout est complété
+            ou si l'utilisateur l'a explicitement fermée */}
+        <OnboardingChecklist status={onboardingStatus} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <BoxTile
