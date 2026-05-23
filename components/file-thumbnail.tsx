@@ -38,6 +38,7 @@ export function FileThumbnail({
       src={`/api/files/${fileId}/preview`}
       alt={alt ?? ""}
       loading="lazy"
+      decoding="async"
       draggable={false}
       className={`${className} object-cover pointer-events-none`}
       onError={() => setErrored(true)}

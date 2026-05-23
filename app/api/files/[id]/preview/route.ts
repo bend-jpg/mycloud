@@ -37,11 +37,12 @@ export async function GET(
   // → le navigateur affiche en inline (idéal pour <img>, <iframe>, <video>)
   const presigned = await storage.createPresignedDownload(file.storageKey, undefined, 3600);
 
-  // Cache 5 min côté navigateur pour limiter les re-fetch des thumbnails
+  // Cache 1h côté navigateur pour limiter les re-fetch des thumbnails (immutable
+  // pendant la durée du signed URL R2). private = pas mis en cache CDN partagé.
   return NextResponse.redirect(presigned.url, {
     status: 302,
     headers: {
-      "Cache-Control": "private, max-age=300",
+      "Cache-Control": "private, max-age=3600, stale-while-revalidate=86400",
     },
   });
 }
