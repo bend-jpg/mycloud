@@ -33,6 +33,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { useToast } from "./toast";
 import { formatBytes } from "@/lib/utils";
 import { useLasso } from "@/lib/use-lasso";
+import { useLocalStorage } from "@/lib/use-local-storage";
 
 export interface FileRow {
   id: string;
@@ -103,8 +104,9 @@ export function FileList({
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [confirmUnshare, setConfirmUnshare] = useState<{ fileId: string; teamId: string; teamName: string } | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("date-desc");
-  const [view, setView] = useState<ViewMode>("grid");
+  // Préférences persistées (clé partagée entre /files et /family/files)
+  const [sortKey, setSortKey] = useLocalStorage<SortKey>("files.sortKey", "date-desc");
+  const [view, setView] = useLocalStorage<ViewMode>("files.view", "grid");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectFolders, setSelectFolders] = useState<Set<string>>(new Set());
   const [sortOpen, setSortOpen] = useState(false);
