@@ -16,6 +16,8 @@ import {
   X,
   ChevronLeft,
   Rocket,
+  Download,
+  Activity,
 } from "lucide-react";
 import { hasPermission, type Permission } from "@/lib/permissions";
 
@@ -39,7 +41,9 @@ const NAV: NavItem[] = [
   { href: "/admin/staff", label: "Équipe interne", icon: Shield, perm: "page.staff" },
   { href: "/admin/cms", label: "CMS landing", icon: FileText, perm: "page.cms" },
   { href: "/admin/hosting-waitlist", label: "Hosting waitlist", icon: Rocket, perm: "page.overview" },
+  { href: "/admin/app-releases", label: "Installeurs apps", icon: Download, perm: "page.overview" },
   { href: "/admin/audit", label: "Journal", icon: FileText, perm: "page.audit" },
+  { href: "/admin/system-status", label: "Statut système", icon: Activity, perm: "page.overview" },
 ];
 
 export function AdminSidebar({ role }: { role: string }) {
