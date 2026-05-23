@@ -1,7 +1,11 @@
 "use client";
 
-// Affiche 4 cards : Mobile (PWA), Mac, Windows, Linux. Détecte l'OS du visiteur
-// au mount et met en avant le bon CTA (le card recommandé a un ring coloré).
+// Page download — version 2 : un VRAI bouton "Installer" qui déclenche
+// l'install PWA native sur Chrome / Edge / Android sans passer par les
+// 3 points du menu. Sur iOS Safari (Apple ne supporte pas beforeinstallprompt),
+// on garde une instruction visuelle claire.
+//
+// WebDAV (montage disque réseau) déménagé en section "Avancé" pliable.
 
 import { useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
@@ -11,10 +15,14 @@ import {
   Monitor,
   Terminal,
   Globe,
-  ChevronDown,
   Sparkles,
   Copy,
   Check,
+  Download,
+  Share,
+  PlusSquare,
+  CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 
 type DetectedOS = "ios" | "android" | "macos" | "windows" | "linux" | "unknown";
@@ -30,18 +38,63 @@ function detectOS(): DetectedOS {
   return "unknown";
 }
 
+// Type Chrome/Edge pour beforeinstallprompt — pas dans TS lib par défaut
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
+
 export function DownloadCards({ locale: _locale }: { locale: string }) {
   const [os, setOs] = useState<DetectedOS>("unknown");
-  const [davUrlCopied, setDavUrlCopied] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [davCopied, setDavCopied] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     setOs(detectOS());
+
+    // Détecte si déjà installé en mode standalone
+    if (typeof window !== "undefined") {
+      const standalone =
+        window.matchMedia?.("(display-mode: standalone)").matches ||
+        // iOS Safari standalone
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      if (standalone) setIsInstalled(true);
+    }
+
+    // Écoute beforeinstallprompt (Chrome / Edge / Android)
+    function onBeforeInstall(e: Event) {
+      e.preventDefault(); // empêche le mini-banner auto, on contrôle le moment
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    }
+    function onAppInstalled() {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    }
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    window.addEventListener("appinstalled", onAppInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
   }, []);
 
-  const isMobile = os === "ios" || os === "android";
-  const isMac = os === "macos";
-  const isWindows = os === "windows";
-  const isLinux = os === "linux";
+  async function handleInstallClick() {
+    if (!deferredPrompt) return;
+    setInstalling(true);
+    try {
+      await deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      if (result.outcome === "accepted") {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+      }
+    } finally {
+      setInstalling(false);
+    }
+  }
 
   const davUrl =
     typeof window !== "undefined"
@@ -50,130 +103,142 @@ export function DownloadCards({ locale: _locale }: { locale: string }) {
 
   async function copyDavUrl() {
     await navigator.clipboard.writeText(davUrl);
-    setDavUrlCopied(true);
-    setTimeout(() => setDavUrlCopied(false), 2000);
+    setDavCopied(true);
+    setTimeout(() => setDavCopied(false), 2000);
   }
 
+  // ============================================================
+  // RENDU PRINCIPAL — un gros card avec un VRAI bouton Install
+  // ============================================================
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Mobile PWA */}
-      <DownloadCard
-        recommended={isMobile}
-        icon={Smartphone}
-        color="cyan"
-        title={os === "ios" ? "iPhone / iPad" : os === "android" ? "Android" : "Mobile (iOS / Android)"}
-        subtitle="App native installable en 1 tap"
-      >
-        <p className="text-sm text-[var(--foreground-muted)]">
-          Pas besoin d&apos;App Store. Ouvre <strong className="text-[var(--foreground)]">mytitancloud.com</strong>
-          {" "}dans ton navigateur, puis :
-        </p>
-        <details className="rounded-xl bg-[var(--background-elevated)] p-3" {...(os === "ios" ? { open: true } : {})}>
-          <summary className="flex items-center justify-between cursor-pointer">
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <Apple className="size-4" />
-              iPhone / iPad (Safari)
-            </span>
-            <ChevronDown className="size-4" />
-          </summary>
-          <ol className="mt-3 space-y-2 text-xs text-[var(--foreground-muted)] list-decimal list-inside">
-            <li>Touche le bouton « Partager » en bas de Safari (carré + flèche)</li>
-            <li>Fais défiler et touche « Sur l&apos;écran d&apos;accueil »</li>
-            <li>Touche « Ajouter » en haut à droite</li>
-          </ol>
-        </details>
-        <details className="rounded-xl bg-[var(--background-elevated)] p-3" {...(os === "android" ? { open: true } : {})}>
-          <summary className="flex items-center justify-between cursor-pointer">
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <Smartphone className="size-4" />
-              Android (Chrome)
-            </span>
-            <ChevronDown className="size-4" />
-          </summary>
-          <ol className="mt-3 space-y-2 text-xs text-[var(--foreground-muted)] list-decimal list-inside">
-            <li>Touche le menu ⋮ en haut à droite de Chrome</li>
-            <li>Touche « Installer l&apos;application » ou « Ajouter à l&apos;écran d&apos;accueil »</li>
-            <li>Valide l&apos;installation</li>
-          </ol>
-        </details>
-        <p className="text-[10px] text-[var(--foreground-muted)] mt-2">
-          ✓ Apparaît dans ton menu Partager · ✓ Notifications push · ✓ Hors ligne (lecture)
-        </p>
-      </DownloadCard>
+    <div className="space-y-6">
+      {/* Card principal — install direct */}
+      <div className="relative overflow-hidden rounded-3xl border-2 border-[var(--accent)]/40 bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-6 sm:p-8 animate-fade-in-up">
+        <div className="pointer-events-none absolute -top-20 -end-20 size-64 rounded-full bg-[var(--accent)]/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -start-20 size-64 rounded-full bg-[var(--secondary)]/15 blur-3xl" />
 
-      {/* macOS */}
-      <DownloadCard
-        recommended={isMac}
-        icon={Apple}
-        color="violet"
-        title="macOS"
-        subtitle="Monté comme disque réseau dans le Finder"
-      >
-        <ol className="space-y-2 text-sm list-decimal list-inside text-[var(--foreground-muted)]">
-          <li>Ouvre le Finder</li>
-          <li>
-            Cmd+K (ou menu <em>Aller → Se connecter au serveur</em>)
-          </li>
-          <li>
-            Colle l&apos;URL ci-dessous puis clique « Se connecter »
-          </li>
-          <li>Login : ton email · Mot de passe : ton mot de passe MyTitanCloud</li>
-        </ol>
-        <UrlCopy url={davUrl} copied={davUrlCopied} onCopy={copyDavUrl} />
-      </DownloadCard>
+        <div className="relative flex flex-col items-center text-center">
+          <div className="size-16 rounded-3xl bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] flex items-center justify-center mb-4 shadow-2xl">
+            <Download className="size-8" strokeWidth={1.8} />
+          </div>
 
-      {/* Windows */}
-      <DownloadCard
-        recommended={isWindows}
-        icon={Monitor}
-        color="amber"
-        title="Windows"
-        subtitle="Connexion de lecteur réseau dans l'Explorateur"
-      >
-        <ol className="space-y-2 text-sm list-decimal list-inside text-[var(--foreground-muted)]">
-          <li>Ouvre l&apos;Explorateur de fichiers</li>
-          <li>
-            Clic droit sur « Ce PC » → « <em>Connecter un lecteur réseau</em> »
-          </li>
-          <li>Lettre au choix (ex: M:), dossier = l&apos;URL ci-dessous</li>
-          <li>Coche « Se reconnecter à l&apos;ouverture » et « Utiliser d&apos;autres identifiants »</li>
-          <li>Login : ton email · Mot de passe : ton mot de passe MyTitanCloud</li>
-        </ol>
-        <UrlCopy url={davUrl} copied={davUrlCopied} onCopy={copyDavUrl} />
-        <p className="text-[10px] text-[var(--foreground-muted)] mt-2">
-          ⚠ Si Windows refuse HTTPS, active WebClient via Services → WebClient (démarrage auto).
-        </p>
-      </DownloadCard>
+          <h2 className="text-2xl sm:text-3xl font-bold">
+            {isInstalled
+              ? "Application installée ✓"
+              : "Installe MyTitanCloud sur ton appareil"}
+          </h2>
+          <p className="text-sm text-[var(--foreground-muted)] mt-2 max-w-md">
+            {isInstalled
+              ? "L'app est déjà sur ton appareil. Ouvre-la depuis ton écran d'accueil ou ton menu démarrer."
+              : "Pas besoin d'App Store ni de Play Store. Un seul clic et l'app s'installe sur ton téléphone, ton Mac ou ton PC."}
+          </p>
 
-      {/* Linux */}
-      <DownloadCard
-        recommended={isLinux}
-        icon={Terminal}
-        color="green"
-        title="Linux"
-        subtitle="Montage via davfs2 ou Files Nautilus"
+          {/* État 1 : déjà installé */}
+          {isInstalled && (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--success)]/15 text-[var(--success)] border border-[var(--success)]/30 px-4 py-2 text-sm font-medium">
+              <CheckCircle2 className="size-4" />
+              Application installée sur cet appareil
+            </div>
+          )}
+
+          {/* État 2 : install prompt dispo (Chrome / Edge / Android) */}
+          {!isInstalled && deferredPrompt && (
+            <button
+              onClick={handleInstallClick}
+              disabled={installing}
+              className="btn-primary mt-6 !px-8 !py-4 text-base animate-pulse-glow"
+            >
+              {installing ? "Installation…" : (
+                <>
+                  <Download className="size-5" />
+                  Installer maintenant
+                </>
+              )}
+            </button>
+          )}
+
+          {/* État 3 : iOS Safari (pas de beforeinstallprompt — instructions claires) */}
+          {!isInstalled && !deferredPrompt && os === "ios" && (
+            <IOSInstructions />
+          )}
+
+          {/* État 4 : autre navigateur (Firefox, Safari macOS, ou pas encore prêt) */}
+          {!isInstalled && !deferredPrompt && os !== "ios" && (
+            <FallbackInstructions os={os} />
+          )}
+        </div>
+      </div>
+
+      {/* Section disque réseau (advanced) — caché par défaut */}
+      <details
+        open={advancedOpen}
+        onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
+        className="rounded-3xl border border-[var(--border)] bg-[var(--background-tile)] overflow-hidden"
       >
-        <p className="text-sm text-[var(--foreground-muted)]">
-          <strong className="text-[var(--foreground)]">Avec GNOME Files :</strong> Autres
-          emplacements → Connexion au serveur → colle l&apos;URL ci-dessous.
-        </p>
-        <p className="text-sm text-[var(--foreground-muted)]">
-          <strong className="text-[var(--foreground)]">En CLI (davfs2) :</strong>
-        </p>
-        <pre className="text-xs bg-[var(--background-elevated)] rounded-xl p-3 overflow-x-auto font-mono text-[var(--foreground-muted)]">
+        <summary className="flex items-center justify-between p-5 cursor-pointer hover:bg-[var(--background-elevated)]/40">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-[var(--background-elevated)] flex items-center justify-center text-[var(--secondary)]">
+              <Monitor className="size-5" />
+            </div>
+            <div className="text-start">
+              <p className="font-semibold">Disque réseau (avancé)</p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                Monte MyTitanCloud comme un disque dans le Finder / Explorateur / Linux
+              </p>
+            </div>
+          </div>
+          <ChevronDown className={`size-5 text-[var(--foreground-muted)] transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+        </summary>
+
+        <div className="border-t border-[var(--border)] p-5 space-y-5">
+          {/* macOS */}
+          <div>
+            <h4 className="font-semibold flex items-center gap-2 mb-2">
+              <Apple className="size-4" /> macOS
+            </h4>
+            <ol className="text-sm text-[var(--foreground-muted)] space-y-1 list-decimal list-inside">
+              <li>Ouvre le Finder, fais Cmd+K</li>
+              <li>Colle l&apos;URL ci-dessous, clique « Se connecter »</li>
+              <li>Login = ton email · Mot de passe = ton mot de passe MyTitanCloud</li>
+            </ol>
+          </div>
+
+          {/* Windows */}
+          <div>
+            <h4 className="font-semibold flex items-center gap-2 mb-2">
+              <Monitor className="size-4" /> Windows
+            </h4>
+            <ol className="text-sm text-[var(--foreground-muted)] space-y-1 list-decimal list-inside">
+              <li>Explorateur → clic droit sur « Ce PC » → Connecter un lecteur réseau</li>
+              <li>Colle l&apos;URL ci-dessous, choisis une lettre (ex: M:)</li>
+              <li>Coche « Utiliser d&apos;autres identifiants »</li>
+            </ol>
+          </div>
+
+          {/* Linux */}
+          <div>
+            <h4 className="font-semibold flex items-center gap-2 mb-2">
+              <Terminal className="size-4" /> Linux
+            </h4>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              GNOME Files → Autres emplacements → Connexion au serveur → colle l&apos;URL.
+            </p>
+            <pre className="text-xs bg-[var(--background-elevated)] rounded-xl p-3 overflow-x-auto font-mono text-[var(--foreground-muted)] mt-2">
 {`sudo apt install davfs2
-sudo mkdir /mnt/mytitancloud
-sudo mount -t davfs ${davUrl} /mnt/mytitancloud`}
-        </pre>
-        <UrlCopy url={davUrl} copied={davUrlCopied} onCopy={copyDavUrl} />
-      </DownloadCard>
+sudo mount -t davfs ${davUrl} /mnt/mycloud`}
+            </pre>
+          </div>
 
-      {/* Fallback : juste le navigateur */}
-      <div className="md:col-span-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background-tile)] p-5 text-center">
+          <UrlCopy url={davUrl} copied={davCopied} onCopy={copyDavUrl} />
+        </div>
+      </details>
+
+      {/* Pas envie d'installer */}
+      <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background-tile)] p-5 text-center">
         <Globe className="size-6 text-[var(--accent)] mx-auto mb-2" />
-        <p className="text-sm font-medium">Pas envie d&apos;installer ? Utilise simplement le navigateur</p>
+        <p className="text-sm font-medium">Pas envie d&apos;installer ?</p>
         <p className="text-xs text-[var(--foreground-muted)] mt-1">
-          Toutes les fonctionnalités sont disponibles depuis le web : upload, partage, famille…
+          Tout marche pareil depuis ton navigateur — upload, partage, famille, tout.
         </p>
         <Link href="/dashboard" className="btn-primary text-sm mt-3 inline-flex">
           Ouvrir l&apos;app web
@@ -183,57 +248,61 @@ sudo mount -t davfs ${davUrl} /mnt/mytitancloud`}
   );
 }
 
-function DownloadCard({
-  recommended,
-  icon: Icon,
-  color,
-  title,
-  subtitle,
-  children,
-}: {
-  recommended: boolean;
-  icon: React.ComponentType<{ className?: string }>;
-  color: "cyan" | "amber" | "violet" | "green";
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  const colorClass = {
-    cyan: "border-[var(--accent)]/40 bg-gradient-to-br from-[var(--accent)]/10 to-transparent",
-    amber: "border-[var(--secondary)]/40 bg-gradient-to-br from-[var(--secondary)]/10 to-transparent",
-    violet: "border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-transparent",
-    green: "border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 to-transparent",
-  }[color];
+// ============================================================
+// Instructions visuelles pour iOS Safari
+// ============================================================
+function IOSInstructions() {
+  return (
+    <div className="mt-6 w-full max-w-md rounded-2xl bg-[var(--background-elevated)] border border-[var(--border)] p-5 text-start">
+      <p className="text-sm font-semibold flex items-center gap-2 mb-3">
+        <Apple className="size-4" />
+        iPhone / iPad — 2 tapotements
+      </p>
+      <ol className="space-y-3">
+        <li className="flex items-start gap-3">
+          <span className="shrink-0 size-7 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center text-xs font-bold">1</span>
+          <span className="text-sm text-[var(--foreground-muted)]">
+            Touche l&apos;icône <Share className="inline size-4 text-[var(--accent)] mx-0.5" /> <strong className="text-[var(--foreground)]">Partager</strong> tout en bas de Safari
+          </span>
+        </li>
+        <li className="flex items-start gap-3">
+          <span className="shrink-0 size-7 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center text-xs font-bold">2</span>
+          <span className="text-sm text-[var(--foreground-muted)]">
+            Fais défiler et choisis <PlusSquare className="inline size-4 text-[var(--accent)] mx-0.5" /> <strong className="text-[var(--foreground)]">Sur l&apos;écran d&apos;accueil</strong>, puis « Ajouter »
+          </span>
+        </li>
+      </ol>
+      <p className="text-[10px] text-[var(--foreground-muted)] mt-3 italic">
+        Apple oblige ce parcours — pas possible d&apos;auto-installer comme sur Android.
+      </p>
+    </div>
+  );
+}
 
-  const iconColor = {
-    cyan: "text-[var(--accent)]",
-    amber: "text-[var(--secondary)]",
-    violet: "text-violet-400",
-    green: "text-emerald-400",
-  }[color];
+// ============================================================
+// Fallback générique (Firefox, Safari macOS, autres)
+// ============================================================
+function FallbackInstructions({ os }: { os: DetectedOS }) {
+  const browserHint =
+    os === "android"
+      ? "Ouvre cette page dans Chrome ou Edge pour voir le bouton."
+      : os === "macos"
+      ? "Ouvre cette page dans Chrome ou Edge pour voir le bouton d'installation. Safari macOS supporte l'install via le menu Fichier → Ajouter au Dock."
+      : os === "windows" || os === "linux"
+      ? "Ouvre cette page dans Chrome ou Edge pour voir le bouton d'installation."
+      : "Ouvre cette page dans Chrome ou Edge pour le bouton d'installation direct.";
 
   return (
-    <div
-      className={`relative rounded-3xl border bg-[var(--background-tile)] p-5 sm:p-6 space-y-4 ${
-        recommended ? `ring-2 ${colorClass}` : "border-[var(--border)]"
-      }`}
-    >
-      {recommended && (
-        <span className="absolute -top-3 start-4 text-[10px] uppercase tracking-wide font-semibold rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] px-2.5 py-1 flex items-center gap-1 shadow-lg">
-          <Sparkles className="size-3" />
-          Recommandé pour toi
-        </span>
-      )}
-      <div className="flex items-center gap-3">
-        <div className={`size-12 rounded-2xl bg-[var(--background-elevated)] flex items-center justify-center ${iconColor}`}>
-          <Icon className="size-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-lg">{title}</h3>
-          <p className="text-xs text-[var(--foreground-muted)]">{subtitle}</p>
-        </div>
-      </div>
-      <div className="space-y-3">{children}</div>
+    <div className="mt-6 w-full max-w-md rounded-2xl bg-[var(--background-elevated)] border border-[var(--border)] p-5 text-start">
+      <p className="text-sm font-semibold flex items-center gap-2 mb-3">
+        <Sparkles className="size-4 text-[var(--accent)]" />
+        Comment installer
+      </p>
+      <p className="text-sm text-[var(--foreground-muted)] mb-3">{browserHint}</p>
+      <p className="text-xs text-[var(--foreground-muted)]">
+        Sur Chrome/Edge desktop : tu verras une petite icône « + » dans la barre d&apos;adresse,
+        en haut à droite — clique-la pour installer en un clic.
+      </p>
     </div>
   );
 }
@@ -247,7 +316,7 @@ function UrlCopy({ url, copied, onCopy }: { url: string; copied: boolean; onCopy
         onClick={(e) => (e.target as HTMLInputElement).select()}
         className="flex-1 rounded-xl bg-[var(--background)] border border-[var(--border)] px-3 py-2 text-xs font-mono"
       />
-      <button onClick={onCopy} className="btn-primary px-3" title="Copier">
+      <button onClick={onCopy} className="btn-primary !px-3" title="Copier">
         {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
       </button>
     </div>

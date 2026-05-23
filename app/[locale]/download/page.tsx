@@ -26,7 +26,7 @@ export default async function DownloadPage({
   return (
     <>
       <PublicHeader />
-      <main className="mx-auto max-w-5xl px-4 sm:px-4 sm:px-6 py-12 space-y-12">
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-12 space-y-12">
         {/* Hero */}
         <section className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-8 sm:p-12 text-center">
           <div className="pointer-events-none absolute -top-20 -end-20 size-72 rounded-full bg-[var(--accent)]/20 blur-3xl" />
@@ -84,24 +84,35 @@ export default async function DownloadPage({
           <div className="space-y-3 text-sm">
             <details className="rounded-xl bg-[var(--background-elevated)] p-3">
               <summary className="font-medium cursor-pointer">
-                Pourquoi pas d&apos;app dans l&apos;App Store / Play Store ?
+                Je ne vois pas le bouton « Installer » ?
               </summary>
               <p className="mt-2 text-[var(--foreground-muted)] text-xs">
-                MyTitanCloud est une PWA — Progressive Web App — qui s&apos;installe en 1 tap depuis
-                ton navigateur. Pas de validation Apple/Google à attendre, mises à jour instantanées,
-                aucune commission de 30%. Tu as exactement les mêmes fonctionnalités qu&apos;une app
-                native.
+                Le bouton apparaît uniquement sur les navigateurs qui supportent l&apos;auto-install
+                (Chrome, Edge, Brave, et la plupart des navigateurs Android). Si tu utilises
+                Safari, Firefox, ou un navigateur exotique, l&apos;installation se fait via le menu
+                de ton navigateur (instructions affichées dans la carte ci-dessus).
               </p>
             </details>
             <details className="rounded-xl bg-[var(--background-elevated)] p-3">
               <summary className="font-medium cursor-pointer">
-                C&apos;est quoi WebDAV ?
+                Pourquoi pas d&apos;app dans l&apos;App Store / Play Store ?
               </summary>
               <p className="mt-2 text-[var(--foreground-muted)] text-xs">
-                Un protocole standard depuis 1999 supporté par tous les OS. Tu connectes
-                MyTitanCloud comme un disque réseau (avec ton email + mot de passe), et tes
-                fichiers apparaissent dans le Finder/Explorateur comme s&apos;ils étaient sur ton
-                disque dur. Lecture seule en V1, écriture bientôt.
+                MyTitanCloud est une PWA — Progressive Web App — installable directement depuis
+                ton navigateur. Pas de validation Apple/Google à attendre, mises à jour instantanées,
+                aucune commission de 30%. Tu as exactement les mêmes fonctionnalités qu&apos;une app
+                native (icône sur l&apos;écran d&apos;accueil, plein écran, notifications, hors ligne…).
+              </p>
+            </details>
+            <details className="rounded-xl bg-[var(--background-elevated)] p-3">
+              <summary className="font-medium cursor-pointer">
+                C&apos;est quoi le « disque réseau » dans la section avancée ?
+              </summary>
+              <p className="mt-2 text-[var(--foreground-muted)] text-xs">
+                C&apos;est une option en plus : tu peux monter MyTitanCloud comme un disque réseau
+                dans le Finder de Mac ou l&apos;Explorateur Windows (via WebDAV, un protocole standard).
+                Tes fichiers apparaissent alors comme s&apos;ils étaient sur ton disque dur. Tu n&apos;es
+                pas obligé d&apos;utiliser ça — l&apos;app installée fait déjà tout.
               </p>
             </details>
             <details className="rounded-xl bg-[var(--background-elevated)] p-3">
@@ -109,8 +120,9 @@ export default async function DownloadPage({
                 Est-ce que ça marche hors ligne ?
               </summary>
               <p className="mt-2 text-[var(--foreground-muted)] text-xs">
-                La PWA garde une cache des fichiers récemment consultés. Tu peux les lire hors
-                ligne. Pour l&apos;upload hors ligne, on travaille sur Background Sync (Phase 6 V3).
+                Une fois installée, l&apos;app garde une copie des fichiers récemment consultés.
+                Tu peux les lire hors ligne. L&apos;upload reprend automatiquement dès que tu retrouves
+                du réseau.
               </p>
             </details>
           </div>
