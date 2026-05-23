@@ -20,6 +20,7 @@ import {
   UserCog,
   LifeBuoy,
   Clock,
+  Camera,
 } from "lucide-react";
 
 export default async function DashboardPage({
@@ -97,6 +98,13 @@ export default async function DashboardPage({
             title={t("tiles.files.title")}
             description={t("tiles.files.desc")}
             accent="cyan"
+          />
+          <BoxTile
+            href="/photos"
+            icon={<Camera className="size-6" />}
+            title="Galerie photos"
+            description="Toutes tes images, regroupées par mois — style iOS Photos"
+            accent="violet"
           />
           <BoxTile
             href="/family"
