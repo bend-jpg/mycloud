@@ -183,39 +183,45 @@ body {
 }
 
 /* ===== Boutons ===== */
-.btn-primary {
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  box-shadow: 0 8px 24px -8px var(--accent-glow);
-}
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 32px -8px var(--accent-glow);
-}
+/* IMPORTANT : @layer components — sinon `display: inline-flex` écrase
+   le `hidden` Tailwind sur les boutons avec `className="hidden lg:inline-flex btn-primary"`
+   et les boutons restent visibles sur mobile. Bug observé sur le landing
+   avant ce fix : Login/Signup s'affichaient sur mobile par-dessus le burger. */
+@layer components {
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 8px 24px -8px var(--accent-glow);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 32px -8px var(--accent-glow);
+  }
 
-.btn-ghost {
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  transition: border-color 0.15s ease, background 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-.btn-ghost:hover:not(:disabled) {
-  border-color: var(--border-hover);
-  background: var(--background-tile);
+  .btn-ghost {
+    background: transparent;
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--border-hover);
+    background: var(--background-tile);
+  }
 }
 
 /* ===== Mobile responsive helpers ===== */
