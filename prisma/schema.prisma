@@ -381,6 +381,7 @@ model File {
   folder         Folder?        @relation(fields: [folderId], references: [id])
   storageBackend StorageBackend @relation(fields: [storageBackendId], references: [id])
   shareLinks     ShareLink[]
+  versions       FileVersion[]
 
   @@index([ownerId, teamId, folderId])
   @@index([checksum])
@@ -467,7 +468,8 @@ model StorageBackend {
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
-  files File[]
+  files    File[]
+  versions FileVersion[]
 }
 
 // ============================================================
@@ -586,6 +588,32 @@ model HostingWaitlistEntry {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([kind, createdAt])
+}
+
+// ============================================================
+// FILE VERSIONING — historique des versions d'un fichier
+// Chaque upload d'un fichier portant le même nom dans le même dossier
+// crée une FileVersion au lieu d'écraser. L'utilisateur peut restaurer
+// n'importe quelle version précédente.
+// ============================================================
+
+model FileVersion {
+  id               String   @id @default(cuid())
+  fileId           String
+  storageBackendId String
+  storageKey       String
+  size             BigInt
+  checksum         String?
+  uploadedAt       DateTime @default(now())
+  uploadedById     String   // user qui a uploadé cette version (peut être ≠ owner)
+  /** Si true, cette version est l'actuelle (la "tête"). Une seule par fileId. */
+  isCurrent        Boolean  @default(false)
+
+  file           File           @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  storageBackend StorageBackend @relation(fields: [storageBackendId], references: [id])
+
+  @@index([fileId, uploadedAt])
+  @@index([fileId, isCurrent])
 }
 
 // ============================================================
