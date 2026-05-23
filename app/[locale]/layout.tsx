@@ -5,16 +5,22 @@ import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing, isRtl, type Locale } from "@/i18n/routing";
 import { Providers } from "@/components/providers";
+import { getAppUrl } from "@/lib/url";
 
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin", "latin-ext"],
 });
 
+const SITE_URL = getAppUrl();
+const SITE_NAME = "MyTitanCloud";
+const SITE_DESC = "Ton cloud personnel, simple et puissant. Stockage, partage WeTransfer-like, et famille en un seul espace. 50 Go gratuits.";
+
 export const metadata: Metadata = {
-  title: { default: "MyTitanCloud", template: "%s · MyTitanCloud" },
-  description: "Ton cloud personnel, simple et puissant. Stockage, partage et famille en un seul espace.",
-  applicationName: "MyTitanCloud",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+  description: SITE_DESC,
+  applicationName: SITE_NAME,
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.ico",
@@ -22,10 +28,53 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "MyTitanCloud",
+    title: SITE_NAME,
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false },
+  // Open Graph (Facebook, LinkedIn, WhatsApp, iMessage…)
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESC,
+    url: SITE_URL,
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: `${SITE_NAME} — ton cloud personnel`,
+      },
+    ],
+    locale: "fr_FR",
+    alternateLocale: ["en_US", "es_ES", "he_IL"],
+  },
+  // Twitter card
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESC,
+    images: ["/og.png"],
+  },
+  // SEO
+  keywords: [
+    "cloud personnel",
+    "stockage en ligne",
+    "WeTransfer alternative",
+    "partage de fichiers",
+    "cloud familial",
+    "NAS",
+    "drive sécurisé",
+  ],
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 export const viewport: Viewport = {
