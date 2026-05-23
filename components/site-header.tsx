@@ -4,6 +4,7 @@ import { LanguageSwitcher } from "./language-switcher";
 import { UserMenu } from "./user-menu";
 import { MobileNav } from "./mobile-nav";
 import { NotifBell } from "./notif-bell";
+import { CommandPaletteTrigger } from "./command-palette-trigger";
 import { getSession } from "@/lib/session";
 import { Cloud } from "lucide-react";
 
@@ -55,6 +56,7 @@ export async function SiteHeader() {
         <div className="flex items-center gap-2 sm:gap-3">
           {isLoggedIn ? (
             <>
+              <CommandPaletteTrigger />
               <div className="hidden sm:block">
                 <LanguageSwitcher />
               </div>
