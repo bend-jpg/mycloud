@@ -57,9 +57,19 @@ export function DownloadCards({ locale: _locale }: { locale: string }) {
   const [installing, setInstalling] = useState(false);
   const [davCopied, setDavCopied] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // True quand on tourne dans l'app desktop Electron (préload expose window.mytitancloud)
+  const [isDesktopApp, setIsDesktopApp] = useState(false);
 
   useEffect(() => {
     setOs(detectOS());
+
+    // Détecte si on tourne dans le wrapper Electron desktop
+    const winAny = window as unknown as { mytitancloud?: { isDesktopApp?: boolean } };
+    if (winAny.mytitancloud?.isDesktopApp) {
+      setIsDesktopApp(true);
+      setIsInstalled(true); // l'app desktop = installé, pas de prompt nécessaire
+      return;
+    }
 
     // Détecte si déjà installé en mode standalone
     if (typeof window !== "undefined") {
@@ -121,12 +131,29 @@ export function DownloadCards({ locale: _locale }: { locale: string }) {
   // ============================================================
   return (
     <div className="space-y-6">
-      {/* DESKTOP : logiciel installable (.exe / .dmg / .AppImage) */}
-      {(isDesktopOs || os === "unknown") && (
+      {/* Tu utilises déjà l'app desktop — on dit merci et on file vers le dashboard */}
+      {isDesktopApp && (
+        <div className="rounded-3xl border-2 border-[var(--success)]/40 bg-gradient-to-br from-[var(--success)]/10 via-[var(--background-tile)] to-[var(--success)]/5 p-6 sm:p-8 text-center">
+          <div className="size-16 rounded-3xl bg-[var(--success)]/20 border border-[var(--success)]/40 text-[var(--success)] flex items-center justify-center mb-4 shadow-2xl mx-auto">
+            <CheckCircle2 className="size-8" strokeWidth={1.8} />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold">
+            Tu utilises déjà l&apos;app desktop ✓
+          </h2>
+          <p className="text-sm text-[var(--foreground-muted)] mt-2 max-w-md mx-auto">
+            Tu es dans le logiciel natif MyTitanCloud. Tout marche depuis ici — pas besoin
+            d&apos;installer quoi que ce soit d&apos;autre.
+          </p>
+        </div>
+      )}
+
+      {/* DESKTOP : logiciel installable (.exe / .dmg / .AppImage) — masqué si déjà dans l'app */}
+      {!isDesktopApp && (isDesktopOs || os === "unknown") && (
         <DesktopAppCard os={os} />
       )}
 
-      {/* Card principal — install direct (PWA) — surtout pour mobile */}
+      {/* Card principal — install direct (PWA) — surtout pour mobile, masqué dans app desktop */}
+      {!isDesktopApp && (
       <div className={`relative overflow-hidden rounded-3xl border-2 ${isMobileOs ? "border-[var(--accent)]/40" : "border-[var(--border)]"} bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-6 sm:p-8 animate-fade-in-up`}>
         <div className="pointer-events-none absolute -top-20 -end-20 size-64 rounded-full bg-[var(--accent)]/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -start-20 size-64 rounded-full bg-[var(--secondary)]/15 blur-3xl" />
@@ -182,6 +209,7 @@ export function DownloadCards({ locale: _locale }: { locale: string }) {
           )}
         </div>
       </div>
+      )}
 
       {/* Section disque réseau (advanced) — caché par défaut */}
       <details
