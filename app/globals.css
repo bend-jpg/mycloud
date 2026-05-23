@@ -319,6 +319,25 @@ img, video, svg {
   50% { box-shadow: 0 0 24px 4px var(--accent-glow); }
 }
 
+/* Slide depuis la droite — utilisé pour le mobile nav drawer.
+   En RTL on slide depuis la gauche via une override plus bas. */
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 /* Classes utilitaires */
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out both;
@@ -328,6 +347,13 @@ img, video, svg {
 }
 .animate-slide-down {
   animation: slideDown 0.2s ease-out both;
+}
+.animate-slide-in-right {
+  animation: slideInFromRight 0.25s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+[dir="rtl"] .animate-slide-in-right {
+  /* En RTL le drawer est à gauche (end-0 → left), il slide depuis la gauche */
+  animation-name: slideInFromLeft;
 }
 .animate-pulse-glow {
   animation: pulseGlow 2.5s ease-in-out infinite;
