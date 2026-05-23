@@ -6,6 +6,7 @@ import { getMyTeams, computeSharedToTeams } from "@/lib/teams";
 import { SiteHeader } from "@/components/site-header";
 import { FileUploader } from "@/components/file-uploader";
 import { FileList } from "@/components/file-list";
+import { NativeSyncCard } from "@/components/native-sync-card";
 import { NewFolderButton } from "@/components/new-folder-button";
 import { FilesBreadcrumb } from "@/components/files-breadcrumb";
 import { formatBytes } from "@/lib/utils";
@@ -97,6 +98,9 @@ export default async function FilesPage({
             <span className="text-sm font-semibold shrink-0">{pct}%</span>
           </div>
         </div>
+
+        {/* Card sync native — visible uniquement dans l'app mobile / desktop */}
+        <NativeSyncCard folderId={null} teamId={null} />
 
         {/* Zone d'upload TRÈS visible en haut */}
         <FileUploader folderId={null} />
