@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { Shield, Check, X } from "lucide-react";
 import { AdminStaffRow } from "@/components/admin-staff-row";
 import { guardAdminPage } from "@/lib/admin-guard";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminStaffPage({
   params,
@@ -30,17 +31,12 @@ export default async function AdminStaffPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <Shield className="size-7 text-[var(--accent)]" />
-            Équipe interne
-          </h1>
-          <p className="text-[var(--foreground-muted)] mt-1 text-sm">
-            Membres de ton équipe avec accès au back-office. Clique sur un membre pour gérer son rôle.
-          </p>
-        </div>
-      </div>
+      <PageHero
+        icon={Shield}
+        variant="violet"
+        title="Équipe interne"
+        description={`${staff.length} membre(s) avec accès au back-office. Clique sur un membre pour gérer son rôle.`}
+      />
 
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
         <table className="w-full text-sm">

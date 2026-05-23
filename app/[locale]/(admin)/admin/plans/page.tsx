@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { AdminPlansManager } from "@/components/admin-plan-editor";
 import { AdminSyncStripeButton } from "@/components/admin-sync-stripe-button";
 import { guardAdminPage } from "@/lib/admin-guard";
+import { PageHero } from "@/components/page-hero";
+import { Tag } from "lucide-react";
 
 export default async function AdminPlansPage({
   params,
@@ -19,15 +21,13 @@ export default async function AdminPlansPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Plans tarifaires</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            Crée, modifie et désactive les plans visibles par tes clients.
-          </p>
-        </div>
-        <AdminSyncStripeButton />
-      </div>
+      <PageHero
+        icon={Tag}
+        variant="amber"
+        title="Plans tarifaires"
+        description={`${plans.length} plan(s) — crée, modifie et désactive ceux visibles par tes clients.`}
+        cta={<AdminSyncStripeButton />}
+      />
 
       <AdminPlansManager
         plans={plans.map((p) => ({

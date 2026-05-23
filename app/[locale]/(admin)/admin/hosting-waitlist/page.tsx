@@ -6,7 +6,8 @@ import { setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { guardAdminPage } from "@/lib/admin-guard";
-import { Globe, Bot } from "lucide-react";
+import { Globe, Bot, Rocket } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminHostingWaitlistPage({
   params,
@@ -28,13 +29,17 @@ export default async function AdminHostingWaitlistPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Hébergement — liste d&apos;attente</h1>
-        <p className="text-sm text-[var(--foreground-muted)] mt-1">
-          Pré-inscriptions Phase 9 (hébergement de sites et Claude Code). Sert à prioriser et à
-          contacter les early adopters quand on est prêt.
-        </p>
-      </div>
+      <PageHero
+        icon={Rocket}
+        variant="green"
+        title="Hébergement — liste d'attente"
+        description={
+          <>
+            {entries.length} inscription(s) — Sites : {sites.length} · Claude Code : {claudes.length}. Sert à
+            prioriser et contacter les early adopters quand on lance Phase 9.
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <WaitlistTable

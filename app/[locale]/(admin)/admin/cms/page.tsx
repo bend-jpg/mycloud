@@ -9,6 +9,7 @@ import { CMS_KEYS, getSupportedLocales } from "@/lib/cms";
 import { CmsEditor } from "@/components/admin-cms-editor";
 import { FileText } from "lucide-react";
 import { guardAdminPage } from "@/lib/admin-guard";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminCmsPage({
   params,
@@ -32,17 +33,17 @@ export default async function AdminCmsPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-          <FileText className="size-7 text-[var(--accent)]" />
-          CMS — Textes de la landing
-        </h1>
-        <p className="text-sm text-[var(--foreground-muted)] mt-1">
-          Modifie les textes affichés sur la page d&apos;accueil par langue. Champ vide = on
-          retombe sur la traduction par défaut (fichiers <code>messages/&lt;locale&gt;.json</code>).
-          Les changements sont visibles immédiatement après sauvegarde.
-        </p>
-      </div>
+      <PageHero
+        icon={FileText}
+        variant="violet"
+        title="CMS — Textes de la landing"
+        description={
+          <>
+            Modifie les textes affichés sur la page d&apos;accueil par langue. Champ vide =
+            traduction par défaut. Les changements sont visibles immédiatement.
+          </>
+        }
+      />
 
       <CmsEditor
         locales={[...locales]}

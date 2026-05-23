@@ -4,6 +4,7 @@ import { formatBytes } from "@/lib/utils";
 import { HardDrive } from "lucide-react";
 import { StorageEditorButton } from "@/components/admin-storage-editor";
 import { AdminStorageRow } from "@/components/admin-storage-row";
+import { PageHero } from "@/components/page-hero";
 import { globalCostStats } from "@/lib/cost-stats";
 
 export default async function AdminStoragePage({
@@ -28,16 +29,13 @@ export default async function AdminStoragePage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold">Stockage</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            {backends.length} backend(s) · {activeCount} actif(s) · {formatBytes(totalUsed)} utilisés ·{" "}
-            {totalFiles} fichier(s)
-          </p>
-        </div>
-        <StorageEditorButton />
-      </div>
+      <PageHero
+        icon={HardDrive}
+        variant="green"
+        title="Stockage"
+        description={`${backends.length} backend(s) · ${activeCount} actif(s) · ${formatBytes(totalUsed)} utilisés · ${totalFiles} fichier(s)`}
+        cta={<StorageEditorButton />}
+      />
 
       {/* Résumé coût */}
       {costStats.perBackend.length > 0 && (

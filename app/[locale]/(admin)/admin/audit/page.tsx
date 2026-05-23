@@ -1,7 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, FileText } from "lucide-react";
 import { guardAdminPage } from "@/lib/admin-guard";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminAuditPage({
   params,
@@ -36,12 +37,12 @@ export default async function AdminAuditPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Journal d&apos;audit</h1>
-        <p className="text-[var(--foreground-muted)] mt-1">
-          {logs.length} action(s). 500 dernières entrées max.
-        </p>
-      </div>
+      <PageHero
+        icon={FileText}
+        variant="red"
+        title="Journal d'audit"
+        description={`${logs.length} action(s). 500 dernières entrées max.`}
+      />
 
       <form className="flex flex-wrap items-end gap-3">
         <div className="relative flex-1 min-w-60">

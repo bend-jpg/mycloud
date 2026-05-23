@@ -1,8 +1,9 @@
 import { setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
-import { Ticket as TicketIcon, Search, Filter } from "lucide-react";
+import { Ticket as TicketIcon, Search, Filter, LifeBuoy } from "lucide-react";
 import { AdminTicketRow } from "@/components/admin-ticket-row";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminTicketsPage({
   params,
@@ -37,12 +38,12 @@ export default async function AdminTicketsPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Support</h1>
-        <p className="text-[var(--foreground-muted)] mt-1">
-          {tickets.length} ticket(s). Clique sur une ligne pour répondre.
-        </p>
-      </div>
+      <PageHero
+        icon={LifeBuoy}
+        variant="pink"
+        title="Support"
+        description={`${tickets.length} ticket(s). Clique sur une ligne pour répondre.`}
+      />
 
       <form className="flex flex-wrap items-end gap-3">
         <div className="relative flex-1 min-w-60">

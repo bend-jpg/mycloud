@@ -20,7 +20,9 @@ import {
   UserPlus,
   ChevronRight,
   Activity,
+  LayoutDashboard,
 } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminHomePage({
   params,
@@ -163,12 +165,12 @@ export default async function AdminHomePage({
 
   return (
     <main className="p-4 sm:p-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Vue d&apos;ensemble</h1>
-        <p className="text-[var(--foreground-muted)] mt-1">
-          État du SaaS · {now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}
-        </p>
-      </div>
+      <PageHero
+        icon={LayoutDashboard}
+        variant="cyan"
+        title="Vue d'ensemble"
+        description={`État du SaaS · ${now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}`}
+      />
 
       {/* Alertes prioritaires */}
       {alerts.length > 0 && (

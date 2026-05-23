@@ -1,7 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
-import { Search } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { AdminClientsTable } from "@/components/admin-clients-table";
+import { PageHero } from "@/components/page-hero";
 import { isEmailConfigured } from "@/lib/email";
 import { isWhatsappConfigured } from "@/lib/whatsapp";
 
@@ -40,13 +41,13 @@ export default async function ClientsListPage({
   const allPlans = await db.plan.findMany({ select: { slug: true, name: true }, orderBy: { sortOrder: "asc" } });
 
   return (
-    <main className="p-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Clients</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">{users.length} résultat{users.length > 1 ? "s" : ""}</p>
-        </div>
-      </div>
+    <main className="p-4 sm:p-8 space-y-6">
+      <PageHero
+        icon={Users}
+        variant="cyan"
+        title="Clients"
+        description={`${users.length} client(s) ${q || plan ? "(filtré)" : ""}`}
+      />
 
       <form className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-60">

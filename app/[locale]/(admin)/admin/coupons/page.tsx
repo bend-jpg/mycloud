@@ -7,6 +7,7 @@ import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { CouponsView } from "@/components/admin-coupons-view";
 import { Tag, AlertTriangle } from "lucide-react";
 import { guardAdminPage } from "@/lib/admin-guard";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminCouponsPage({
   params,
@@ -100,18 +101,17 @@ export default async function AdminCouponsPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <Tag className="size-7 text-[var(--accent)]" />
-            Codes promo
-          </h1>
-          <p className="text-sm text-[var(--foreground-muted)] mt-1">
+      <PageHero
+        icon={Tag}
+        variant="pink"
+        title="Codes promo"
+        description={
+          <>
             {items.length} code(s) · {activeCount} actif(s) · {totalRedemptions} utilisation(s) au total.
             Le client saisit le code à la page de paiement Stripe.
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <CouponsView items={items} />
     </main>

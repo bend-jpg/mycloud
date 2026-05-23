@@ -1,7 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
 import { AdminPaymentRow } from "@/components/admin-payment-row";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, CreditCard } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
 
 export default async function AdminPaymentsPage({
   params,
@@ -43,14 +44,17 @@ export default async function AdminPaymentsPage({
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Paiements</h1>
-          <p className="text-[var(--foreground-muted)] mt-1">
-            {payments.length} résultat(s) · Total encaissés : <strong>{totalEur.toFixed(2)} €</strong> ({stats._count} paiements)
-          </p>
-        </div>
-      </div>
+      <PageHero
+        icon={CreditCard}
+        variant="green"
+        title="Paiements"
+        description={
+          <>
+            {payments.length} résultat(s) · Total encaissés :{" "}
+            <strong className="text-[var(--foreground)]">{totalEur.toFixed(2)} €</strong> sur {stats._count} paiements
+          </>
+        }
+      />
 
       <form className="flex flex-wrap items-end gap-3">
         <div className="relative flex-1 min-w-60">
