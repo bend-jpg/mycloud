@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { routing, isRtl, type Locale } from "@/i18n/routing";
 import { Providers } from "@/components/providers";
 import { CommandPaletteWrapper } from "@/components/command-palette-wrapper";
+import { SwRegister } from "@/components/sw-register";
 import { getAppUrl } from "@/lib/url";
 
 const inter = Inter({
@@ -131,6 +132,9 @@ export default async function LocaleLayout({
             {/* Doit être INSIDE NextIntlClientProvider — sinon son useRouter
                 de @/i18n/navigation plante côté client. */}
             <CommandPaletteWrapper />
+            {/* Service Worker — indispensable pour que Chrome/Edge déclenchent
+                beforeinstallprompt et permettent l'installation PWA en un clic. */}
+            <SwRegister />
           </NextIntlClientProvider>
         </Providers>
       </body>
