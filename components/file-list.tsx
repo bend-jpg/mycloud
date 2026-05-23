@@ -28,6 +28,7 @@ import { FileThumbnail } from "./file-thumbnail";
 import { ShareDialog } from "./share-dialog";
 import { FilePreviewModal } from "./file-preview-modal";
 import { PortalMenu } from "./portal-menu";
+import { PromptDialog } from "./prompt-dialog";
 import { useToast } from "./toast";
 import { formatBytes } from "@/lib/utils";
 import { useLasso } from "@/lib/use-lasso";
@@ -97,6 +98,7 @@ export function FileList({
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [shareFile, setShareFile] = useState<{ id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<FileRow | null>(null);
+  const [renameFile, setRenameFile] = useState<{ id: string; name: string } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date-desc");
   const [view, setView] = useState<ViewMode>("grid");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -181,16 +183,30 @@ export function FileList({
     setOpenMenu(null);
   }
 
-  async function handleRename(id: string, current: string) {
-    const name = prompt("Nouveau nom", current);
-    if (!name || name === current) return;
-    const res = await fetch(`/api/files/${id}`, {
+  function openRenameDialog(id: string, current: string) {
+    setRenameFile({ id, name: current });
+    setOpenMenu(null);
+  }
+
+  async function submitRename(name: string) {
+    if (!renameFile) return;
+    if (name === renameFile.name) {
+      setRenameFile(null);
+      return;
+    }
+    const res = await fetch(`/api/files/${renameFile.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
-    if (res.ok) router.refresh();
-    setOpenMenu(null);
+    if (res.ok) {
+      toast.success("Fichier renommé");
+      setRenameFile(null);
+      router.refresh();
+    } else {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error ?? "Erreur lors du renommage");
+    }
   }
 
   async function handleShareToTeam(id: string, tId: string) {
@@ -425,7 +441,7 @@ export function FileList({
             setOpenMenu={setOpenMenu}
             onPreview={(f) => setPreviewFile(f)}
             onShare={(id, name) => { setShareFile({ id, name }); setOpenMenu(null); }}
-            onRename={handleRename}
+            onRename={openRenameDialog}
             onDelete={handleDelete}
             onShareToTeam={handleShareToTeam}
             onUnshareFromTeam={handleUnshareFromTeam}
@@ -482,6 +498,21 @@ export function FileList({
       {previewFile && (
         <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
       )}
+
+      <PromptDialog
+        open={!!renameFile}
+        title="Renommer le fichier"
+        defaultValue={renameFile?.name ?? ""}
+        submitLabel="Renommer"
+        placeholder="Nouveau nom"
+        validate={(v) => {
+          if (v.length > 255) return "Nom trop long (max 255 caractères)";
+          if (v.includes("/") || v.includes("\\")) return "Caractères / et \\ interdits";
+          return null;
+        }}
+        onClose={() => setRenameFile(null)}
+        onSubmit={submitRename}
+      />
     </>
   );
 }
