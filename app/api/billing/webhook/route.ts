@@ -6,6 +6,10 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
+import { notify } from "@/lib/notifications";
+import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { log } from "@/lib/log";
+import { getAppUrl } from "@/lib/url";
 
 export const runtime = "nodejs";
 
@@ -157,19 +161,35 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const userId = await userIdFromCustomer(invoice.customer as string);
         if (userId && invoice.amount_paid > 0) {
-          await db.payment.create({
-            data: {
+          // Idempotent : externalRef = invoice.id est UNIQUE en DB, donc un retry
+          // de Stripe sur le même event ne crée pas de doublon (catch).
+          try {
+            await db.payment.create({
+              data: {
+                userId,
+                amount: invoice.amount_paid,
+                currency: invoice.currency.toUpperCase(),
+                method: "CARD_STRIPE",
+                status: "SUCCEEDED",
+                externalRef: invoice.id,
+                invoiceNumber: invoice.number ?? `INV-${invoice.id}`,
+                invoiceUrl: invoice.hosted_invoice_url ?? null,
+                paidAt: new Date((invoice.status_transitions.paid_at ?? Math.floor(Date.now() / 1000)) * 1000),
+              },
+            });
+            // Notification au user
+            await notify({
               userId,
-              amount: invoice.amount_paid,
-              currency: invoice.currency.toUpperCase(),
-              method: "CARD_STRIPE",
-              status: "SUCCEEDED",
-              externalRef: invoice.id,
-              invoiceNumber: invoice.number ?? `INV-${invoice.id}`,
-              invoiceUrl: invoice.hosted_invoice_url ?? null,
-              paidAt: new Date((invoice.status_transitions.paid_at ?? Math.floor(Date.now() / 1000)) * 1000),
-            },
-          });
+              type: "PAYMENT_SUCCEEDED",
+              title: "Paiement reçu ✓",
+              body: `${(invoice.amount_paid / 100).toFixed(2)} ${invoice.currency.toUpperCase()} encaissés.`,
+              link: "/billing",
+            }).catch(() => undefined);
+            log.info("billing.payment_succeeded", { userId, amount: invoice.amount_paid, invoice: invoice.id });
+          } catch (e) {
+            // Conflit UNIQUE → c'est un retry. Pas grave.
+            log.warn("billing.payment_succeeded.duplicate", { invoice: invoice.id, error: e instanceof Error ? e.message : "unknown" });
+          }
         }
         break;
       }
@@ -181,6 +201,34 @@ export async function POST(req: Request) {
             where: { userId },
             data: { status: "PAST_DUE" },
           }).catch(() => undefined);
+
+          // Trace + notification + email
+          log.warn("billing.payment_failed", { userId, invoice: invoice.id });
+          await notify({
+            userId,
+            type: "PAYMENT_FAILED",
+            title: "Échec de paiement",
+            body: "Ton dernier paiement n'est pas passé. Vérifie ta carte dans Mon plan.",
+            link: "/billing",
+          }).catch(() => undefined);
+
+          if (isEmailConfigured()) {
+            const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
+            if (user?.email) {
+              sendEmail({
+                to: user.email,
+                subject: "Échec de paiement — MyTitanCloud",
+                html: `<!DOCTYPE html><html><body style="font-family:sans-serif;padding:24px;background:#0a0a14;color:#f5f5f7;">
+                <div style="max-width:480px;margin:0 auto;background:#14141f;border-radius:16px;padding:32px;">
+                <h1 style="font-size:22px;">Échec de paiement</h1>
+                <p style="color:#a1a1aa;line-height:1.6;">Bonjour ${user.name ?? ""},</p>
+                <p style="color:#a1a1aa;line-height:1.6;">Ton dernier paiement MyTitanCloud n'est pas passé (carte refusée, fonds insuffisants ou expirée).</p>
+                <p style="color:#a1a1aa;line-height:1.6;">Mets à jour ta carte rapidement pour éviter une suspension :</p>
+                <a href="${getAppUrl()}/billing" style="display:inline-block;background:#38bdf8;color:#0a0a14;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:600;margin-top:16px;">Vérifier ma carte</a>
+                </div></body></html>`,
+              }).catch(() => undefined);
+            }
+          }
         }
         break;
       }
