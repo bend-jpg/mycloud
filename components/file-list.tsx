@@ -22,6 +22,7 @@ import {
   Eye,
   FileArchive,
   Loader2,
+  Star,
 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { FileThumbnail } from "./file-thumbnail";
@@ -138,6 +139,7 @@ export function FileList({
   const [sortOpen, setSortOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
+  const [starBusy, setStarBusy] = useState(false);
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
 
   // Lasso : on lui passe un callback qui sélectionne tous les items du rectangle
@@ -296,6 +298,36 @@ export function FileList({
     clearSelection();
     toast.success(`${totalSelected} élément(s) déplacé(s) en corbeille`);
     router.refresh();
+  }
+
+  async function bulkStar() {
+    if (totalSelected === 0) return;
+    setStarBusy(true);
+    try {
+      const res = await fetch("/api/favorites/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "star",
+          fileIds: Array.from(selected),
+          folderIds: Array.from(selectFolders),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.message ?? data?.error ?? "Erreur étoile");
+      } else {
+        const n = data?.changed ?? 0;
+        if (n === 0) {
+          toast.info("Déjà étoilés");
+        } else {
+          toast.success(`${n} élément(s) ajouté(s) aux favoris`);
+        }
+        clearSelection();
+      }
+    } finally {
+      setStarBusy(false);
+    }
   }
 
   async function bulkDownloadZip() {
@@ -480,6 +512,15 @@ export function FileList({
 
         {selectMode && (
           <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <button
+              onClick={bulkStar}
+              disabled={starBusy}
+              className="btn-ghost text-xs !text-[var(--secondary)]"
+              title="Ajouter aux favoris"
+            >
+              {starBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Star className="size-3.5" />}
+              Étoiler ({totalSelected})
+            </button>
             {selected.size > 0 && (
               <button
                 onClick={bulkDownloadZip}
