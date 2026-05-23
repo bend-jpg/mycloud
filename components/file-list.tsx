@@ -23,6 +23,7 @@ import {
   FileArchive,
   Loader2,
   Star,
+  Upload,
 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { FileThumbnail } from "./file-thumbnail";
@@ -31,6 +32,7 @@ import { FilePreviewModal } from "./file-preview-modal";
 import { PortalMenu } from "./portal-menu";
 import { PromptDialog } from "./prompt-dialog";
 import { ConfirmDialog } from "./confirm-dialog";
+import { EmptyState } from "./empty-state";
 import { useToast } from "./toast";
 import { formatBytes } from "@/lib/utils";
 import { useLasso } from "@/lib/use-lasso";
@@ -555,10 +557,18 @@ export function FileList({
       )}
 
       {folders.length === 0 && files.length === 0 ? (
-        <div className="text-center text-[var(--foreground-muted)] py-16">
-          <p className="text-base">Aucun fichier ici.</p>
-          <p className="text-sm mt-1">Dépose un fichier dans la zone à droite, ou crée un dossier.</p>
-        </div>
+        <EmptyState
+          icon={Upload}
+          variant="accent"
+          title="Cet espace est vide"
+          description={
+            <>
+              Glisse-dépose tes fichiers <strong>n&apos;importe où sur cette page</strong> pour les
+              uploader, ou utilise le bouton <strong>+</strong> en bas à droite sur mobile.
+              Tu peux aussi créer un dossier pour t&apos;organiser.
+            </>
+          }
+        />
       ) : view === "grid" ? (
         <div
           ref={containerRef}
