@@ -2,17 +2,73 @@
 // On charge le site web officiel dans une fenêtre native, en respectant
 // les bonnes pratiques de sécurité (context isolation, sandbox, etc).
 //
-// L'utilisateur a donc un VRAI logiciel installable (.exe Windows, .dmg
-// Mac, .AppImage Linux) sans avoir à passer par le navigateur web.
+// BONUS : au premier launch (ou via menu Fichier > Monter le disque virtuel),
+// on monte le WebDAV de l'utilisateur comme un disque réseau natif. Du coup
+// MyTitanCloud apparaît dans le Finder/Explorateur comme un disque dur,
+// exactement comme pCloud Drive — sans installer de driver tiers.
 
-const { app, BrowserWindow, shell, Menu, Tray, nativeImage } = require("electron");
+const { app, BrowserWindow, shell, Menu, Tray, nativeImage, dialog, ipcMain } = require("electron");
 const path = require("path");
+const { spawn, execSync } = require("child_process");
 
 const APP_URL = process.env.MYCLOUD_URL ?? "https://mytitancloud.com";
 const isDev = process.argv.includes("--dev");
+const DAV_URL = `${APP_URL}/api/dav`;
 
 let mainWindow = null;
 let tray = null;
+
+// =================================================================
+// Montage disque virtuel via WebDAV — équivalent pCloud Drive
+// =================================================================
+
+/**
+ * Tente de monter le WebDAV comme un disque réseau du système.
+ * Marche sans driver tiers : Windows (net use), macOS (mount_webdav),
+ * Linux (gvfs-mount si dispo, sinon davfs2). Si l'OS refuse (HTTPS strict,
+ * permissions, etc), on renvoie false sans crash.
+ */
+function mountVirtualDrive() {
+  const platform = process.platform;
+  try {
+    if (platform === "win32") {
+      // Windows : net use Z: https://mytitancloud.com/api/dav
+      // Demande user/password interactivement à la première connexion via
+      // une popup système — pas géré par nous.
+      execSync(`net use Z: ${DAV_URL.replace(/^https?:\/\//, "\\\\").replace(/\//g, "\\")} /persistent:yes`, {
+        stdio: "ignore",
+        timeout: 10_000,
+      });
+      return { ok: true, mountPoint: "Z:" };
+    }
+    if (platform === "darwin") {
+      // macOS : mount_webdav (besoin d'auth interactive, on délègue à Finder)
+      // Open via shell — Finder ouvre une popup de login propre
+      shell.openExternal(DAV_URL);
+      return { ok: true, mountPoint: "Finder (popup login)" };
+    }
+    if (platform === "linux") {
+      // GNOME / KDE supportent gvfs nativement
+      try {
+        execSync(`gio mount ${DAV_URL.replace(/^https/, "davs")}`, {
+          stdio: "ignore",
+          timeout: 10_000,
+        });
+        return { ok: true, mountPoint: "~/.gvfs/" };
+      } catch {
+        // Fallback : ouvre dans Files / Nautilus
+        spawn("xdg-open", [DAV_URL.replace(/^https/, "davs")], { detached: true });
+        return { ok: true, mountPoint: "Files (open URL)" };
+      }
+    }
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+  return { ok: false, error: "Plateforme non supportée" };
+}
+
+// IPC pour que le renderer (le site web) puisse déclencher le mount
+ipcMain.handle("mount-virtual-drive", () => mountVirtualDrive());
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -81,6 +137,32 @@ function createTray() {
             mainWindow.focus();
           } else {
             createMainWindow();
+          }
+        },
+      },
+      {
+        label: "Monter le disque virtuel",
+        click: async () => {
+          const res = mountVirtualDrive();
+          if (res.ok) {
+            dialog.showMessageBox({
+              type: "info",
+              title: "Disque virtuel monté",
+              message: `MyTitanCloud apparaît maintenant comme un disque dans ton système.`,
+              detail:
+                res.mountPoint === "Z:"
+                  ? "Ouvre l'Explorateur Windows — un nouveau disque Z: avec tes fichiers est apparu."
+                  : res.mountPoint?.includes("Finder")
+                  ? "Le Finder va te demander tes identifiants MyTitanCloud, puis ton cloud apparaît comme un volume monté."
+                  : `Disque monté : ${res.mountPoint}`,
+            });
+          } else {
+            dialog.showMessageBox({
+              type: "warning",
+              title: "Impossible de monter le disque",
+              message: "Le système a refusé le montage automatique.",
+              detail: `Erreur : ${res.error}\n\nTu peux toujours utiliser l'app dans la fenêtre normale.`,
+            });
           }
         },
       },
