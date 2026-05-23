@@ -43,12 +43,15 @@ export interface FileRow {
   mimeType: string;
   uploadedAt: string;
   sharedToTeams?: { id: string; name: string }[];
+  /** Si true, affiche une étoile pleine sur la carte (favori). */
+  starred?: boolean;
 }
 
 export interface FolderRow {
   id: string;
   name: string;
   updatedAt: string;
+  starred?: boolean;
 }
 
 export interface TeamLite {
@@ -784,6 +787,14 @@ function GridView({
               className="relative block h-28 bg-[var(--background-elevated)] flex items-center justify-center rounded-t-2xl overflow-hidden"
             >
               <Folder className="size-12 text-[var(--secondary)]" />
+              {f.starred && (
+                <div
+                  className="absolute bottom-2 end-2 z-10 size-6 rounded-full bg-[var(--secondary)] text-white flex items-center justify-center shadow-lg"
+                  title="Dans tes favoris"
+                >
+                  <Star className="size-3.5" fill="currentColor" />
+                </div>
+              )}
             </Link>
 
             {/* Zone info — hauteur fixe pour matcher les fichiers */}
@@ -921,6 +932,14 @@ function GridView({
                 className="w-full h-full"
                 iconClassName="size-12"
               />
+              {f.starred && (
+                <div
+                  className="absolute bottom-2 end-2 z-10 size-6 rounded-full bg-[var(--secondary)] text-white flex items-center justify-center shadow-lg"
+                  title="Dans tes favoris"
+                >
+                  <Star className="size-3.5" fill="currentColor" />
+                </div>
+              )}
             </button>
 
             {/* Zone info — hauteur fixe identique au dossier */}
@@ -1006,8 +1025,11 @@ function ListView({
                 </td>
                 <td className="px-4 py-2">
                   <Link href={`${folderUrlBase}/${f.id}`} onClick={(e) => { if (selectMode) { e.preventDefault(); toggleFolder(f.id); } }} className="flex items-center gap-2 hover:text-[var(--accent)]">
-                    <Folder className="size-5 text-[var(--secondary)]" />
+                    <Folder className="size-5 text-[var(--secondary)] shrink-0" />
                     <span className="truncate">{f.name}</span>
+                    {f.starred && (
+                      <Star className="size-3.5 text-[var(--secondary)] shrink-0" fill="currentColor" />
+                    )}
                   </Link>
                 </td>
                 <td className="px-4 py-2 text-end text-xs text-[var(--foreground-muted)] hidden sm:table-cell">—</td>
@@ -1051,6 +1073,9 @@ function ListView({
                       <FileIcon mimeType={f.mimeType} className="size-5" />
                     )}
                     <span className="truncate">{f.name}</span>
+                    {f.starred && (
+                      <Star className="size-3.5 text-[var(--secondary)] shrink-0" fill="currentColor" />
+                    )}
                     {sharedTeams.length > 0 && (
                       <span
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] text-[10px]"

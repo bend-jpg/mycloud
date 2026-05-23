@@ -21,7 +21,7 @@ export default async function FilesPage({
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
 
-  const [folders, files, user, myTeams] = await Promise.all([
+  const [folders, files, user, myTeams, favs] = await Promise.all([
     db.folder.findMany({
       where: { ownerId: session.id, parentId: null, isTrash: false, teamId: null },
       orderBy: { name: "asc" },
@@ -37,7 +37,21 @@ export default async function FilesPage({
       select: { storageUsed: true, storageQuota: true, name: true },
     }),
     getMyTeams(session.id),
+    // Defensive : si la table Favorite n'est pas encore pushée en prod,
+    // on continue sans étoiles plutôt que de crasher la page.
+    db.favorite
+      .findMany({
+        where: { userId: session.id },
+        select: { targetType: true, targetId: true },
+      })
+      .catch(() => [] as { targetType: "FILE" | "FOLDER"; targetId: string }[]),
   ]);
+  const starredFileIds = new Set(
+    favs.filter((f) => f.targetType === "FILE").map((f) => f.targetId),
+  );
+  const starredFolderIds = new Set(
+    favs.filter((f) => f.targetType === "FOLDER").map((f) => f.targetId),
+  );
   const sharedMap = await computeSharedToTeams(
     session.id,
     files.map((f) => ({ id: f.id, storageKey: f.storageKey, storageBackendId: f.storageBackendId })),
@@ -94,6 +108,7 @@ export default async function FilesPage({
             id: f.id,
             name: f.name,
             updatedAt: f.updatedAt.toISOString(),
+            starred: starredFolderIds.has(f.id),
           }))}
           files={files.map((f) => ({
             id: f.id,
@@ -102,6 +117,7 @@ export default async function FilesPage({
             mimeType: f.mimeType,
             uploadedAt: f.uploadedAt.toISOString(),
             sharedToTeams: sharedMap[f.id] ?? [],
+            starred: starredFileIds.has(f.id),
           }))}
         />
       </main>
