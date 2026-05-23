@@ -87,6 +87,7 @@ model User {
   activityLogs  ActivityLog[]
   hostingWaitlist HostingWaitlistEntry[]
   favorites     Favorite[]
+  fileRequests  FileRequest[]
 }
 
 model Account {
@@ -351,6 +352,7 @@ model Folder {
   parent   Folder?  @relation("FolderTree", fields: [parentId], references: [id])
   children Folder[] @relation("FolderTree")
   files    File[]
+  fileRequests FileRequest[]
 
   @@index([ownerId, teamId, parentId])
   @@index([path])
@@ -434,6 +436,33 @@ model ShareDownload {
   ipHash      String   // hash de l'IP pour analytics sans PII
   userAgent   String?
   downloadedAt DateTime @default(now())
+}
+
+// ============================================================
+// FILE REQUESTS — Lien public qui permet à n'importe qui de t'envoyer
+// des fichiers sans avoir de compte (équivalent "Dropbox File Request").
+// ============================================================
+
+model FileRequest {
+  id               String    @id @default(cuid())
+  token            String    @unique
+  ownerId          String
+  folderId         String?
+  title            String
+  message          String?
+  maxFiles         Int       @default(20)
+  maxFileSizeBytes BigInt    @default(5368709120) // 5 GB
+  expiresAt        DateTime?
+  passwordHash     String?
+  uploadCount      Int       @default(0)
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
+
+  owner  User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, createdAt])
+  @@index([token])
 }
 
 // ============================================================
