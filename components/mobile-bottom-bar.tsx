@@ -8,12 +8,12 @@
 // sur l'onglet actif, safe-area-inset pour éviter le notch / barre nav.
 
 import { Link, usePathname } from "@/i18n/navigation";
-import { FolderOpen, Star, Share2, Users, Home } from "lucide-react";
+import { FolderOpen, Camera, Share2, Users, Home } from "lucide-react";
 
 const TABS = [
   { href: "/dashboard", icon: Home, label: "Accueil", match: (p: string) => p === "/dashboard" },
   { href: "/files", icon: FolderOpen, label: "Fichiers", match: (p: string) => p.startsWith("/files") },
-  { href: "/starred", icon: Star, label: "Favoris", match: (p: string) => p.startsWith("/starred") },
+  { href: "/photos", icon: Camera, label: "Photos", match: (p: string) => p.startsWith("/photos") },
   { href: "/family", icon: Users, label: "Famille", match: (p: string) => p.startsWith("/family") },
   { href: "/shares", icon: Share2, label: "Partages", match: (p: string) => p.startsWith("/shares") },
 ] as const;

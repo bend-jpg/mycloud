@@ -32,6 +32,7 @@ import {
   UserCog,
   Download,
   Star,
+  Camera,
 } from "lucide-react";
 
 export function MobileNav({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAdmin: boolean }) {
@@ -85,6 +86,7 @@ export function MobileNav({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAdmi
             <>
               <MobileLink href="/dashboard" icon={LayoutDashboard} label="Mon espace" onClick={() => setOpen(false)} />
               <MobileLink href="/files" icon={FolderOpen} label="Mes fichiers" onClick={() => setOpen(false)} />
+              <MobileLink href="/photos" icon={Camera} label="Galerie photos" onClick={() => setOpen(false)} />
               <MobileLink href="/starred" icon={Star} label="Favoris" onClick={() => setOpen(false)} />
               <MobileLink href="/family" icon={Users} label="Famille" onClick={() => setOpen(false)} />
               <MobileLink href="/accounts" icon={UserCog} label="Sous-comptes" onClick={() => setOpen(false)} />
