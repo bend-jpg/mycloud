@@ -49,20 +49,20 @@ export default async function LandingPage({
   return (
     <>
       <PublicHeader />
-      <main className="mx-auto max-w-7xl px-6">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6">
         {/* HERO */}
-        <section className="py-24 md:py-32 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background-elevated)] px-4 py-1.5 text-xs text-[var(--foreground-muted)] mb-8">
-            <Sparkles className="size-3.5 text-[var(--accent)]" />
-            <span>{heroTagline}</span>
+        <section className="py-16 sm:py-24 md:py-32 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background-elevated)] px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs text-[var(--foreground-muted)] mb-6 sm:mb-8 max-w-full">
+            <Sparkles className="size-3.5 text-[var(--accent)] shrink-0" />
+            <span className="truncate">{heroTagline}</span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight max-w-4xl mx-auto leading-[1.1]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight max-w-4xl mx-auto leading-[1.1]">
             {heroTitle}
           </h1>
-          <p className="mt-6 text-lg text-[var(--foreground-muted)] max-w-2xl mx-auto">
+          <p className="mt-5 sm:mt-6 text-base sm:text-lg text-[var(--foreground-muted)] max-w-2xl mx-auto">
             {heroSubtitle}
           </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
+          <div className="mt-8 sm:mt-10 flex flex-wrap justify-center gap-3">
             <Link href="/signup" className="btn-primary">
               {heroCtaStart}
               <ArrowRight className="size-4" />
@@ -74,11 +74,11 @@ export default async function LandingPage({
         </section>
 
         {/* FEATURES — disposition Box TV */}
-        <section id="features" className="py-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+        <section id="features" className="py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12">
             {featuresTitle}
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {features.map(({ key, icon: Icon, accent }) => (
               <div key={key} className="tile cursor-default">
                 <div className={`tile-icon ${accent}`}>
@@ -96,11 +96,11 @@ export default async function LandingPage({
         </section>
 
         {/* PRICING */}
-        <section id="pricing" className="py-24">
-          <h2 className="text-3xl md:text-4xl font-bold text-center">{pricingTitle}</h2>
-          <p className="mt-3 text-center text-[var(--foreground-muted)]">{pricingSubtitle}</p>
+        <section id="pricing" className="py-16 sm:py-24">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center">{pricingTitle}</h2>
+          <p className="mt-3 text-center text-sm sm:text-base text-[var(--foreground-muted)]">{pricingSubtitle}</p>
 
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="mt-8 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {DEFAULT_PLANS.map((plan) => (
               <div
                 key={plan.slug}
@@ -113,7 +113,7 @@ export default async function LandingPage({
                     {t("pricing.popular")}
                   </span>
                 )}
-                <h3 className="text-2xl font-bold">{plan.name}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold">{plan.name}</h3>
                 <p className="text-sm text-[var(--foreground-muted)] min-h-10">
                   {locale === "fr"
                     ? plan.descriptionFr
@@ -123,11 +123,11 @@ export default async function LandingPage({
                     ? plan.descriptionHe
                     : plan.descriptionEn}
                 </p>
-                <div className="my-4">
-                  <span className="text-4xl font-bold">
+                <div className="my-4 flex items-baseline gap-1 flex-wrap">
+                  <span className="text-3xl sm:text-4xl font-bold">
                     {(plan.priceMonthlyEur / 100).toFixed(2)} €
                   </span>
-                  <span className="text-[var(--foreground-muted)] text-sm ms-1">
+                  <span className="text-[var(--foreground-muted)] text-xs sm:text-sm">
                     {t("pricing.perMonth")}
                   </span>
                 </div>

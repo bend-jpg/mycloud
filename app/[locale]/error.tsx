@@ -16,7 +16,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden">
+    <main className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-12 relative overflow-hidden">
       {/* Décors */}
       <div className="pointer-events-none absolute -top-32 -end-32 size-96 rounded-full bg-[var(--danger)]/15 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -start-32 size-96 rounded-full bg-yellow-400/10 blur-3xl" />

@@ -26,7 +26,7 @@ export default async function DownloadPage({
   return (
     <>
       <PublicHeader />
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-12 space-y-12">
+      <main className="mx-auto max-w-5xl px-4 sm:px-4 sm:px-6 py-12 space-y-12">
         {/* Hero */}
         <section className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/10 p-8 sm:p-12 text-center">
           <div className="pointer-events-none absolute -top-20 -end-20 size-72 rounded-full bg-[var(--accent)]/20 blur-3xl" />

@@ -18,7 +18,7 @@ export default async function ContactPage({
   return (
     <>
       <PublicHeader />
-      <main className="mx-auto max-w-4xl px-6 py-16 space-y-8">
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 py-16 space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold">Contacte-nous</h1>
           <p className="text-[var(--foreground-muted)] mt-3">

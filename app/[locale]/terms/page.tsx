@@ -15,7 +15,7 @@ export default async function TermsPage({
   return (
     <>
       <PublicHeader />
-      <main className="mx-auto max-w-3xl px-6 py-16 prose prose-invert">
+      <main className="mx-auto max-w-3xl px-4 sm:px-6 py-16 prose prose-invert">
         <h1 className="text-4xl font-bold">Conditions générales d&apos;utilisation et de vente</h1>
         <p className="text-sm text-[var(--foreground-muted)]">Dernière mise à jour : {new Date().toLocaleDateString("fr")}</p>
 

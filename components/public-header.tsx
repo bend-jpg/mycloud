@@ -21,27 +21,29 @@ export async function PublicHeader() {
           <span>MyTitanCloud</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm text-[var(--foreground-muted)]">
-          <Link href="/#features" className="hover:text-[var(--foreground)]">{t("features")}</Link>
-          <Link href="/#pricing" className="hover:text-[var(--foreground)]">{t("pricing")}</Link>
+        <nav className="hidden md:flex items-center gap-4 lg:gap-6 text-sm text-[var(--foreground-muted)]">
+          <Link href="/#features" className="hover:text-[var(--foreground)] whitespace-nowrap">{t("features")}</Link>
+          <Link href="/#pricing" className="hover:text-[var(--foreground)] whitespace-nowrap">{t("pricing")}</Link>
           <Link href="/download" className="hover:text-[var(--foreground)]">Apps</Link>
           <Link href="/contact" className="hover:text-[var(--foreground)]">Contact</Link>
         </nav>
 
-        <div className="flex items-center gap-2 lg:gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* LanguageSwitcher visible dès lg (sinon trop tassé sur tablette) */}
           <div className="hidden lg:block">
             <LanguageSwitcher />
           </div>
-          {/* Login/Signup visibles uniquement >= lg (1024px) — sinon burger gère */}
+          {/* Login/Signup visibles dès md (tablette) — sinon entre 768 et 1024
+              le burger est caché ET les CTAs aussi, donc rien pour s'inscrire ! */}
           <Link
             href="/login"
-            className="hidden lg:inline-flex btn-ghost text-sm whitespace-nowrap"
+            className="hidden md:inline-flex btn-ghost !px-4 !py-2 text-sm whitespace-nowrap"
           >
             {t("login")}
           </Link>
           <Link
             href="/signup"
-            className="hidden lg:inline-flex btn-primary text-sm whitespace-nowrap"
+            className="hidden md:inline-flex btn-primary !px-4 !py-2 text-sm whitespace-nowrap"
           >
             {t("signup")}
           </Link>

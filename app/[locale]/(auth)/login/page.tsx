@@ -14,7 +14,7 @@ export default async function LoginPage({
   const t = await getTranslations("auth.login");
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
+    <main className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-8">
       <div className="w-full max-w-md">
         <Link href="/" className="flex items-center justify-center gap-2 mb-8 text-lg font-semibold">
           <Cloud className="size-6 text-[var(--accent)]" />

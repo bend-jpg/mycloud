@@ -15,7 +15,7 @@ export default async function LegalPage({
   return (
     <>
       <PublicHeader />
-      <main className="mx-auto max-w-3xl px-6 py-16">
+      <main className="mx-auto max-w-3xl px-4 sm:px-6 py-16">
         <h1 className="text-4xl font-bold">Mentions légales</h1>
 
         <div className="space-y-6 mt-8 text-[var(--foreground-muted)] leading-relaxed">

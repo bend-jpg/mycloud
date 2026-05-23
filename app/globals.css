@@ -126,6 +126,15 @@ body {
     radial-gradient(ellipse 800px 400px at 80% 100%, var(--hero-glow-2), transparent 70%);
   background-attachment: fixed;
   min-height: 100vh;
+  /* Évite tout débordement horizontal sur mobile (ex: gradient absolu trop large,
+     ou enfant qui dépasse — sinon scroll horizontal indésirable). */
+  overflow-x: hidden;
+}
+
+/* Images jamais plus larges que leur container — sécurité responsive globale. */
+img, video, svg {
+  max-width: 100%;
+  height: auto;
 }
 
 [dir="rtl"] body {
@@ -140,46 +149,48 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
 /* ===== Tuile "Box TV" ===== */
-.tile {
-  position: relative;
-  background: linear-gradient(160deg, var(--background-tile) 0%, var(--background-elevated) 100%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-tile);
-  padding: 1.75rem;
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
-  overflow: hidden;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-height: 180px;
-}
-.tile::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 80% 0%, var(--accent-glow), transparent 60%);
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-.tile:hover {
-  transform: translateY(-4px) scale(1.01);
-  border-color: var(--border-hover);
-  box-shadow: 0 20px 60px -20px var(--accent-glow);
-}
-.tile:hover::before { opacity: 1; }
+@layer components {
+  .tile {
+    position: relative;
+    background: linear-gradient(160deg, var(--background-tile) 0%, var(--background-elevated) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-tile);
+    padding: 1.75rem;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 180px;
+  }
+  .tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 80% 0%, var(--accent-glow), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .tile:hover {
+    transform: translateY(-4px) scale(1.01);
+    border-color: var(--border-hover);
+    box-shadow: 0 20px 60px -20px var(--accent-glow);
+  }
+  .tile:hover::before { opacity: 1; }
 
-.tile-icon {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--background-elevated);
-  border: 1px solid var(--border);
-  color: var(--accent);
+  .tile-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--background-elevated);
+    border: 1px solid var(--border);
+    color: var(--accent);
+  }
 }
 
 /* ===== Boutons ===== */
