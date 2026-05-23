@@ -22,6 +22,7 @@ import {
   UserPlus,
   LifeBuoy,
   UserCog,
+  Download,
 } from "lucide-react";
 
 export function MobileNav({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAdmin: boolean }) {
@@ -92,6 +93,7 @@ export function MobileNav({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAdmi
                   <MobileLink href="/" icon={Home} label="Accueil" onClick={() => setOpen(false)} />
                   <MobileLink href="/#features" icon={LayoutDashboard} label="Fonctionnalités" onClick={() => setOpen(false)} />
                   <MobileLink href="/#pricing" icon={Tag} label="Tarifs" onClick={() => setOpen(false)} />
+                  <MobileLink href="/download" icon={Download} label="Apps mobile / desktop" onClick={() => setOpen(false)} />
                   <div className="my-2 h-px bg-[var(--border)]" />
                   <MobileLink href="/login" icon={LogIn} label="Se connecter" onClick={() => setOpen(false)} />
                   <MobileLink href="/signup" icon={UserPlus} label="Créer un compte" onClick={() => setOpen(false)} accent />

@@ -73,13 +73,19 @@ export async function SiteHeader() {
             </>
           ) : (
             <>
-              <div className="hidden sm:block">
+              <div className="hidden lg:block">
                 <LanguageSwitcher />
               </div>
-              <Link href="/login" className="hidden sm:inline-flex btn-ghost text-sm">
+              <Link
+                href="/login"
+                className="hidden lg:inline-flex btn-ghost text-sm whitespace-nowrap"
+              >
                 {t("login")}
               </Link>
-              <Link href="/signup" className="hidden sm:inline-flex btn-primary text-sm">
+              <Link
+                href="/signup"
+                className="hidden lg:inline-flex btn-primary text-sm whitespace-nowrap"
+              >
                 {t("signup")}
               </Link>
             </>

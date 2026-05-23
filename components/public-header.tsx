@@ -24,15 +24,27 @@ export async function PublicHeader() {
         <nav className="hidden md:flex items-center gap-6 text-sm text-[var(--foreground-muted)]">
           <Link href="/#features" className="hover:text-[var(--foreground)]">{t("features")}</Link>
           <Link href="/#pricing" className="hover:text-[var(--foreground)]">{t("pricing")}</Link>
+          <Link href="/download" className="hover:text-[var(--foreground)]">Apps</Link>
           <Link href="/contact" className="hover:text-[var(--foreground)]">Contact</Link>
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden sm:block">
+        <div className="flex items-center gap-2 lg:gap-3">
+          <div className="hidden lg:block">
             <LanguageSwitcher />
           </div>
-          <Link href="/login" className="hidden sm:inline-flex btn-ghost text-sm">{t("login")}</Link>
-          <Link href="/signup" className="hidden sm:inline-flex btn-primary text-sm">{t("signup")}</Link>
+          {/* Login/Signup visibles uniquement >= lg (1024px) — sinon burger gère */}
+          <Link
+            href="/login"
+            className="hidden lg:inline-flex btn-ghost text-sm whitespace-nowrap"
+          >
+            {t("login")}
+          </Link>
+          <Link
+            href="/signup"
+            className="hidden lg:inline-flex btn-primary text-sm whitespace-nowrap"
+          >
+            {t("signup")}
+          </Link>
           <MobileNav isLoggedIn={false} isAdmin={false} />
         </div>
       </div>
