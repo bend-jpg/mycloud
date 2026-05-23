@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Upload, X, CheckCircle2, AlertCircle, FileUp } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, FileUp, CloudUpload } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 
 interface UploadItem {
@@ -23,7 +24,12 @@ export function FileUploader({
   const router = useRouter();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  /** Overlay plein-écran quand un drag arrive depuis l'extérieur (bureau, autre onglet). */
+  const [pageDragOver, setPageDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const startUpload = useCallback(
     async (item: UploadItem) => {
@@ -100,6 +106,50 @@ export function FileUploader({
     },
     [startUpload]
   );
+
+  // Drag-drop global : dropper depuis n'importe où sur la page (pas seulement
+  // dans la dropzone) déclenche l'upload. On utilise un compteur pour gérer
+  // les enter/leave imbriqués sans flicker — dragenter incremente, dragleave
+  // decremente. Quand le compteur retombe à 0, on cache l'overlay.
+  useEffect(() => {
+    function hasFiles(e: DragEvent) {
+      return e.dataTransfer?.types?.includes("Files") ?? false;
+    }
+    function onEnter(e: DragEvent) {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragCounterRef.current += 1;
+      setPageDragOver(true);
+    }
+    function onOver(e: DragEvent) {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+    }
+    function onLeave(e: DragEvent) {
+      if (!hasFiles(e)) return;
+      dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+      if (dragCounterRef.current === 0) setPageDragOver(false);
+    }
+    function onDrop(e: DragEvent) {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragCounterRef.current = 0;
+      setPageDragOver(false);
+      if (e.dataTransfer?.files?.length) {
+        handleFiles(e.dataTransfer.files);
+      }
+    }
+    window.addEventListener("dragenter", onEnter);
+    window.addEventListener("dragover", onOver);
+    window.addEventListener("dragleave", onLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onEnter);
+      window.removeEventListener("dragover", onOver);
+      window.removeEventListener("dragleave", onLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, [handleFiles]);
 
   return (
     <>
@@ -184,6 +234,22 @@ export function FileUploader({
           </div>
         </div>
       )}
+
+      {/* Overlay full-page : se déclenche quand un fichier est draggé depuis
+          le bureau ou un autre onglet. Animation au scale + couleur accent. */}
+      {mounted && pageDragOver &&
+        createPortal(
+          <div className="fixed inset-0 z-[180] bg-[var(--accent)]/10 backdrop-blur-sm pointer-events-none flex items-center justify-center animate-fade-in">
+            <div className="rounded-3xl border-4 border-dashed border-[var(--accent)] bg-[var(--background-elevated)]/90 px-10 py-12 text-center animate-slide-down">
+              <CloudUpload className="size-16 text-[var(--accent)] mx-auto mb-4" strokeWidth={1.5} />
+              <p className="text-2xl font-bold">Lâche tes fichiers ici</p>
+              <p className="text-sm text-[var(--foreground-muted)] mt-2">
+                Multi-fichiers OK · uploadé dans {folderId ? "ce dossier" : "ton espace"}
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
