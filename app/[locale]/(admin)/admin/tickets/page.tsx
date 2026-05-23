@@ -76,10 +76,16 @@ export default async function AdminTicketsPage({
 
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] overflow-x-auto">
         {tickets.length === 0 ? (
-          <div className="text-center py-16 text-[var(--foreground-muted)]">
-            <TicketIcon className="size-12 mx-auto mb-3 opacity-30" />
-            <p>Aucun ticket.</p>
-            <p className="text-xs mt-2">Pour envoyer un message à un client, va sur sa fiche → onglet « Message client ».</p>
+          <div className="text-center py-16 px-6">
+            <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-[var(--background-elevated)] text-[var(--foreground-muted)] mb-3">
+              <TicketIcon className="size-7" />
+            </div>
+            <p className="text-base font-medium">Aucun ticket</p>
+            <p className="text-sm text-[var(--foreground-muted)] mt-1 max-w-md mx-auto">
+              {q || status || priority
+                ? "Essaie de modifier tes filtres pour voir plus de résultats."
+                : "Les tickets ouverts par tes clients apparaîtront ici. Pour envoyer toi-même un message, va sur la fiche d'un client → Message client."}
+            </p>
           </div>
         ) : (
           <table className="w-full text-sm">

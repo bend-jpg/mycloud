@@ -50,7 +50,7 @@ export function EmptyState({
   secondaryCta,
 }: EmptyStateProps) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-tile)] py-14 px-6 text-center">
+    <div className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-tile)] py-14 px-6 text-center animate-fade-in">
       {/* Gradient blob en fond */}
       <div
         className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${VARIANT_GRADIENT[variant]} opacity-60`}

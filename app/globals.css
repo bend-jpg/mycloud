@@ -237,3 +237,56 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===== Animations subtiles ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 24px 4px var(--accent-glow); }
+}
+
+/* Classes utilitaires */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out both;
+}
+.animate-slide-down {
+  animation: slideDown 0.2s ease-out both;
+}
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+/* Délais en cascade pour les listes (utiliser style="--i: 0" sur chaque enfant) */
+.stagger > * {
+  animation: fadeInUp 0.4s ease-out both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}

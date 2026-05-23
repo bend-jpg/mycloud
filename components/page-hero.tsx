@@ -79,7 +79,7 @@ export function PageHero({
 }: PageHeroProps) {
   const v = VARIANT[variant] ?? VARIANT.cyan;
   return (
-    <div className={`relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br ${v.from} via-[var(--background-tile)] ${v.to} p-6 sm:p-8`}>
+    <div className={`relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br ${v.from} via-[var(--background-tile)] ${v.to} p-6 sm:p-8 animate-fade-in-up`}>
       <div className={`pointer-events-none absolute -top-16 -end-16 size-64 rounded-full ${v.blob1} blur-3xl`} />
       <div className={`pointer-events-none absolute -bottom-16 -start-16 size-64 rounded-full ${v.blob2} blur-3xl`} />
       <div className="relative flex flex-col md:flex-row md:items-start md:justify-between gap-4">

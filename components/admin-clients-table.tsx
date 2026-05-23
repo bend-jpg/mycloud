@@ -170,8 +170,14 @@ export function AdminClientsTable({
           </tbody>
         </table>
         {users.length === 0 && (
-          <div className="text-center text-sm text-[var(--foreground-muted)] py-12">
-            Aucun client trouvé.
+          <div className="text-center py-16 px-6">
+            <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-[var(--background-elevated)] text-[var(--foreground-muted)] mb-3">
+              <Sparkles className="size-7" />
+            </div>
+            <p className="text-base font-medium">Aucun client trouvé</p>
+            <p className="text-sm text-[var(--foreground-muted)] mt-1">
+              Essaie de modifier tes filtres ou attend les premiers signups.
+            </p>
           </div>
         )}
       </div>

@@ -121,7 +121,17 @@ export default async function AdminPaymentsPage({
           </tbody>
         </table>
         {payments.length === 0 && (
-          <p className="text-center text-sm text-[var(--foreground-muted)] py-12">Aucun paiement.</p>
+          <div className="text-center py-16 px-6">
+            <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-[var(--background-elevated)] text-[var(--foreground-muted)] mb-3">
+              <CreditCard className="size-7" />
+            </div>
+            <p className="text-base font-medium">Aucun paiement trouvé</p>
+            <p className="text-sm text-[var(--foreground-muted)] mt-1">
+              {q || status || method
+                ? "Modifie tes filtres pour voir plus de résultats."
+                : "Les paiements apparaîtront ici dès qu'un client souscrira."}
+            </p>
+          </div>
         )}
       </div>
     </main>

@@ -49,7 +49,7 @@ export function BoxTile({
   return (
     <Link
       href={href}
-      className={`relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] p-5 min-h-[160px] flex flex-col group transition-all hover:scale-[1.02] hover:shadow-xl ${a.hoverBorder}`}
+      className={`relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background-tile)] p-5 min-h-[160px] flex flex-col group transition-all hover:scale-[1.02] hover:shadow-xl animate-fade-in-up ${a.hoverBorder}`}
     >
       {/* Gradient overlay */}
       <div
