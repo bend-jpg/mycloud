@@ -49,3 +49,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .git/.git-credentials-store
+
+# desktop electron wrapper — build artifacts ne sont pas commit
+# (générés par GitHub Actions et uploadés en assets de release)
+desktop/node_modules/
+desktop/dist/
+desktop/package-lock.json

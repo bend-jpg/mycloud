@@ -1,0 +1,8 @@
+# Vercel doit ignorer le wrapper desktop — c'est un projet séparé buildé
+# uniquement via GitHub Actions, jamais déployé sur le web.
+desktop/
+.github/
+
+# Tests E2E et résultats locaux
+playwright-report/
+test-results/

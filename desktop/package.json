@@ -1,0 +1,67 @@
+{
+  "name": "mytitancloud-desktop",
+  "version": "0.1.0",
+  "description": "MyTitanCloud — logiciel desktop officiel (Windows / macOS / Linux)",
+  "main": "main.js",
+  "author": {
+    "name": "MyTitanCloud",
+    "email": "contact@mytitancloud.com"
+  },
+  "homepage": "https://mytitancloud.com",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mytitancloud.desktop",
+    "productName": "MyTitanCloud",
+    "copyright": "Copyright © 2026 MyTitanCloud",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.png",
+      "category": "Network"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "bend-jpg",
+      "repo": "mycloud"
+    }
+  }
+}

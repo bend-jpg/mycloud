@@ -1,0 +1,114 @@
+# Build cross-platform des installeurs MyTitanCloud Desktop.
+# Déclenché par les tags `desktop-v*` (ex: desktop-v0.1.0).
+# Output : .exe (Windows), .dmg (macOS Intel + ARM), .AppImage + .deb (Linux).
+# Les artefacts sont uploadés comme assets sur la release GitHub correspondante.
+
+name: Desktop installers
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch: # permet de déclencher manuellement depuis l'UI GitHub
+
+permissions:
+  contents: write # nécessaire pour créer la release et uploader les assets
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build Windows installer
+        if: matrix.os == 'windows-latest'
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build macOS installer
+        if: matrix.os == 'macos-latest'
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # CSC_LINK et CSC_KEY_PASSWORD seraient utilisés pour signer le .dmg
+          # avec un certificat Apple Developer. Sans certif, le .dmg sera unsigned
+          # et macOS affichera un warning "developer not verified" au premier launch.
+
+      - name: Build Linux installers
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mytitancloud-${{ matrix.os }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+            desktop/dist/*.yml
+            desktop/dist/*.blockmap
+          if-no-files-found: warn
+          retention-days: 30
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MyTitanCloud Desktop ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            ## MyTitanCloud Desktop
+
+            Téléchargements officiels :
+            - **Windows** : `.exe` (NSIS installer)
+            - **macOS** : `.dmg` (Intel + Apple Silicon)
+            - **Linux** : `.AppImage` ou `.deb`
+
+            Ouvre simplement l'installeur correspondant à ton OS, double-clique,
+            et MyTitanCloud apparaîtra dans tes applications.
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
