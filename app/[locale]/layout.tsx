@@ -5,6 +5,7 @@ import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing, isRtl, type Locale } from "@/i18n/routing";
 import { Providers } from "@/components/providers";
+import { CommandPaletteWrapper } from "@/components/command-palette-wrapper";
 import { getAppUrl } from "@/lib/url";
 
 const inter = Inter({
@@ -127,6 +128,9 @@ export default async function LocaleLayout({
         <Providers>
           <NextIntlClientProvider locale={locale as Locale} messages={messages}>
             <div id="main-content">{children}</div>
+            {/* Doit être INSIDE NextIntlClientProvider — sinon son useRouter
+                de @/i18n/navigation plante côté client. */}
+            <CommandPaletteWrapper />
           </NextIntlClientProvider>
         </Providers>
       </body>

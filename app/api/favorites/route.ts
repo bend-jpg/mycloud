@@ -17,18 +17,24 @@ export async function GET() {
   } catch {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
-  const favs = await db.favorite.findMany({
-    where: { userId: session.id },
-    orderBy: { createdAt: "desc" },
-    select: { targetType: true, targetId: true, createdAt: true },
-  });
-  return NextResponse.json({
-    items: favs.map((f) => ({
-      targetType: f.targetType,
-      targetId: f.targetId,
-      createdAt: f.createdAt.toISOString(),
-    })),
-  });
+  // Defensive : si la table Favorite n'existe pas encore (migration pas
+  // poussée en prod), on retourne une liste vide plutôt que de crasher.
+  try {
+    const favs = await db.favorite.findMany({
+      where: { userId: session.id },
+      orderBy: { createdAt: "desc" },
+      select: { targetType: true, targetId: true, createdAt: true },
+    });
+    return NextResponse.json({
+      items: favs.map((f) => ({
+        targetType: f.targetType,
+        targetId: f.targetId,
+        createdAt: f.createdAt.toISOString(),
+      })),
+    });
+  } catch {
+    return NextResponse.json({ items: [] });
+  }
 }
 
 export async function POST(req: Request) {
@@ -69,22 +75,30 @@ export async function POST(req: Request) {
   }
 
   // Toggle : si existe → supprime, sinon → crée
-  const existing = await db.favorite.findUnique({
-    where: {
-      userId_targetType_targetId: {
-        userId: session.id,
-        targetType,
-        targetId,
+  try {
+    const existing = await db.favorite.findUnique({
+      where: {
+        userId_targetType_targetId: {
+          userId: session.id,
+          targetType,
+          targetId,
+        },
       },
-    },
-  });
-  if (existing) {
-    await db.favorite.delete({ where: { id: existing.id } });
-    return NextResponse.json({ ok: true, starred: false });
-  } else {
-    await db.favorite.create({
-      data: { userId: session.id, targetType, targetId },
     });
-    return NextResponse.json({ ok: true, starred: true });
+    if (existing) {
+      await db.favorite.delete({ where: { id: existing.id } });
+      return NextResponse.json({ ok: true, starred: false });
+    } else {
+      await db.favorite.create({
+        data: { userId: session.id, targetType, targetId },
+      });
+      return NextResponse.json({ ok: true, starred: true });
+    }
+  } catch {
+    // Table pas encore poussée en prod — on signale gentiment
+    return NextResponse.json(
+      { error: "FAVORITES_NOT_READY", message: "Favoris pas encore disponibles, déploie la DB" },
+      { status: 503 },
+    );
   }
 }

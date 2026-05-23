@@ -28,10 +28,16 @@ export default async function StarredPage({
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
 
-  const favs = await db.favorite.findMany({
-    where: { userId: session.id },
-    orderBy: { createdAt: "desc" },
-  });
+  // Defensive : si la table n'existe pas encore en prod, on traite comme vide
+  let favs: { targetType: "FILE" | "FOLDER"; targetId: string; createdAt: Date }[] = [];
+  try {
+    favs = await db.favorite.findMany({
+      where: { userId: session.id },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch {
+    favs = [];
+  }
 
   const fileIds = favs.filter((f) => f.targetType === "FILE").map((f) => f.targetId);
   const folderIds = favs.filter((f) => f.targetType === "FOLDER").map((f) => f.targetId);
