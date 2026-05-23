@@ -21,6 +21,7 @@ import {
   LifeBuoy,
   Clock,
   Camera,
+  Inbox,
 } from "lucide-react";
 
 export default async function DashboardPage({
@@ -126,6 +127,13 @@ export default async function DashboardPage({
             title={t("tiles.shares.title")}
             description={t("tiles.shares.desc")}
             accent="violet"
+          />
+          <BoxTile
+            href="/file-requests"
+            icon={<Inbox className="size-6" />}
+            title="Demandes de fichiers"
+            description="Crée un lien pour qu'on t'envoie des fichiers, même sans compte"
+            accent="cyan"
           />
           <BoxTile
             href="/billing"
