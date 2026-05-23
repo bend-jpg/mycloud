@@ -57,6 +57,31 @@ export interface TeamLite {
 
 type SortKey = "name-asc" | "name-desc" | "date-desc" | "date-asc" | "size-desc" | "size-asc";
 type ViewMode = "grid" | "list";
+type FilterKind = "all" | "image" | "video" | "document" | "audio";
+
+const FILTER_LABEL: Record<FilterKind, string> = {
+  all: "Tout",
+  image: "Photos",
+  video: "Vidéos",
+  document: "Documents",
+  audio: "Audio",
+};
+
+function mimeMatchesFilter(mime: string, filter: FilterKind): boolean {
+  if (filter === "all") return true;
+  if (filter === "image") return mime.startsWith("image/");
+  if (filter === "video") return mime.startsWith("video/");
+  if (filter === "audio") return mime.startsWith("audio/");
+  // document = tout ce qui n'est pas image/video/audio
+  if (filter === "document") {
+    return (
+      !mime.startsWith("image/") &&
+      !mime.startsWith("video/") &&
+      !mime.startsWith("audio/")
+    );
+  }
+  return true;
+}
 
 const SORT_LABEL: Record<SortKey, string> = {
   "name-asc": "Nom A→Z",
@@ -107,6 +132,7 @@ export function FileList({
   // Préférences persistées (clé partagée entre /files et /family/files)
   const [sortKey, setSortKey] = useLocalStorage<SortKey>("files.sortKey", "date-desc");
   const [view, setView] = useLocalStorage<ViewMode>("files.view", "grid");
+  const [filter, setFilter] = useState<FilterKind>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectFolders, setSelectFolders] = useState<Set<string>>(new Set());
   const [sortOpen, setSortOpen] = useState(false);
@@ -127,7 +153,7 @@ export function FileList({
   });
 
   const sortedFiles = useMemo(() => {
-    const arr = [...files];
+    const arr = files.filter((f) => mimeMatchesFilter(f.mimeType, filter));
     arr.sort((a, b) => {
       switch (sortKey) {
         case "name-asc": return a.name.localeCompare(b.name);
@@ -140,7 +166,7 @@ export function FileList({
       }
     });
     return arr;
-  }, [files, sortKey]);
+  }, [files, sortKey, filter]);
 
   const sortedFolders = useMemo(() => {
     const arr = [...folders];
@@ -365,8 +391,48 @@ export function FileList({
     }
   }
 
+  // Compte par filtre pour les chips (affiché entre parenthèses)
+  const counts: Record<FilterKind, number> = useMemo(() => ({
+    all: files.length,
+    image: files.filter((f) => f.mimeType.startsWith("image/")).length,
+    video: files.filter((f) => f.mimeType.startsWith("video/")).length,
+    audio: files.filter((f) => f.mimeType.startsWith("audio/")).length,
+    document: files.filter((f) =>
+      !f.mimeType.startsWith("image/") &&
+      !f.mimeType.startsWith("video/") &&
+      !f.mimeType.startsWith("audio/")
+    ).length,
+  }), [files]);
+
   return (
     <>
+      {/* Quick filter chips — masqué si très peu de fichiers (≤3) */}
+      {files.length > 3 && (
+        <div className="flex items-center gap-1.5 flex-wrap mb-3 overflow-x-auto -mx-1 px-1">
+          {(["all", "image", "video", "document", "audio"] as FilterKind[]).map((k) => {
+            const active = filter === k;
+            const count = counts[k];
+            if (k !== "all" && count === 0) return null;
+            return (
+              <button
+                key={k}
+                onClick={() => setFilter(k)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
+                  active
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                    : "bg-[var(--background-tile)] hover:bg-[var(--background-elevated)] text-[var(--foreground-muted)]"
+                }`}
+              >
+                {FILTER_LABEL[k]}
+                <span className={`ms-1.5 text-[10px] ${active ? "opacity-80" : "opacity-60"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <div className="flex items-center gap-2">
