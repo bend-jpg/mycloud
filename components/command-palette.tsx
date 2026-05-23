@@ -7,6 +7,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, usePathname } from "@/i18n/navigation";
+import { formatBytes } from "@/lib/utils";
 import {
   Search,
   FolderOpen,
@@ -26,6 +27,9 @@ import {
   Download,
   ArrowRight,
   Star,
+  File as FileIcon,
+  Folder as FolderIcon,
+  Loader2,
 } from "lucide-react";
 
 interface Command {
@@ -35,7 +39,12 @@ interface Command {
   icon: React.ComponentType<{ className?: string }>;
   keywords?: string[];
   admin?: boolean;
-  section: "Navigation" | "Compte" | "Admin";
+  section: "Navigation" | "Compte" | "Admin" | "Fichiers" | "Dossiers";
+}
+
+interface SearchResults {
+  files: { id: string; name: string; mimeType: string; size: string; folderId: string | null }[];
+  folders: { id: string; name: string; parentId: string | null }[];
 }
 
 const COMMANDS: Command[] = [
@@ -78,6 +87,8 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
+  const [liveResults, setLiveResults] = useState<SearchResults>({ files: [], folders: [] });
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -121,15 +132,74 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
     setOpen(false);
   }, [pathname]);
 
+  // Recherche fichiers live (debounce 200 ms) — déclenchée à partir de 2 chars.
+  // On évite les fetch redondants en abortant les requêtes en cours.
+  useEffect(() => {
+    const q = query.trim();
+    if (!open || q.length < 2) {
+      setLiveResults({ files: [], folders: [] });
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/files/search?q=${encodeURIComponent(q)}`, {
+          signal: ctrl.signal,
+        });
+        if (!res.ok) {
+          setLiveResults({ files: [], folders: [] });
+          return;
+        }
+        const data: SearchResults = await res.json();
+        setLiveResults(data);
+      } catch {
+        // ignore abort
+      } finally {
+        setSearching(false);
+      }
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [query, open]);
+
   const filtered = useMemo(() => {
     const all = COMMANDS.filter((c) => isAdmin || !c.admin);
-    if (!query.trim()) return all;
-    const q = query.toLowerCase();
-    return all.filter((c) => {
-      const haystack = [c.label, c.description ?? "", ...(c.keywords ?? [])].join(" ").toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [query, isAdmin]);
+    const trimmed = query.trim();
+    const baseStatic = !trimmed
+      ? all
+      : all.filter((c) => {
+          const haystack = [c.label, c.description ?? "", ...(c.keywords ?? [])]
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(trimmed.toLowerCase());
+        });
+    // Convertit les fichiers / dossiers live en commandes virtuelles
+    const liveCommands: Command[] = [
+      ...liveResults.folders.map(
+        (f): Command => ({
+          href: `/files/${f.id}`,
+          label: f.name,
+          description: "Dossier",
+          icon: FolderIcon,
+          section: "Dossiers",
+        }),
+      ),
+      ...liveResults.files.map(
+        (f): Command => ({
+          href: f.folderId ? `/files/${f.folderId}` : `/files`,
+          label: f.name,
+          description: formatBytes(Number(f.size)) + " · " + (f.mimeType || "Fichier"),
+          icon: FileIcon,
+          section: "Fichiers",
+        }),
+      ),
+    ];
+    return [...baseStatic, ...liveCommands];
+  }, [query, isAdmin, liveResults]);
 
   function onKeyNav(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
@@ -184,6 +254,9 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
                 className="flex-1 bg-transparent outline-none text-base"
                 autoFocus
               />
+              {searching && (
+                <Loader2 className="size-4 text-[var(--foreground-muted)] animate-spin shrink-0" />
+              )}
               <kbd className="text-xs rounded bg-[var(--background)] border border-[var(--border)] px-1.5 py-0.5 text-[var(--foreground-muted)] hidden sm:inline">
                 Esc
               </kbd>
@@ -200,12 +273,12 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
                     <p className="text-[10px] uppercase tracking-wide text-[var(--foreground-muted)] px-2 py-1.5">
                       {section}
                     </p>
-                    {cmds.map((cmd) => {
+                    {cmds.map((cmd, idx) => {
                       const globalIdx = filtered.indexOf(cmd);
                       const active = globalIdx === activeIdx;
                       return (
                         <button
-                          key={cmd.href}
+                          key={`${section}-${idx}-${cmd.href}`}
                           onClick={() => {
                             router.push(cmd.href);
                             setOpen(false);
