@@ -604,6 +604,25 @@ model Notification {
 }
 
 // ============================================================
+// APP RELEASES — version + URL des installeurs natifs hébergés
+// par nos soins (R2 / Vercel Blob / GitHub) — l'admin met à jour
+// les URLs via /admin/app-releases sans redéployer le code.
+// ============================================================
+
+model AppRelease {
+  id          String   @id @default(cuid())
+  platform    String   @unique // "win", "mac", "linux", "android", "ios"
+  version     String           // "0.1.1"
+  url         String           // URL directe du .exe / .dmg / .AppImage / .apk
+  sizeBytes   BigInt?
+  checksumSha String?          // SHA256 hex pour intégrité (optionnel)
+  releaseNotes String?  @db.Text
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+}
+
+// ============================================================
 // HOSTING WAITLIST — Phase 9 préinscriptions (site / Claude Code)
 // ============================================================
 

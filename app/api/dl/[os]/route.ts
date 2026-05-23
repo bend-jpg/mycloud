@@ -1,44 +1,59 @@
 // /api/dl/[os] — redirige vers le bon installeur selon l'OS.
 //
-// Lit les env vars DOWNLOAD_URL_* configurées dans Vercel :
-//   - DOWNLOAD_URL_WIN    → .exe Windows
-//   - DOWNLOAD_URL_MAC    → .dmg macOS
-//   - DOWNLOAD_URL_LINUX  → .AppImage Linux
-//   - DOWNLOAD_URL_ANDROID → .apk Android
+// Priorité de résolution :
+//   1. Env var DOWNLOAD_URL_{WIN,MAC,LINUX,ANDROID,IOS} (Vercel)
+//   2. Table DB AppRelease (admin peut éditer via /admin/app-releases)
+//   3. Fallback : /download?soon=1&os=... avec bannière friendly
 //
-// Si l'env var n'est pas configurée (CI build pas fini, repo privé sans
-// release publique, etc.), redirige vers /download?soon=1 qui affiche
-// un message clair au lieu d'un 404 brut.
+// Avantage de la DB : l'admin peut publier une nouvelle version sans
+// redéployer le code Next.js — il met juste à jour la URL via /admin.
 
 import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
-const ENV_MAP: Record<string, string> = {
-  win: "DOWNLOAD_URL_WIN",
-  windows: "DOWNLOAD_URL_WIN",
-  exe: "DOWNLOAD_URL_WIN",
-  mac: "DOWNLOAD_URL_MAC",
-  macos: "DOWNLOAD_URL_MAC",
-  dmg: "DOWNLOAD_URL_MAC",
-  linux: "DOWNLOAD_URL_LINUX",
-  appimage: "DOWNLOAD_URL_LINUX",
-  android: "DOWNLOAD_URL_ANDROID",
-  apk: "DOWNLOAD_URL_ANDROID",
+const ENV_MAP: Record<string, { envKey: string; platform: string }> = {
+  win: { envKey: "DOWNLOAD_URL_WIN", platform: "win" },
+  windows: { envKey: "DOWNLOAD_URL_WIN", platform: "win" },
+  exe: { envKey: "DOWNLOAD_URL_WIN", platform: "win" },
+  mac: { envKey: "DOWNLOAD_URL_MAC", platform: "mac" },
+  macos: { envKey: "DOWNLOAD_URL_MAC", platform: "mac" },
+  dmg: { envKey: "DOWNLOAD_URL_MAC", platform: "mac" },
+  linux: { envKey: "DOWNLOAD_URL_LINUX", platform: "linux" },
+  appimage: { envKey: "DOWNLOAD_URL_LINUX", platform: "linux" },
+  android: { envKey: "DOWNLOAD_URL_ANDROID", platform: "android" },
+  apk: { envKey: "DOWNLOAD_URL_ANDROID", platform: "android" },
+  ios: { envKey: "DOWNLOAD_URL_IOS", platform: "ios" },
 };
 
 export async function GET(req: Request, ctx: { params: Promise<{ os: string }> }) {
   const { os } = await ctx.params;
-  const envKey = ENV_MAP[os.toLowerCase()];
-  const target = envKey ? process.env[envKey] : null;
+  const map = ENV_MAP[os.toLowerCase()];
 
-  const url = new URL(req.url);
+  let target: string | null = null;
+
+  // 1. Env var
+  if (map) {
+    target = process.env[map.envKey] ?? null;
+  }
+
+  // 2. DB AppRelease (defensive si table pas pushée)
+  if (!target && map) {
+    try {
+      const release = await db.appRelease.findUnique({
+        where: { platform: map.platform },
+      });
+      if (release?.url) target = release.url;
+    } catch {
+      // table pas encore pushée — on continue avec le fallback
+    }
+  }
 
   if (target) {
-    // Redirige vers l'URL du release (R2, GitHub release, etc.)
     return NextResponse.redirect(target, 302);
   }
 
-  // Pas d'URL configurée → redirige vers /download avec un flag pour afficher
-  // un message clair (au lieu de 404 GitHub)
+  // 3. Fallback : /download?soon=1
+  const url = new URL(req.url);
   url.pathname = `/${getLocaleFromReferer(req) ?? "fr"}/download`;
   url.search = `?soon=1&os=${os}`;
   return NextResponse.redirect(url, 302);
