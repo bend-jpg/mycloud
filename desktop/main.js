@@ -130,13 +130,58 @@ function createMainWindow() {
     autoHideMenuBar: true, // pas de menu File/Edit/View — c'est une app, pas un navigateur
   });
 
-  // Charge le site
-  mainWindow.loadURL(APP_URL);
+  // Custom User-Agent : le site web détecte cette chaîne pour cacher le header
+  // marketing (tarifs, fonctionnalités, contact) — inutile quand on est déjà
+  // dans l'app installée — et activer les hooks IPC (mount disque, sync local).
+  // Les versions correspondent à app.getVersion() côté Electron.
+  const ua = mainWindow.webContents.getUserAgent();
+  mainWindow.webContents.setUserAgent(`${ua} MyTitanCloudDesktop/${app.getVersion()}`);
+
+  // Charge directement /files — Next.js redirige automatiquement vers /login
+  // si l'user n'est pas connecté, sinon on est direct dans le cloud.
+  mainWindow.loadURL(`${APP_URL}/files?app=desktop`);
 
   // Affiche la fenêtre quand le contenu est prêt
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
     if (isDev) mainWindow.webContents.openDevTools({ mode: "right" });
+  });
+
+  // Au premier login (détecté par l'arrivée sur /files après /login), propose
+  // de monter automatiquement le disque virtuel — comme pCloud Drive.
+  // On track ça avec un flag pour ne le proposer qu'une fois par session.
+  let mountProposed = false;
+  mainWindow.webContents.on("did-navigate", (_event, url) => {
+    if (mountProposed) return;
+    if (!/\/(files|dashboard)/.test(url)) return;
+    mountProposed = true;
+    // Demande après 2s pour laisser le user voir qu'il est bien connecté
+    setTimeout(() => {
+      dialog
+        .showMessageBox(mainWindow, {
+          type: "question",
+          buttons: ["Monter maintenant", "Plus tard"],
+          defaultId: 0,
+          cancelId: 1,
+          title: "Monter le disque virtuel ?",
+          message: "Voir tes fichiers MyTitanCloud comme un disque dur dans ton Explorateur ?",
+          detail:
+            "Un disque réseau sera ajouté à ton système. Tu pourras glisser-déposer des fichiers dedans comme dans un dossier normal, et tout sera synchronisé automatiquement (style pCloud Drive).",
+        })
+        .then((res) => {
+          if (res.response === 0) {
+            const mountResult = mountVirtualDrive();
+            if (!mountResult.ok) {
+              dialog.showMessageBox(mainWindow, {
+                type: "warning",
+                title: "Montage échoué",
+                message: "Impossible de monter le disque automatiquement.",
+                detail: `${mountResult.error}\n\nTu peux retenter depuis l'icône MyTitanCloud dans la barre des tâches → "Monter le disque virtuel".`,
+              });
+            }
+          }
+        });
+    }, 2000);
   });
 
   // Tous les liens externes (target=_blank ou liens vers autres domaines)

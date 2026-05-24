@@ -1,5 +1,6 @@
 import { Link } from "@/i18n/navigation";
 import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { LanguageSwitcher } from "./language-switcher";
 import { UserMenu } from "./user-menu";
 import { MobileNav } from "./mobile-nav";
@@ -12,6 +13,12 @@ export async function SiteHeader() {
   const t = await getTranslations("nav");
   const session = await getSession();
   const isLoggedIn = !!session;
+
+  // Mode "app desktop installée" — détecté par le UA custom posé par Electron.
+  // Quand on est dans l'app native, on cache les liens marketing (features,
+  // pricing, login, signup) — l'user est déjà installé/connecté, c'est inutile.
+  const ua = (await headers()).get("user-agent") ?? "";
+  const isDesktopApp = /MyTitanCloudDesktop\//.test(ua);
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-[var(--background)]/60 border-b border-[var(--border)]">
@@ -26,7 +33,7 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm text-[var(--foreground-muted)]">
-          {!isLoggedIn ? (
+          {!isLoggedIn && !isDesktopApp ? (
             <>
               <Link href="/#features" className="hover:text-[var(--foreground)]">
                 {t("features")}
@@ -35,7 +42,7 @@ export async function SiteHeader() {
                 {t("pricing")}
               </Link>
             </>
-          ) : (
+          ) : isLoggedIn ? (
             <>
               <Link href="/files" className="hover:text-[var(--foreground)]">
                 Mes fichiers
@@ -50,7 +57,7 @@ export async function SiteHeader() {
                 Mon plan
               </Link>
             </>
-          )}
+          ) : null}
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -79,18 +86,22 @@ export async function SiteHeader() {
               <div className="hidden lg:block">
                 <LanguageSwitcher />
               </div>
-              <Link
-                href="/login"
-                className="hidden lg:inline-flex btn-ghost text-sm whitespace-nowrap"
-              >
-                {t("login")}
-              </Link>
-              <Link
-                href="/signup"
-                className="hidden lg:inline-flex btn-primary text-sm whitespace-nowrap"
-              >
-                {t("signup")}
-              </Link>
+              {!isDesktopApp && (
+                <>
+                  <Link
+                    href="/login"
+                    className="hidden lg:inline-flex btn-ghost text-sm whitespace-nowrap"
+                  >
+                    {t("login")}
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="hidden lg:inline-flex btn-primary text-sm whitespace-nowrap"
+                  >
+                    {t("signup")}
+                  </Link>
+                </>
+              )}
             </>
           )}
 
