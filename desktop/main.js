@@ -33,14 +33,30 @@ function mountVirtualDrive() {
   const platform = process.platform;
   try {
     if (platform === "win32") {
-      // Windows : net use Z: https://mytitancloud.com/api/dav
-      // Demande user/password interactivement à la première connexion via
-      // une popup système — pas géré par nous.
-      execSync(`net use Z: ${DAV_URL.replace(/^https?:\/\//, "\\\\").replace(/\//g, "\\")} /persistent:yes`, {
-        stdio: "ignore",
-        timeout: 10_000,
-      });
-      return { ok: true, mountPoint: "Z:" };
+      // Windows : 2 approches en cascade.
+      //
+      // Approche 1 — net use direct HTTPS (marche si WebClient service est on).
+      // Format reconnu par Windows 10/11 : `net use Z: https://host/path`
+      // Si BasicAuthLevel registry est OK, Windows ouvre sa popup d'auth.
+      //
+      // Approche 2 (fallback) — ouvre l'URL WebDAV dans l'Explorateur. Windows
+      // propose alors "Mapper un lecteur réseau" en clic droit. Pas auto mais
+      // ça ne crash pas.
+      try {
+        execSync(`net use Z: ${DAV_URL} /persistent:yes`, {
+          stdio: "ignore",
+          timeout: 15_000,
+          windowsHide: true,
+        });
+        return { ok: true, mountPoint: "Z:" };
+      } catch {
+        // Fallback gracieux — ouvre l'Explorateur sur l'URL WebDAV
+        shell.openExternal(DAV_URL);
+        return {
+          ok: true,
+          mountPoint: "Explorateur (mappage manuel via clic droit)",
+        };
+      }
     }
     if (platform === "darwin") {
       // macOS : mount_webdav (besoin d'auth interactive, on délègue à Finder)
@@ -147,13 +163,22 @@ function createMainWindow() {
     if (isDev) mainWindow.webContents.openDevTools({ mode: "right" });
   });
 
-  // Au premier login (détecté par l'arrivée sur /files après /login), propose
+  // Au premier login (détecté par l'arrivée sur /files APRÈS /login), propose
   // de monter automatiquement le disque virtuel — comme pCloud Drive.
-  // On track ça avec un flag pour ne le proposer qu'une fois par session.
+  //
+  // Astuce anti-faux-positif : on skip la 1ère navigation (l'initial loadURL
+  // vers /files qui peut rebondir sur /login si pas connecté). On ne propose
+  // le mount QUE si l'utilisateur transite de /login → /files (= il vient
+  // VRAIMENT de se connecter).
   let mountProposed = false;
+  let lastNavUrl = "";
   mainWindow.webContents.on("did-navigate", (_event, url) => {
+    const prev = lastNavUrl;
+    lastNavUrl = url;
     if (mountProposed) return;
     if (!/\/(files|dashboard)/.test(url)) return;
+    // Skip si on n'a pas vu /login juste avant (= chargement initial, pas un login)
+    if (!/\/login/.test(prev)) return;
     mountProposed = true;
     // Demande après 2s pour laisser le user voir qu'il est bien connecté
     setTimeout(() => {
