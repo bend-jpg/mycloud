@@ -2,9 +2,11 @@
 
 // Galerie photos style iOS Photos / Google Photos.
 // Groupage par mois, grille square dense, lightbox au clic.
+// Le lightbox délègue à FilePreviewModal pour récupérer zoom + slideshow +
+// favoris + versions sans dupliquer la logique.
 
-import { useMemo, useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Download, Share as ShareIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { FilePreviewModal } from "./file-preview-modal";
 
 interface Photo {
   id: string;
@@ -41,25 +43,8 @@ function groupByMonth(photos: Photo[]): { label: string; items: Photo[] }[] {
 
 export function PhotoGallery({ photos }: { photos: Photo[] }) {
   const grouped = useMemo(() => groupByMonth(photos), [photos]);
+  // Index dans la liste globale (toutes photos confondues, triées comme reçues du serveur)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
-
-  // Esc + ←/→ pour naviguer
-  useEffect(() => {
-    if (lightboxIdx === null) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setLightboxIdx(null);
-      else if (e.key === "ArrowLeft")
-        setLightboxIdx((i) => (i === null ? null : Math.max(0, i - 1)));
-      else if (e.key === "ArrowRight")
-        setLightboxIdx((i) => (i === null ? null : Math.min(photos.length - 1, i + 1)));
-    }
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [lightboxIdx, photos.length]);
 
   const active = lightboxIdx !== null ? photos[lightboxIdx] : null;
 
@@ -99,73 +84,21 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
         ))}
       </div>
 
-      {/* Lightbox */}
-      {active && (
-        <div
-          className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-md flex flex-col"
-          role="dialog"
-          aria-modal="true"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between gap-3 p-4 text-white">
-            <div className="min-w-0">
-              <p className="font-medium truncate">{active.name}</p>
-              <p className="text-xs text-white/60">
-                {new Date(active.uploadedAt).toLocaleDateString("fr", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-                {" · "}
-                {lightboxIdx !== null && lightboxIdx + 1}/{photos.length}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <a
-                href={`/api/files/${active.id}/download`}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20"
-                title="Télécharger"
-              >
-                <Download className="size-4" />
-              </a>
-              <button
-                onClick={() => setLightboxIdx(null)}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20"
-                title="Fermer (Échap)"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Image centrée + chevrons */}
-          <div className="flex-1 flex items-center justify-center relative px-4 pb-4">
-            {lightboxIdx !== null && lightboxIdx > 0 && (
-              <button
-                onClick={() => setLightboxIdx(lightboxIdx - 1)}
-                className="absolute start-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white z-10"
-                aria-label="Précédent"
-              >
-                <ChevronLeft className="size-6" />
-              </button>
-            )}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/files/${active.id}/preview`}
-              alt={active.name}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-            />
-            {lightboxIdx !== null && lightboxIdx < photos.length - 1 && (
-              <button
-                onClick={() => setLightboxIdx(lightboxIdx + 1)}
-                className="absolute end-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white z-10"
-                aria-label="Suivant"
-              >
-                <ChevronRight className="size-6" />
-              </button>
-            )}
-          </div>
-        </div>
+      {/* Lightbox unifié : FilePreviewModal apporte zoom, slideshow, favoris, versions */}
+      {active && lightboxIdx !== null && (
+        <FilePreviewModal
+          file={active}
+          onClose={() => setLightboxIdx(null)}
+          onPrevious={
+            lightboxIdx > 0 ? () => setLightboxIdx(lightboxIdx - 1) : undefined
+          }
+          onNext={
+            lightboxIdx < photos.length - 1
+              ? () => setLightboxIdx(lightboxIdx + 1)
+              : undefined
+          }
+          position={{ index: lightboxIdx, total: photos.length }}
+        />
       )}
     </>
   );
