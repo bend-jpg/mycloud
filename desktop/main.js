@@ -218,8 +218,25 @@ function createMainWindow() {
   const customUA = `MyTitanCloudDesktop/${app.getVersion()}`;
   const baseUA = mainWindow.webContents.getUserAgent();
   mainWindow.webContents.setUserAgent(`${baseUA} ${customUA}`);
-  // La session du webview hérite : on lui pose aussi le UA pour être sûr
-  session.fromPartition("persist:mytitancloud").setUserAgent(`${baseUA} ${customUA}`);
+
+  // La session du webview hérite du UA, MAIS surtout on lui pose un cookie
+  // `app_mode=desktop` qui voyage avec CHAQUE requête HTTP. Le UA peut être
+  // trié par cache CDN (Vercel ne varie pas son cache par UA par défaut),
+  // mais le cookie est inclus dans les requêtes et le serveur peut le lire
+  // en SSR — détection 100% fiable, pas de race condition.
+  const wvSession = session.fromPartition("persist:mytitancloud");
+  wvSession.setUserAgent(`${baseUA} ${customUA}`);
+  wvSession.cookies
+    .set({
+      url: APP_URL,
+      name: "app_mode",
+      value: "desktop",
+      domain: new URL(APP_URL).hostname,
+      path: "/",
+      expirationDate: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60, // 1 an
+      secure: APP_URL.startsWith("https://"),
+    })
+    .catch((err) => console.warn("[desktop] cookie app_mode set failed:", err.message));
 
   // Charge le shell natif (sidebar + webview intégré) — pas le site direct.
   // L'utilisateur voit une VRAIE app desktop, pas un browser déguisé.

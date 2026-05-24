@@ -1,12 +1,12 @@
 import { Link } from "@/i18n/navigation";
 import { getTranslations } from "next-intl/server";
-import { headers } from "next/headers";
 import { LanguageSwitcher } from "./language-switcher";
 import { UserMenu } from "./user-menu";
 import { MobileNav } from "./mobile-nav";
 import { NotifBell } from "./notif-bell";
 import { CommandPaletteTrigger } from "./command-palette-trigger";
 import { getSession } from "@/lib/session";
+import { isDesktopAppRequest } from "@/lib/is-desktop-app";
 import { Cloud } from "lucide-react";
 
 export async function SiteHeader() {
@@ -14,14 +14,11 @@ export async function SiteHeader() {
   const session = await getSession();
   const isLoggedIn = !!session;
 
-  // Mode "app desktop installée" — détecté par le UA custom posé par Electron.
-  // Quand on est dans l'app native, on REND RIEN du tout : l'app Electron a sa
-  // propre sidebar à gauche (Mes fichiers, Photos, Famille, Sync, Sauvegarde,
-  // Disque virtuel, Mon plan, Paramètres, etc) donc le SiteHeader du web fait
-  // doublon massif. Économie : pas de double navigation pour l'utilisateur.
-  const ua = (await headers()).get("user-agent") ?? "";
-  const isDesktopApp = /MyTitanCloudDesktop\//.test(ua);
-  if (isDesktopApp) return null;
+  // Mode "app desktop installée" — l'app Electron a sa propre sidebar à
+  // gauche, donc on cache complètement le SiteHeader pour pas avoir 2
+  // navigations en même temps. Détection robuste : cookie app_mode=desktop
+  // (posé par Electron au démarrage) + UA + ?app=desktop en fallback.
+  if (await isDesktopAppRequest()) return null;
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-[var(--background)]/60 border-b border-[var(--border)]">
@@ -36,7 +33,7 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm text-[var(--foreground-muted)]">
-          {!isLoggedIn && !isDesktopApp ? (
+          {!isLoggedIn ? (
             <>
               <Link href="/#features" className="hover:text-[var(--foreground)]">
                 {t("features")}
@@ -89,9 +86,8 @@ export async function SiteHeader() {
               <div className="hidden lg:block">
                 <LanguageSwitcher />
               </div>
-              {!isDesktopApp && (
-                <>
-                  <Link
+              <>
+                <Link
                     href="/login"
                     className="hidden lg:inline-flex btn-ghost text-sm whitespace-nowrap"
                   >
@@ -103,8 +99,7 @@ export async function SiteHeader() {
                   >
                     {t("signup")}
                   </Link>
-                </>
-              )}
+              </>
             </>
           )}
 
