@@ -19,8 +19,8 @@
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
-    "chokidar": "^4.0.3",
-    "electron-store": "^10.0.1"
+    "chokidar": "^3.6.0",
+    "electron-store": "^8.2.0"
   },
   "devDependencies": {
     "electron": "^33.0.0",
