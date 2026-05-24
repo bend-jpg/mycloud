@@ -14,6 +14,8 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  /** URL de l'avatar (User.image en DB) — null si pas défini */
+  image: string | null;
   role: "USER" | "ADMIN" | "STAFF_SUPPORT" | "STAFF_BILLING" | "STAFF_OPS";
   /** True uniquement pour ADMIN. Pour "n'importe quel rôle backoffice", utiliser isStaff. */
   isAdmin: boolean;
@@ -33,6 +35,7 @@ export async function getSession(): Promise<SessionUser | null> {
           id: user.id,
           email: user.email,
           name: user.name ?? "User",
+          image: user.image ?? null,
           role: user.role,
           isAdmin: user.role === "ADMIN",
           isStaff: canAccessBackoffice(user.role),
@@ -54,6 +57,7 @@ export async function getSession(): Promise<SessionUser | null> {
           id: user.id,
           email: user.email,
           name: user.name ?? "Demo",
+          image: user.image ?? null,
           role: user.role,
           isAdmin: user.role === "ADMIN",
           isStaff: canAccessBackoffice(user.role),

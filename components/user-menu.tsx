@@ -9,7 +9,7 @@ import { ThemeCycleButton } from "./theme-picker";
 export function UserMenu({
   user,
 }: {
-  user: { name: string; email: string; isAdmin: boolean };
+  user: { name: string; email: string; isAdmin: boolean; image?: string | null };
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -26,9 +26,15 @@ export function UserMenu({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="size-9 rounded-full bg-[var(--background-elevated)] border border-[var(--border)] flex items-center justify-center text-sm font-semibold hover:border-[var(--border-hover)]"
+        className="size-9 rounded-full bg-[var(--background-elevated)] border border-[var(--border)] flex items-center justify-center text-sm font-semibold hover:border-[var(--border-hover)] overflow-hidden"
+        title={user.name}
       >
-        {(user.name ?? user.email).charAt(0).toUpperCase()}
+        {user.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.image} alt="" className="w-full h-full object-cover" />
+        ) : (
+          (user.name ?? user.email).charAt(0).toUpperCase()
+        )}
       </button>
       {open && (
         <div className="absolute end-0 mt-2 w-56 rounded-2xl border border-[var(--border)] bg-[var(--background-elevated)] p-2 shadow-2xl z-50">

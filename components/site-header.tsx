@@ -69,6 +69,7 @@ export async function SiteHeader() {
                     name: session!.name,
                     email: session!.email,
                     isAdmin: session!.isAdmin,
+                    image: session!.image,
                   }}
                 />
               </div>
