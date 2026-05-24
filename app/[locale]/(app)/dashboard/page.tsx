@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
@@ -36,6 +37,14 @@ export default async function DashboardPage({
 
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
+
+  // En mode app desktop, on a déjà toute la navigation dans la sidebar
+  // Electron native. Le dashboard avec ses 9 tuiles fait doublon massif —
+  // on redirige direct vers /files (le vrai espace de travail).
+  const ua = (await headers()).get("user-agent") ?? "";
+  if (/MyTitanCloudDesktop\//.test(ua)) {
+    redirect(`/${locale}/files`);
+  }
 
   const [user, recentFiles, stats, onboardingStatus] = await Promise.all([
     db.user.findUnique({

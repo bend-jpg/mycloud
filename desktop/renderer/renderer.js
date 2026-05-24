@@ -146,8 +146,13 @@ btnMountDrive?.addEventListener("click", async () => {
   const res = await window.titanAPI.mountDrive();
   btnMountDrive.disabled = false;
   if (res?.ok) {
-    driveStatus.textContent = `✅ Monté sur ${res.mountPoint}`;
     driveStatus.classList.remove("muted");
+    if (res.notice) {
+      // Cas "Explorateur ouvert au lieu de Z:" → on l'explique sans alarmer
+      driveStatus.innerHTML = `✨ ${res.mountPoint} — <span style="opacity:.7">${res.notice.replace(/\n/g, "<br>")}</span>`;
+    } else {
+      driveStatus.textContent = `✅ Monté sur ${res.mountPoint}`;
+    }
   } else {
     driveStatus.textContent = `❌ ${res?.error ?? "Montage refusé par le système"}`;
   }

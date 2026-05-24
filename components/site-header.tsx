@@ -15,10 +15,13 @@ export async function SiteHeader() {
   const isLoggedIn = !!session;
 
   // Mode "app desktop installée" — détecté par le UA custom posé par Electron.
-  // Quand on est dans l'app native, on cache les liens marketing (features,
-  // pricing, login, signup) — l'user est déjà installé/connecté, c'est inutile.
+  // Quand on est dans l'app native, on REND RIEN du tout : l'app Electron a sa
+  // propre sidebar à gauche (Mes fichiers, Photos, Famille, Sync, Sauvegarde,
+  // Disque virtuel, Mon plan, Paramètres, etc) donc le SiteHeader du web fait
+  // doublon massif. Économie : pas de double navigation pour l'utilisateur.
   const ua = (await headers()).get("user-agent") ?? "";
   const isDesktopApp = /MyTitanCloudDesktop\//.test(ua);
+  if (isDesktopApp) return null;
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-[var(--background)]/60 border-b border-[var(--border)]">

@@ -34,30 +34,47 @@ function mountVirtualDrive() {
   const platform = process.platform;
   try {
     if (platform === "win32") {
-      // Windows : 2 approches en cascade.
+      // Windows : 3 approches en cascade.
       //
-      // Approche 1 — net use direct HTTPS (marche si WebClient service est on).
-      // Format reconnu par Windows 10/11 : `net use Z: https://host/path`
-      // Si BasicAuthLevel registry est OK, Windows ouvre sa popup d'auth.
-      //
-      // Approche 2 (fallback) — ouvre l'URL WebDAV dans l'Explorateur. Windows
-      // propose alors "Mapper un lecteur réseau" en clic droit. Pas auto mais
-      // ça ne crash pas.
+      // 1. Vérifier d'abord que WebClient service est démarré. Sans lui, net use
+      //    sur HTTPS donne "Le nom de réseau spécifié n'est plus disponible" ou
+      //    "Système 1396". On essaie de démarrer le service silencieusement.
       try {
-        execSync(`net use Z: ${DAV_URL} /persistent:yes`, {
-          stdio: "ignore",
-          timeout: 15_000,
-          windowsHide: true,
-        });
-        return { ok: true, mountPoint: "Z:" };
+        execSync(`sc start WebClient`, { stdio: "ignore", timeout: 5000, windowsHide: true });
       } catch {
-        // Fallback gracieux — ouvre l'Explorateur sur l'URL WebDAV
+        // Déjà démarré, ou refus de droits — on continue quand même
+      }
+      // Si un Z: existe déjà (run précédent), on le démonte d'abord
+      try {
+        execSync(`net use Z: /delete /yes`, { stdio: "ignore", timeout: 5000, windowsHide: true });
+      } catch {
+        // Pas de Z: existant, normal
+      }
+
+      // 2. Essai net use direct sur HTTPS. Capture l'erreur précise pour la
+      //    remonter à l'utilisateur (pas de "spawnSync ETIMEDOUT" générique).
+      try {
+        const out = execSync(`net use Z: "${DAV_URL}" /persistent:yes`, {
+          timeout: 20_000,
+          windowsHide: true,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        if (out.toString().toLowerCase().includes("réussi") || out.length === 0) {
+          return { ok: true, mountPoint: "Z:" };
+        }
+      } catch (err) {
+        const stderr = (err.stderr ? err.stderr.toString() : "") + (err.stdout ? err.stdout.toString() : "");
+        // 3. Fallback : ouvre l'URL WebDAV dans l'Explorateur. Windows propose
+        //    alors "Mapper un lecteur réseau" en clic droit. C'est ce qui marche
+        //    le plus souvent quand net use refuse à cause des règles BasicAuthLevel.
         shell.openExternal(DAV_URL);
         return {
           ok: true,
-          mountPoint: "Explorateur (mappage manuel via clic droit)",
+          mountPoint: "Explorateur Windows",
+          notice: `L'Explorateur s'est ouvert sur ton WebDAV. Fais clic droit sur le dossier → "Mapper un lecteur réseau" pour avoir un Z: permanent.\n\nDétail technique : ${stderr.trim() || err.message}`,
         };
       }
+      return { ok: true, mountPoint: "Z:" };
     }
     if (platform === "darwin") {
       // macOS : mount_webdav (besoin d'auth interactive, on délègue à Finder)
