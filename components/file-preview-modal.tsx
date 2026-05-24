@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2 } from "lucide-react";
+import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { formatBytes } from "@/lib/utils";
 
@@ -15,14 +15,25 @@ interface PreviewFile {
 export function FilePreviewModal({
   file,
   onClose,
+  onPrevious,
+  onNext,
+  position,
 }: {
   file: PreviewFile;
   onClose: () => void;
+  /** Optionnel : callback quand l'utilisateur appuie ← ou clique flèche gauche */
+  onPrevious?: () => void;
+  /** Optionnel : callback quand l'utilisateur appuie → ou clique flèche droite */
+  onNext?: () => void;
+  /** Optionnel : "3 / 124" affiché dans le header pour situer dans la collection */
+  position?: { index: number; total: number };
 }) {
-  // Fermer avec ESC
+  // Fermer avec ESC + navigation ← / →
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowLeft" && onPrevious) onPrevious();
+      else if (e.key === "ArrowRight" && onNext) onNext();
     }
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -30,7 +41,7 @@ export function FilePreviewModal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [onClose]);
+  }, [onClose, onPrevious, onNext]);
 
   // État favori — fetch lazy à l'ouverture
   const [starred, setStarred] = useState<boolean | null>(null);
@@ -146,6 +157,11 @@ export function FilePreviewModal({
             <p className="font-semibold text-white truncate">{file.name}</p>
             <p className="text-xs text-white/60">
               {formatBytes(Number(file.size))} · {file.mimeType}
+              {position && (
+                <span className="ms-2 text-white/40">
+                  · {position.index + 1} / {position.total}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -266,6 +282,30 @@ export function FilePreviewModal({
             </ul>
           )}
         </div>
+      )}
+
+      {/* Boutons de navigation prev / next entre fichiers (côtés gauche/droit) */}
+      {onPrevious && (
+        <button
+          type="button"
+          onClick={onPrevious}
+          className="absolute start-2 sm:start-4 top-1/2 -translate-y-1/2 z-20 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur transition-colors rtl:rotate-180"
+          aria-label="Fichier précédent (←)"
+          title="Précédent (←)"
+        >
+          <ChevronLeft className="size-5 sm:size-6" />
+        </button>
+      )}
+      {onNext && (
+        <button
+          type="button"
+          onClick={onNext}
+          className="absolute end-2 sm:end-4 top-1/2 -translate-y-1/2 z-20 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur transition-colors rtl:rotate-180"
+          aria-label="Fichier suivant (→)"
+          title="Suivant (→)"
+        >
+          <ChevronRight className="size-5 sm:size-6" />
+        </button>
       )}
 
       {/* Contenu */}

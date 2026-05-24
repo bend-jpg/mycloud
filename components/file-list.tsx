@@ -656,9 +656,21 @@ export function FileList({
         <ShareDialog fileId={shareFile.id} fileName={shareFile.name} onClose={() => setShareFile(null)} />
       )}
 
-      {previewFile && (
-        <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
-      )}
+      {previewFile && (() => {
+        // Index/nav dans la liste triée — ← / → pour switch sans fermer (iOS Photos)
+        const idx = sortedFiles.findIndex((f) => f.id === previewFile.id);
+        const prev = idx > 0 ? sortedFiles[idx - 1] : null;
+        const next = idx >= 0 && idx < sortedFiles.length - 1 ? sortedFiles[idx + 1] : null;
+        return (
+          <FilePreviewModal
+            file={previewFile}
+            onClose={() => setPreviewFile(null)}
+            onPrevious={prev ? () => setPreviewFile(prev) : undefined}
+            onNext={next ? () => setPreviewFile(next) : undefined}
+            position={idx >= 0 ? { index: idx, total: sortedFiles.length } : undefined}
+          />
+        );
+      })()}
 
       <PromptDialog
         open={!!renameFile}
