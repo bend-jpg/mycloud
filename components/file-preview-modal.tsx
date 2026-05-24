@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Download, ExternalLink, FileText, Star } from "lucide-react";
+import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { formatBytes } from "@/lib/utils";
 
@@ -35,6 +35,13 @@ export function FilePreviewModal({
   // État favori — fetch lazy à l'ouverture
   const [starred, setStarred] = useState<boolean | null>(null);
   const [starBusy, setStarBusy] = useState(false);
+  // Historique des versions — visible quand showVersions=true
+  const [showVersions, setShowVersions] = useState(false);
+  const [versions, setVersions] = useState<
+    { id: string; size: string; uploadedAt: string; isCurrent: boolean }[]
+  >([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [restoring, setRestoring] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetch("/api/favorites")
@@ -53,6 +60,45 @@ export function FilePreviewModal({
       cancelled = true;
     };
   }, [file.id]);
+
+  async function loadVersions() {
+    setVersionsLoading(true);
+    try {
+      const res = await fetch(`/api/files/${file.id}/versions`);
+      if (res.ok) {
+        const data = await res.json();
+        setVersions(data.versions ?? []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setVersionsLoading(false);
+    }
+  }
+
+  async function restoreVersion(versionId: string) {
+    setRestoring(versionId);
+    try {
+      const res = await fetch(`/api/files/${file.id}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ versionId }),
+      });
+      if (res.ok) {
+        await loadVersions();
+        // Refresh page après restore — la version courante a changé
+        if (typeof window !== "undefined") window.location.reload();
+      }
+    } finally {
+      setRestoring(null);
+    }
+  }
+
+  function toggleVersionsPanel() {
+    const next = !showVersions;
+    setShowVersions(next);
+    if (next && versions.length === 0) loadVersions();
+  }
 
   async function toggleStar() {
     if (starred === null || starBusy) return;
@@ -116,6 +162,17 @@ export function FilePreviewModal({
           >
             <Star className="size-4" fill={starred ? "currentColor" : "none"} />
           </button>
+          <button
+            type="button"
+            onClick={toggleVersionsPanel}
+            title="Historique des versions"
+            aria-pressed={showVersions}
+            className={`p-2 rounded-xl text-white transition-colors ${
+              showVersions ? "bg-[var(--accent)]/30 hover:bg-[var(--accent)]/40" : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            <History className="size-4" />
+          </button>
           <a
             href={downloadUrl}
             className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm flex items-center gap-2"
@@ -143,9 +200,77 @@ export function FilePreviewModal({
         </div>
       </div>
 
+      {/* Panel historique versions — slide depuis la droite quand showVersions=true */}
+      {showVersions && (
+        <div className="absolute end-0 top-[81px] bottom-0 w-80 max-w-[90vw] bg-[var(--background-elevated)] border-s border-white/10 overflow-y-auto z-10 animate-slide-in-right">
+          <div className="p-4 border-b border-white/10">
+            <p className="font-semibold flex items-center gap-2">
+              <History className="size-4" />
+              Versions précédentes
+            </p>
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              Sauvegardées automatiquement à chaque modification du fichier.
+            </p>
+          </div>
+
+          {versionsLoading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="size-6 animate-spin mx-auto text-[var(--foreground-muted)]" />
+            </div>
+          ) : versions.length === 0 ? (
+            <div className="p-6 text-center text-sm text-[var(--foreground-muted)]">
+              Pas de version précédente — ce fichier n&apos;a jamais été modifié depuis sa création.
+            </div>
+          ) : (
+            <ul className="divide-y divide-white/5">
+              {versions.map((v) => (
+                <li key={v.id} className="p-4 hover:bg-white/5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">
+                        {new Date(v.uploadedAt).toLocaleDateString("fr", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      <p className="text-xs text-[var(--foreground-muted)]">
+                        {formatBytes(Number(v.size))}
+                        {v.isCurrent && (
+                          <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-[var(--success)]/15 text-[var(--success)] px-2 py-0.5 text-[10px] font-medium">
+                            Actuelle
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {!v.isCurrent && (
+                      <button
+                        onClick={() => restoreVersion(v.id)}
+                        disabled={restoring === v.id}
+                        className="btn-ghost !px-2 !py-1 text-xs"
+                        title="Restaurer cette version"
+                      >
+                        {restoring === v.id ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <RotateCcw className="size-3" />
+                        )}
+                        Restaurer
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* Contenu */}
       <div
-        className="flex-1 flex items-center justify-center overflow-auto p-4"
+        className={`flex-1 flex items-center justify-center overflow-auto p-4 ${showVersions ? "me-80" : ""}`}
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
