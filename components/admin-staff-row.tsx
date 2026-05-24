@@ -7,7 +7,6 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useRouter as useI18nRouter } from "@/i18n/navigation";
 import {
-  MoreVertical,
   Ban,
   CheckCircle2,
   KeyRound,
@@ -48,19 +47,16 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
   const router = useRouter();
   const i18nRouter = useI18nRouter();
   const [roleOpen, setRoleOpen] = useState(false);
-  const [actionsOpen, setActionsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [confirmDemote, setConfirmDemote] = useState(false);
   const { toast } = useToast();
   const roleRef = useRef<HTMLDivElement>(null);
-  const actionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (roleRef.current && !roleRef.current.contains(e.target as Node)) setRoleOpen(false);
-      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -88,7 +84,7 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
 
   function askSuspend() {
     setConfirmSuspend(true);
-    setActionsOpen(false);
+
   }
   async function performSuspend() {
     setBusy(true);
@@ -105,7 +101,7 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
 
   function openPwdDialog() {
     setPwdOpen(true);
-    setActionsOpen(false);
+
   }
   async function submitPassword(newPwd: string) {
     setBusy(true);
@@ -125,7 +121,7 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
 
   function askDemote() {
     setConfirmDemote(true);
-    setActionsOpen(false);
+
   }
   async function performDemote() {
     setBusy(true);
@@ -203,45 +199,34 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
       <td className="px-4 py-3 hidden md:table-cell text-xs text-[var(--foreground-muted)]">
         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString(locale) : "Jamais"}
       </td>
-      <td className="px-2 text-end" onClick={(e) => e.stopPropagation()}>
-        <div ref={actionsRef} className="relative inline-block">
+      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1">
+          {busy && <Loader2 className="size-4 animate-spin text-[var(--accent)]" />}
           <button
-            onClick={() => setActionsOpen((v) => !v)}
-            className="p-1.5 rounded-lg hover:bg-[var(--background-elevated)]"
-            title="Actions"
+            onClick={openPwdDialog}
+            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--secondary)]"
+            title="Reset mot de passe"
           >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <MoreVertical className="size-4" />}
+            <KeyRound className="size-4" />
           </button>
-          {actionsOpen && (
-            <div className="absolute end-0 top-full mt-1 w-44 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
-              <button
-                onClick={askSuspend}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
-              >
-                {user.suspendedAt ? (
-                  <>
-                    <CheckCircle2 className="size-4 text-[var(--success)]" /> Réactiver
-                  </>
-                ) : (
-                  <>
-                    <Ban className="size-4 text-[var(--danger)]" /> Suspendre
-                  </>
-                )}
-              </button>
-              <button
-                onClick={openPwdDialog}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
-              >
-                <KeyRound className="size-4" /> Reset mot de passe
-              </button>
-              <button
-                onClick={askDemote}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] text-start"
-              >
-                <ArrowDownToLine className="size-4" /> Dégrader en USER
-              </button>
-            </div>
-          )}
+          <button
+            onClick={askDemote}
+            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+            title="Dégrader en USER"
+          >
+            <ArrowDownToLine className="size-4" />
+          </button>
+          <button
+            onClick={askSuspend}
+            className={`p-1.5 rounded-lg hover:bg-[var(--background-tile)] ${
+              user.suspendedAt
+                ? "text-[var(--success)]"
+                : "text-[var(--foreground-muted)] hover:text-[var(--danger)]"
+            }`}
+            title={user.suspendedAt ? "Réactiver le membre" : "Suspendre le membre"}
+          >
+            {user.suspendedAt ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />}
+          </button>
         </div>
       </td>
 
