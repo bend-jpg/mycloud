@@ -50,7 +50,10 @@ export default async function AdminAppReleasesPage({
           title="Versions des apps"
           description="Quand tu mets une nouvelle version (.exe / .dmg / .apk) en ligne (R2, Github release, autre), enregistre ici l'URL pour que les boutons « Télécharger » du site pointent dessus."
         />
-        <AppReleasesEditor initialReleases={releases} />
+        <AppReleasesEditor
+          initialReleases={releases}
+          r2PublicUrl={process.env.R2_PUBLIC_URL ?? null}
+        />
       </main>
     </>
   );

@@ -5,7 +5,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2, Monitor, Apple, Terminal, Smartphone } from "lucide-react";
+import {
+  Save,
+  Loader2,
+  Monitor,
+  Apple,
+  Terminal,
+  Smartphone,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 import { useToast } from "./toast";
 
 interface Release {
@@ -16,14 +25,20 @@ interface Release {
 }
 
 const PLATFORMS: { key: string; label: string; icon: React.ComponentType<{ className?: string }>; placeholder: string }[] = [
-  { key: "win", label: "Windows", icon: Monitor, placeholder: "https://mycloud-installers.r2.dev/MyTitanCloud-Setup-0.1.1.exe" },
-  { key: "mac", label: "macOS", icon: Apple, placeholder: "https://mycloud-installers.r2.dev/MyTitanCloud-0.1.1.dmg" },
-  { key: "linux", label: "Linux", icon: Terminal, placeholder: "https://mycloud-installers.r2.dev/MyTitanCloud-0.1.1.AppImage" },
-  { key: "android", label: "Android", icon: Smartphone, placeholder: "https://mycloud-installers.r2.dev/MyTitanCloud-0.1.1.apk" },
+  { key: "win", label: "Windows", icon: Monitor, placeholder: "https://pub-xxx.r2.dev/releases/desktop-v0.1.2/MyTitanCloud-Setup-0.1.2.exe" },
+  { key: "mac", label: "macOS", icon: Apple, placeholder: "https://pub-xxx.r2.dev/releases/desktop-v0.1.2/MyTitanCloud-0.1.2.dmg" },
+  { key: "linux", label: "Linux", icon: Terminal, placeholder: "https://pub-xxx.r2.dev/releases/desktop-v0.1.2/MyTitanCloud-0.1.2.AppImage" },
+  { key: "android", label: "Android", icon: Smartphone, placeholder: "https://pub-xxx.r2.dev/releases/mobile-v0.1.2/MyTitanCloud-mobile-v0.1.2-android.apk" },
   { key: "ios", label: "iOS", icon: Apple, placeholder: "https://apps.apple.com/app/idXXXXXXXXX" },
 ];
 
-export function AppReleasesEditor({ initialReleases }: { initialReleases: Release[] }) {
+export function AppReleasesEditor({
+  initialReleases,
+  r2PublicUrl,
+}: {
+  initialReleases: Release[];
+  r2PublicUrl?: string | null;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [drafts, setDrafts] = useState<Record<string, { version: string; url: string }>>(
@@ -35,6 +50,71 @@ export function AppReleasesEditor({ initialReleases }: { initialReleases: Releas
     ),
   );
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Quick-fill : à partir des tags desktop-vX.Y.Z + mobile-vX.Y.Z,
+  // calcule automatiquement les 4 URLs R2 + version pour Windows/Mac/Linux/Android.
+  const [desktopTag, setDesktopTag] = useState("desktop-v0.1.2");
+  const [mobileTag, setMobileTag] = useState("mobile-v0.1.2");
+
+  function applyQuickFill() {
+    if (!r2PublicUrl) {
+      toast.error("R2_PUBLIC_URL pas configuré dans les env vars Vercel");
+      return;
+    }
+    const base = r2PublicUrl.replace(/\/$/, "");
+
+    // Extract version from "desktop-v0.1.2" → "0.1.2"
+    const dvMatch = desktopTag.match(/v(\d+\.\d+\.\d+)/);
+    const mvMatch = mobileTag.match(/v(\d+\.\d+\.\d+)/);
+    const dv = dvMatch?.[1] ?? "";
+    const mv = mvMatch?.[1] ?? "";
+
+    setDrafts({
+      ...drafts,
+      win: {
+        version: dv,
+        url: `${base}/releases/${desktopTag}/MyTitanCloud-Setup-${dv}.exe`,
+      },
+      mac: {
+        version: dv,
+        url: `${base}/releases/${desktopTag}/MyTitanCloud-${dv}.dmg`,
+      },
+      linux: {
+        version: dv,
+        url: `${base}/releases/${desktopTag}/MyTitanCloud-${dv}.AppImage`,
+      },
+      android: {
+        version: mv,
+        url: `${base}/releases/${mobileTag}/MyTitanCloud-${mobileTag}-android.apk`,
+      },
+      ios: drafts.ios, // iOS pas concerné par R2
+    });
+    toast.success("URLs pré-remplies — vérifie puis clique Enregistrer sur chaque ligne");
+  }
+
+  async function saveAll() {
+    setBusy("all");
+    let ok = 0;
+    let failed = 0;
+    for (const p of PLATFORMS) {
+      const d = drafts[p.key];
+      if (!d.version || !d.url) continue;
+      const res = await fetch("/api/admin/app-releases", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: p.key, version: d.version, url: d.url }),
+      });
+      if (res.ok) ok++;
+      else failed++;
+    }
+    setBusy(null);
+    if (failed === 0) {
+      toast.success(`${ok} plateforme(s) enregistrée(s)`);
+    } else {
+      toast.error(`${ok} OK · ${failed} échec(s)`);
+    }
+    router.refresh();
+  }
 
   async function save(platform: string) {
     const d = drafts[platform];
@@ -59,7 +139,73 @@ export function AppReleasesEditor({ initialReleases }: { initialReleases: Releas
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Quick-fill panel */}
+      <div className="rounded-3xl border border-[var(--accent)]/30 bg-gradient-to-br from-[var(--accent)]/10 via-[var(--background-tile)] to-[var(--secondary)]/5 p-4 sm:p-5">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="size-10 rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0">
+            <Wand2 className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">Pré-remplir automatiquement</p>
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              Tape les tags Git que tu as poussés (desktop-vX.Y.Z + mobile-vX.Y.Z). Les 4 URLs R2 sont
+              calculées automatiquement à partir des conventions de nommage du CI.
+            </p>
+          </div>
+        </div>
+
+        {!r2PublicUrl && (
+          <div className="rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)] p-3 text-xs mb-3">
+            ⚠️ <code>R2_PUBLIC_URL</code> pas trouvé dans les env vars Vercel. Ajoute-le et redéploie pour
+            activer le pré-remplissage.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 mb-2">
+          <label>
+            <span className="text-xs text-[var(--foreground-muted)] block mb-1">Tag desktop</span>
+            <input
+              type="text"
+              value={desktopTag}
+              onChange={(e) => setDesktopTag(e.target.value)}
+              placeholder="desktop-v0.1.2"
+              className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-mono"
+            />
+          </label>
+          <label>
+            <span className="text-xs text-[var(--foreground-muted)] block mb-1">Tag mobile</span>
+            <input
+              type="text"
+              value={mobileTag}
+              onChange={(e) => setMobileTag(e.target.value)}
+              placeholder="mobile-v0.1.2"
+              className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-mono"
+            />
+          </label>
+          <button
+            onClick={applyQuickFill}
+            disabled={!r2PublicUrl}
+            className="btn-primary text-sm self-end"
+          >
+            <Sparkles className="size-4" />
+            Pré-remplir
+          </button>
+        </div>
+
+        {r2PublicUrl && (
+          <button
+            onClick={saveAll}
+            disabled={busy === "all"}
+            className="btn-ghost text-xs mt-2"
+          >
+            {busy === "all" ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            Tout enregistrer en une fois (après pré-remplissage)
+          </button>
+        )}
+      </div>
+
+      {/* Cards par plateforme */}
       {PLATFORMS.map((p) => {
         const Icon = p.icon;
         return (
@@ -80,7 +226,7 @@ export function AppReleasesEditor({ initialReleases }: { initialReleases: Releas
                 onChange={(e) =>
                   setDrafts({ ...drafts, [p.key]: { ...drafts[p.key], version: e.target.value } })
                 }
-                placeholder="0.1.1"
+                placeholder="0.1.2"
                 className="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-mono"
               />
               <input
@@ -100,10 +246,10 @@ export function AppReleasesEditor({ initialReleases }: { initialReleases: Releas
           </div>
         );
       })}
+
       <p className="text-xs text-[var(--foreground-muted)] mt-3">
-        💡 Astuce : héberge tes installeurs sur Cloudflare R2 (bucket public) ou Vercel Blob.
-        Une fois l&apos;URL renseignée ici, le bouton « Télécharger » du site redirige directement
-        vers le fichier en 1 clic.
+        💡 Une fois les URLs renseignées ici, les boutons « Télécharger » du site redirigent directement
+        vers le bon fichier en 1 clic — sans redéploiement Next.js.
       </p>
     </div>
   );
