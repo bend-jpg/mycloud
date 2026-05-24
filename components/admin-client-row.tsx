@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { useRouter as useI18nRouter } from "@/i18n/navigation";
 import {
   AlertCircle,
-  MoreVertical,
   Ban,
   CheckCircle2,
   KeyRound,
@@ -57,19 +56,16 @@ export function AdminClientRow({
   const pct = quota > 0 ? Math.round((used / quota) * 100) : 0;
 
   const [planOpen, setPlanOpen] = useState(false);
-  const [actionsOpen, setActionsOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
   const { toast } = useToast();
   const planRef = useRef<HTMLDivElement>(null);
-  const actionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (planRef.current && !planRef.current.contains(e.target as Node)) setPlanOpen(false);
-      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -97,7 +93,6 @@ export function AdminClientRow({
 
   function askSuspend() {
     setConfirmSuspend(true);
-    setActionsOpen(false);
   }
   async function performSuspend() {
     setBusy("suspend");
@@ -114,7 +109,6 @@ export function AdminClientRow({
 
   function openMessage() {
     setMsgOpen(true);
-    setActionsOpen(false);
   }
   async function submitMessage(message: string) {
     setBusy("message");
@@ -131,7 +125,6 @@ export function AdminClientRow({
 
   function openPwdDialog() {
     setPwdOpen(true);
-    setActionsOpen(false);
   }
   async function submitPassword(newPwd: string) {
     setBusy("password");
@@ -224,45 +217,34 @@ export function AdminClientRow({
           <span className="text-xs text-[var(--success)]">Actif</span>
         )}
       </td>
-      <td className="px-2 text-end relative" onClick={(e) => e.stopPropagation()}>
-        <div ref={actionsRef} className="relative inline-block">
+      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1">
+          {busy && <Loader2 className="size-4 animate-spin text-[var(--accent)]" />}
           <button
-            onClick={() => setActionsOpen((v) => !v)}
-            className="p-1.5 rounded-lg hover:bg-[var(--background-elevated)]"
-            title="Actions rapides"
+            onClick={openMessage}
+            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--accent)]"
+            title="Envoyer un message"
           >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <MoreVertical className="size-4" />}
+            <Mail className="size-4" />
           </button>
-          {actionsOpen && (
-            <div className="absolute end-0 top-full mt-1 w-48 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
-              <button
-                onClick={askSuspend}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
-              >
-                {user.suspendedAt ? (
-                  <>
-                    <CheckCircle2 className="size-4 text-[var(--success)]" /> Réactiver
-                  </>
-                ) : (
-                  <>
-                    <Ban className="size-4 text-[var(--danger)]" /> Suspendre
-                  </>
-                )}
-              </button>
-              <button
-                onClick={openMessage}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
-              >
-                <Mail className="size-4" /> Envoyer un message
-              </button>
-              <button
-                onClick={openPwdDialog}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
-              >
-                <KeyRound className="size-4" /> Reset mot de passe
-              </button>
-            </div>
-          )}
+          <button
+            onClick={openPwdDialog}
+            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--secondary)]"
+            title="Reset mot de passe"
+          >
+            <KeyRound className="size-4" />
+          </button>
+          <button
+            onClick={askSuspend}
+            className={`p-1.5 rounded-lg hover:bg-[var(--background-tile)] ${
+              user.suspendedAt
+                ? "text-[var(--success)]"
+                : "text-[var(--foreground-muted)] hover:text-[var(--danger)]"
+            }`}
+            title={user.suspendedAt ? "Réactiver" : "Suspendre"}
+          >
+            {user.suspendedAt ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />}
+          </button>
         </div>
       </td>
 

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { CreditCard, Bitcoin, Banknote, MoreVertical, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { CreditCard, Bitcoin, Banknote, Trash2, ExternalLink, Loader2, Pencil } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { PromptDialog } from "./prompt-dialog";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -39,17 +39,14 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function AdminPaymentRow({ payment }: { payment: Payment }) {
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
       if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
@@ -74,7 +71,6 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
 
   function openNotes() {
     setNotesOpen(true);
-    setMenuOpen(false);
   }
 
   async function submitNotes(newNotes: string) {
@@ -91,7 +87,6 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
 
   function askRemove() {
     setConfirmRemove(true);
-    setMenuOpen(false);
   }
 
   async function performRemove() {
@@ -150,43 +145,33 @@ export function AdminPaymentRow({ payment }: { payment: Payment }) {
       <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] max-w-xs truncate">
         {payment.notes ?? "—"}
       </td>
-      <td className="px-2 text-end relative">
-        <div ref={menuRef} className="relative inline-block">
+      <td className="px-2 py-3">
+        <div className="flex items-center justify-end gap-1">
           <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)]"
-            title="Plus"
+            onClick={openNotes}
+            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+            title="Modifier les notes"
           >
-            <MoreVertical className="size-4" />
+            <Pencil className="size-4" />
           </button>
-          {menuOpen && (
-            <div className="absolute end-0 top-full mt-1 w-48 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-1 shadow-2xl z-30">
-              <button
-                onClick={openNotes}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-start"
-              >
-                Modifier les notes
-              </button>
-              {payment.invoiceUrl && (
-                <a
-                  href={payment.invoiceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)]"
-                >
-                  <ExternalLink className="size-4" />
-                  Voir facture Stripe
-                </a>
-              )}
-              <button
-                onClick={askRemove}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[var(--background-tile)] text-[var(--danger)] text-start"
-              >
-                <Trash2 className="size-4" />
-                Supprimer
-              </button>
-            </div>
+          {payment.invoiceUrl && (
+            <a
+              href={payment.invoiceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--accent)]"
+              title="Voir facture Stripe"
+            >
+              <ExternalLink className="size-4" />
+            </a>
           )}
+          <button
+            onClick={askRemove}
+            className="p-1.5 rounded-lg hover:bg-[var(--danger)]/10 text-[var(--foreground-muted)] hover:text-[var(--danger)]"
+            title="Supprimer le paiement"
+          >
+            <Trash2 className="size-4" />
+          </button>
         </div>
       </td>
 
