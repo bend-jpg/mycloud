@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { formatBytes } from "@/lib/utils";
@@ -42,6 +42,17 @@ export function FilePreviewModal({
       document.body.style.overflow = "";
     };
   }, [onClose, onPrevious, onNext]);
+
+  // Zoom + pan pour les images — double-clic toggle 1× ↔ 2×, molette zoom, drag pour pan
+  // Reset à chaque changement de fichier
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [file.id]);
 
   // État favori — fetch lazy à l'ouverture
   const [starred, setStarred] = useState<boolean | null>(null);
@@ -319,7 +330,55 @@ export function FilePreviewModal({
           <img
             src={previewUrl}
             alt={file.name}
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            draggable={false}
+            onDoubleClick={(e) => {
+              // Double-clic : toggle 1× ↔ 2.5×, centré sur le clic
+              if (zoom > 1) {
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
+              } else {
+                setZoom(2.5);
+                // Pan vers le point cliqué pour donner l'illusion d'un zoom centré
+                const rect = e.currentTarget.getBoundingClientRect();
+                const cx = e.clientX - rect.left - rect.width / 2;
+                const cy = e.clientY - rect.top - rect.height / 2;
+                setPan({ x: -cx * 1.5, y: -cy * 1.5 });
+              }
+            }}
+            onWheel={(e) => {
+              // Molette : zoom in/out (0.5× ↔ 5×)
+              e.preventDefault();
+              const delta = e.deltaY < 0 ? 0.2 : -0.2;
+              setZoom((z) => Math.max(1, Math.min(5, z + delta)));
+              if (zoom + delta <= 1) setPan({ x: 0, y: 0 });
+            }}
+            onMouseDown={(e) => {
+              if (zoom <= 1) return;
+              e.preventDefault();
+              setDragging(true);
+              dragStartRef.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+            }}
+            onMouseMove={(e) => {
+              if (!dragging || !dragStartRef.current) return;
+              setPan({
+                x: dragStartRef.current.px + (e.clientX - dragStartRef.current.x),
+                y: dragStartRef.current.py + (e.clientY - dragStartRef.current.y),
+              });
+            }}
+            onMouseUp={() => {
+              setDragging(false);
+              dragStartRef.current = null;
+            }}
+            onMouseLeave={() => {
+              setDragging(false);
+              dragStartRef.current = null;
+            }}
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              cursor: zoom > 1 ? (dragging ? "grabbing" : "grab") : "zoom-in",
+              transition: dragging ? "none" : "transform 0.15s ease-out",
+            }}
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl select-none"
           />
         )}
         {isVideo && (
