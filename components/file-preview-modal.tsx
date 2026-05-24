@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { formatBytes } from "@/lib/utils";
 
@@ -34,6 +34,11 @@ export function FilePreviewModal({
       if (e.key === "Escape") onClose();
       else if (e.key === "ArrowLeft" && onPrevious) onPrevious();
       else if (e.key === "ArrowRight" && onNext) onNext();
+      else if (e.key === " " && onNext) {
+        // Espace = play/pause slideshow (sans scroll de la page derrière)
+        e.preventDefault();
+        setPlaying((p) => !p);
+      }
     }
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -42,6 +47,18 @@ export function FilePreviewModal({
       document.body.style.overflow = "";
     };
   }, [onClose, onPrevious, onNext]);
+
+  // Slideshow auto-advance — défile vers la suite toutes les 4s (espace pour pause)
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    if (!playing || !onNext) return;
+    const t = setTimeout(() => onNext(), 4000);
+    return () => clearTimeout(t);
+  }, [playing, onNext, file.id]);
+  // Si on arrive au dernier fichier sans onNext, on stoppe le slideshow
+  useEffect(() => {
+    if (playing && !onNext) setPlaying(false);
+  }, [playing, onNext]);
 
   // Zoom + pan pour les images — double-clic toggle 1× ↔ 2×, molette zoom, drag pour pan
   // Reset à chaque changement de fichier
@@ -177,6 +194,19 @@ export function FilePreviewModal({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {onNext && (
+            <button
+              type="button"
+              onClick={() => setPlaying((p) => !p)}
+              title={playing ? "Pause du diaporama" : "Lancer le diaporama (4s/image)"}
+              aria-pressed={playing}
+              className={`p-2 rounded-xl text-white transition-colors ${
+                playing ? "bg-[var(--accent)]/40 hover:bg-[var(--accent)]/50" : "bg-white/10 hover:bg-white/20"
+              }`}
+            >
+              {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+            </button>
+          )}
           <button
             type="button"
             onClick={toggleStar}
