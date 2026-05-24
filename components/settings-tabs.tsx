@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ThemePicker } from "./theme-picker";
 import { ProfileForm } from "./settings-profile-form";
+import { AvatarUpload } from "./avatar-upload";
 import { PasswordChangeForm } from "./settings-password-form";
 import { TwoFactorSection } from "./two-factor-section";
 import { PasskeysSection } from "./passkeys-section";
@@ -32,6 +33,7 @@ interface Props {
     brandColor: string | null;
     brandSenderName: string | null;
     brandWatermark: boolean;
+    image?: string | null;
   };
 }
 
@@ -93,19 +95,25 @@ export function SettingsTabs({ user }: Props) {
       {/* Content */}
       <section className="space-y-4">
         {tab === "profile" && (
-          <div className="tile cursor-default !min-h-0">
-            <h2 className="text-lg font-semibold mb-1">Profil</h2>
-            <p className="text-sm text-[var(--foreground-muted)] mb-4">Nom, email, téléphone, WhatsApp.</p>
-            <ProfileForm
-              initial={{
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                whatsapp: user.whatsapp,
-                locale: user.locale,
-              }}
-            />
-          </div>
+          <>
+            <div className="tile cursor-default !min-h-0">
+              <h2 className="text-lg font-semibold mb-3">Photo de profil</h2>
+              <AvatarUpload currentImage={user.image ?? null} userName={user.name || user.email} />
+            </div>
+            <div className="tile cursor-default !min-h-0">
+              <h2 className="text-lg font-semibold mb-1">Profil</h2>
+              <p className="text-sm text-[var(--foreground-muted)] mb-4">Nom, email, téléphone, WhatsApp.</p>
+              <ProfileForm
+                initial={{
+                  name: user.name,
+                  email: user.email,
+                  phone: user.phone,
+                  whatsapp: user.whatsapp,
+                  locale: user.locale,
+                }}
+              />
+            </div>
+          </>
         )}
 
         {tab === "appearance" && (

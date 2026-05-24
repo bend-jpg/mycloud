@@ -28,6 +28,7 @@ export default async function SettingsPage({
       phone: true,
       whatsapp: true,
       locale: true,
+      image: true,
       passwordHash: true,
       twoFactorEnabled: true,
       brandLogoUrl: true,
@@ -64,6 +65,7 @@ export default async function SettingsPage({
             brandColor: user.brandColor,
             brandSenderName: user.brandSenderName,
             brandWatermark: user.brandWatermark,
+            image: user.image ?? null,
           }}
         />
       </main>
