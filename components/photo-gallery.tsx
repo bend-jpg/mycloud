@@ -44,8 +44,22 @@ function groupByMonth(photos: Photo[]): { label: string; items: Photo[] }[] {
 }
 
 export function PhotoGallery({ photos }: { photos: Photo[] }) {
-  const grouped = useMemo(() => groupByMonth(photos), [photos]);
-  // Index dans la liste globale (toutes photos confondues, triées comme reçues du serveur)
+  // Liste des années présentes pour le filtre (chips)
+  const years = useMemo(() => {
+    const set = new Set<number>();
+    for (const p of photos) set.add(new Date(p.uploadedAt).getFullYear());
+    return Array.from(set).sort((a, b) => b - a);
+  }, [photos]);
+  const [yearFilter, setYearFilter] = useState<number | null>(null);
+
+  // Photos visibles après filtre — la liste sert aussi de référence pour la nav lightbox
+  const visiblePhotos = useMemo(() => {
+    if (yearFilter === null) return photos;
+    return photos.filter((p) => new Date(p.uploadedAt).getFullYear() === yearFilter);
+  }, [photos, yearFilter]);
+
+  const grouped = useMemo(() => groupByMonth(visiblePhotos), [visiblePhotos]);
+  // Index dans visiblePhotos (la nav doit suivre le filtre, sinon on saute hors filtre)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const { toast } = useToast();
@@ -86,10 +100,45 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
     }
   }
 
-  const active = lightboxIdx !== null ? photos[lightboxIdx] : null;
+  const active = lightboxIdx !== null ? visiblePhotos[lightboxIdx] : null;
 
   return (
     <>
+      {/* Chips année — visibles seulement s'il y a au moins 2 années couvertes */}
+      {years.length > 1 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          <button
+            onClick={() => setYearFilter(null)}
+            className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
+              yearFilter === null
+                ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
+                : "bg-[var(--background-tile)] text-[var(--foreground-muted)] border-[var(--border)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            Tout ({photos.length})
+          </button>
+          {years.map((y) => {
+            const count = photos.reduce(
+              (n, p) => (new Date(p.uploadedAt).getFullYear() === y ? n + 1 : n),
+              0,
+            );
+            return (
+              <button
+                key={y}
+                onClick={() => setYearFilter(y)}
+                className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
+                  yearFilter === y
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
+                    : "bg-[var(--background-tile)] text-[var(--foreground-muted)] border-[var(--border)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {y} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="space-y-8">
         {grouped.map((g) => (
           <section key={g.label}>
@@ -117,7 +166,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1 sm:gap-1.5">
               {g.items.map((photo) => {
-                const idxGlobal = photos.findIndex((p) => p.id === photo.id);
+                const idxGlobal = visiblePhotos.findIndex((p) => p.id === photo.id);
                 return (
                   <button
                     key={photo.id}
@@ -149,11 +198,11 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
             lightboxIdx > 0 ? () => setLightboxIdx(lightboxIdx - 1) : undefined
           }
           onNext={
-            lightboxIdx < photos.length - 1
+            lightboxIdx < visiblePhotos.length - 1
               ? () => setLightboxIdx(lightboxIdx + 1)
               : undefined
           }
-          position={{ index: lightboxIdx, total: photos.length }}
+          position={{ index: lightboxIdx, total: visiblePhotos.length }}
         />
       )}
     </>
