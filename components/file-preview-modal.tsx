@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
+import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight, Play, Pause, Share2 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { formatBytes } from "@/lib/utils";
+import { useToast } from "./toast";
 
 interface PreviewFile {
   id: string;
@@ -47,6 +48,38 @@ export function FilePreviewModal({
       document.body.style.overflow = "";
     };
   }, [onClose, onPrevious, onNext]);
+
+  const { toast } = useToast();
+
+  // Quick share — POST /api/shares avec défauts du plan, copie l'URL dans le clipboard
+  const [sharing, setSharing] = useState(false);
+  async function quickShare() {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const res = await fetch("/api/shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: file.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.share?.url) {
+        toast.error(data.error === "UNAUTHORIZED" ? "Reconnecte-toi" : "Échec de la création du lien");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(data.share.url);
+        toast.success("Lien copié dans le presse-papier · valable selon ton plan");
+      } catch {
+        // navigateur sans clipboard API — affiche l'URL pour copie manuelle
+        toast.success(`Lien créé : ${data.share.url}`);
+      }
+    } catch {
+      toast.error("Erreur réseau");
+    } finally {
+      setSharing(false);
+    }
+  }
 
   // Slideshow auto-advance — défile vers la suite toutes les 4s (espace pour pause)
   const [playing, setPlaying] = useState(false);
@@ -207,6 +240,15 @@ export function FilePreviewModal({
               {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
             </button>
           )}
+          <button
+            type="button"
+            onClick={quickShare}
+            disabled={sharing}
+            title="Créer un lien de partage et copier dans le presse-papier"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+          >
+            {sharing ? <Loader2 className="size-4 animate-spin" /> : <Share2 className="size-4" />}
+          </button>
           <button
             type="button"
             onClick={toggleStar}
