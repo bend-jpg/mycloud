@@ -69,15 +69,19 @@ export function AppReleasesEditor({
     const dv = dvMatch?.[1] ?? "";
     const mv = mvMatch?.[1] ?? "";
 
+    // electron-builder utilise productName="MyTitanCloud" + son artifactName par défaut :
+    //   - Windows NSIS : "MyTitanCloud Setup X.Y.Z.exe" (avec ESPACES → %20)
+    //   - macOS DMG arm64 : "MyTitanCloud-X.Y.Z-arm64.dmg" (95% des Mac récents)
+    //   - Linux AppImage : "MyTitanCloud-X.Y.Z.AppImage"
     setDrafts({
       ...drafts,
       win: {
         version: dv,
-        url: `${base}/releases/${desktopTag}/MyTitanCloud-Setup-${dv}.exe`,
+        url: `${base}/releases/${desktopTag}/MyTitanCloud%20Setup%20${dv}.exe`,
       },
       mac: {
         version: dv,
-        url: `${base}/releases/${desktopTag}/MyTitanCloud-${dv}.dmg`,
+        url: `${base}/releases/${desktopTag}/MyTitanCloud-${dv}-arm64.dmg`,
       },
       linux: {
         version: dv,
