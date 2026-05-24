@@ -6,7 +6,9 @@
 // favoris + versions sans dupliquer la logique.
 
 import { useMemo, useState } from "react";
+import { Download, Loader2 } from "lucide-react";
 import { FilePreviewModal } from "./file-preview-modal";
+import { useToast } from "./toast";
 
 interface Photo {
   id: string;
@@ -45,6 +47,44 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
   const grouped = useMemo(() => groupByMonth(photos), [photos]);
   // Index dans la liste globale (toutes photos confondues, triées comme reçues du serveur)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  async function downloadMonth(label: string, items: Photo[]) {
+    if (downloadingMonth) return;
+    // L'endpoint bulk-download limite à 100 fichiers/2 Go par appel
+    if (items.length > 100) {
+      toast.error(`Trop de photos pour un seul ZIP (max 100, ce mois en a ${items.length})`);
+      return;
+    }
+    setDownloadingMonth(label);
+    try {
+      const res = await fetch("/api/files/bulk-download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileIds: items.map((p) => p.id) }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.message ?? "Échec du téléchargement");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `photos-${label.replace(/\s+/g, "-").toLowerCase()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`${items.length} photo(s) téléchargée(s)`);
+    } catch {
+      toast.error("Erreur réseau");
+    } finally {
+      setDownloadingMonth(null);
+    }
+  }
 
   const active = lightboxIdx !== null ? photos[lightboxIdx] : null;
 
@@ -53,12 +93,28 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
       <div className="space-y-8">
         {grouped.map((g) => (
           <section key={g.label}>
-            <h3 className="text-lg font-semibold mb-3 sticky top-16 bg-[var(--background)]/80 backdrop-blur py-2 z-10">
-              {g.label}
-              <span className="text-sm text-[var(--foreground-muted)] font-normal ms-2">
-                · {g.items.length} photo{g.items.length > 1 ? "s" : ""}
-              </span>
-            </h3>
+            <div className="sticky top-16 bg-[var(--background)]/80 backdrop-blur py-2 z-10 flex items-center justify-between gap-3 mb-3">
+              <h3 className="text-lg font-semibold">
+                {g.label}
+                <span className="text-sm text-[var(--foreground-muted)] font-normal ms-2">
+                  · {g.items.length} photo{g.items.length > 1 ? "s" : ""}
+                </span>
+              </h3>
+              {/* Bulk-download ZIP du mois (limite 100 fichiers/2 Go côté API) */}
+              <button
+                onClick={() => downloadMonth(g.label, g.items)}
+                disabled={downloadingMonth !== null}
+                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--background-tile)] hover:bg-[var(--background-elevated)] border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Télécharger toutes les photos du mois en .zip"
+              >
+                {downloadingMonth === g.label ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                <span className="hidden sm:inline">Télécharger .zip</span>
+              </button>
+            </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1 sm:gap-1.5">
               {g.items.map((photo) => {
                 const idxGlobal = photos.findIndex((p) => p.id === photo.id);
