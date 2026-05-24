@@ -71,6 +71,37 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # Upload optionnel vers Cloudflare R2 — actif uniquement si les secrets
+      # R2_* sont définis dans le repo GitHub (Settings → Secrets → Actions).
+      # Permet de servir les installeurs depuis une URL publique sans
+      # rendre le repo public.
+      - name: Upload installers to R2 (Cloudflare)
+        if: always() && env.R2_ENDPOINT != ''
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          # Install AWS CLI v2 (compatible S3 = R2)
+          if ! command -v aws &> /dev/null; then
+            python3 -m pip install --quiet awscli || pip install --quiet awscli
+          fi
+          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+          export AWS_DEFAULT_REGION="auto"
+          TAG="${{ github.ref_name }}"
+          echo "Uploading installers from desktop/dist/ to R2 bucket $R2_BUCKET under prefix releases/$TAG/"
+          aws s3 sync desktop/dist/ "s3://$R2_BUCKET/releases/$TAG/" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --exclude "*" \
+            --include "*.exe" \
+            --include "*.dmg" \
+            --include "*.AppImage" \
+            --include "*.deb" || echo "R2 upload partiel ou échoué — voir les logs"
+
   release:
     name: Publish release
     needs: build
