@@ -9,6 +9,7 @@
 
 const { app, BrowserWindow, shell, Menu, Tray, nativeImage, dialog, ipcMain, session } = require("electron");
 const path = require("path");
+const os = require("os");
 const { spawn, execSync } = require("child_process");
 const syncEngine = require("./sync-engine");
 
@@ -126,11 +127,58 @@ ipcMain.handle("stop-sync", () => {
 
 ipcMain.handle("get-sync-state", () => syncEngine.getState());
 
+// Métadonnées exposées au renderer pour la sidebar native
+ipcMain.handle("get-version", () => app.getVersion());
+ipcMain.handle("get-hostname", () => os.hostname());
+
+// Démontage du disque virtuel (Windows uniquement pour l'instant — net use /delete)
+ipcMain.handle("unmount-virtual-drive", () => {
+  try {
+    if (process.platform === "win32") {
+      execSync("net use Z: /delete /yes", { stdio: "ignore", timeout: 10_000, windowsHide: true });
+      return { ok: true };
+    }
+    return { ok: false, error: "Démontage manuel sur cette plateforme" };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+// Popup auto-mount déclenchée par le renderer (au login détecté via webview)
+ipcMain.handle("propose-auto-mount", () => {
+  if (!mainWindow) return { ok: false };
+  dialog
+    .showMessageBox(mainWindow, {
+      type: "question",
+      buttons: ["Monter maintenant", "Plus tard"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Monter le disque virtuel ?",
+      message: "Voir tes fichiers MyTitanCloud comme un disque dur dans ton Explorateur ?",
+      detail:
+        "Un disque Z: sera ajouté à ton système. Glisse-dépose des fichiers dedans — tout sera synchronisé automatiquement (style pCloud Drive).",
+    })
+    .then((res) => {
+      if (res.response === 0) {
+        const mountResult = mountVirtualDrive();
+        if (!mountResult.ok) {
+          dialog.showMessageBox(mainWindow, {
+            type: "warning",
+            title: "Montage échoué",
+            message: "Impossible de monter le disque automatiquement.",
+            detail: `${mountResult.error}\n\nReste sur la section "Disque virtuel" de la sidebar pour réessayer.`,
+          });
+        }
+      }
+    });
+  return { ok: true };
+});
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 800,
+    minWidth: 900,
     minHeight: 600,
     title: "MyTitanCloud",
     backgroundColor: "#0a0a14",
@@ -140,90 +188,63 @@ function createMainWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false, // requis pour activer webview tag avec nodeIntegrationInSubFrames
       webSecurity: true,
+      webviewTag: true, // ON active la balise <webview> dans le renderer
     },
-    autoHideMenuBar: true, // pas de menu File/Edit/View — c'est une app, pas un navigateur
+    autoHideMenuBar: true,
   });
 
-  // Custom User-Agent : le site web détecte cette chaîne pour cacher le header
-  // marketing (tarifs, fonctionnalités, contact) — inutile quand on est déjà
-  // dans l'app installée — et activer les hooks IPC (mount disque, sync local).
-  // Les versions correspondent à app.getVersion() côté Electron.
-  const ua = mainWindow.webContents.getUserAgent();
-  mainWindow.webContents.setUserAgent(`${ua} MyTitanCloudDesktop/${app.getVersion()}`);
+  // Custom User-Agent — appliqué à TOUTES les sessions (y compris celle du
+  // webview interne). Le site web détecte cette chaîne pour cacher le header
+  // marketing dans le webview (puisque l'user est déjà dans l'app installée).
+  const customUA = `MyTitanCloudDesktop/${app.getVersion()}`;
+  const baseUA = mainWindow.webContents.getUserAgent();
+  mainWindow.webContents.setUserAgent(`${baseUA} ${customUA}`);
+  // La session du webview hérite : on lui pose aussi le UA pour être sûr
+  session.fromPartition("persist:mytitancloud").setUserAgent(`${baseUA} ${customUA}`);
 
-  // Charge directement /files — Next.js redirige automatiquement vers /login
-  // si l'user n'est pas connecté, sinon on est direct dans le cloud.
-  mainWindow.loadURL(`${APP_URL}/files?app=desktop`);
+  // Charge le shell natif (sidebar + webview intégré) — pas le site direct.
+  // L'utilisateur voit une VRAIE app desktop, pas un browser déguisé.
+  mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
 
-  // Affiche la fenêtre quand le contenu est prêt
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
     if (isDev) mainWindow.webContents.openDevTools({ mode: "right" });
   });
 
-  // Au premier login (détecté par l'arrivée sur /files APRÈS /login), propose
-  // de monter automatiquement le disque virtuel — comme pCloud Drive.
-  //
-  // Astuce anti-faux-positif : on skip la 1ère navigation (l'initial loadURL
-  // vers /files qui peut rebondir sur /login si pas connecté). On ne propose
-  // le mount QUE si l'utilisateur transite de /login → /files (= il vient
-  // VRAIMENT de se connecter).
-  let mountProposed = false;
-  let lastNavUrl = "";
-  mainWindow.webContents.on("did-navigate", (_event, url) => {
-    const prev = lastNavUrl;
-    lastNavUrl = url;
-    if (mountProposed) return;
-    if (!/\/(files|dashboard)/.test(url)) return;
-    // Skip si on n'a pas vu /login juste avant (= chargement initial, pas un login)
-    if (!/\/login/.test(prev)) return;
-    mountProposed = true;
-    // Demande après 2s pour laisser le user voir qu'il est bien connecté
-    setTimeout(() => {
-      dialog
-        .showMessageBox(mainWindow, {
-          type: "question",
-          buttons: ["Monter maintenant", "Plus tard"],
-          defaultId: 0,
-          cancelId: 1,
-          title: "Monter le disque virtuel ?",
-          message: "Voir tes fichiers MyTitanCloud comme un disque dur dans ton Explorateur ?",
-          detail:
-            "Un disque réseau sera ajouté à ton système. Tu pourras glisser-déposer des fichiers dedans comme dans un dossier normal, et tout sera synchronisé automatiquement (style pCloud Drive).",
-        })
-        .then((res) => {
-          if (res.response === 0) {
-            const mountResult = mountVirtualDrive();
-            if (!mountResult.ok) {
-              dialog.showMessageBox(mainWindow, {
-                type: "warning",
-                title: "Montage échoué",
-                message: "Impossible de monter le disque automatiquement.",
-                detail: `${mountResult.error}\n\nTu peux retenter depuis l'icône MyTitanCloud dans la barre des tâches → "Monter le disque virtuel".`,
-              });
-            }
-          }
-        });
-    }, 2000);
-  });
-
-  // Tous les liens externes (target=_blank ou liens vers autres domaines)
-  // s'ouvrent dans le navigateur par défaut au lieu de remplacer la fenêtre
+  // Les liens externes (mailto:, https vers autre domaine) s'ouvrent dans
+  // le navigateur par défaut au lieu de remplacer la fenêtre
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
   });
 
-  // Empêche la navigation vers des domaines externes dans la fenêtre principale
+  // Sécurité : on bloque toute navigation hors mytitancloud.com depuis le
+  // shell lui-même (le webview a sa propre policy, géré ci-dessous)
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    const target = new URL(url);
-    const allowed = new URL(APP_URL);
-    if (target.host !== allowed.host && !target.host.endsWith(`.${allowed.host}`)) {
+    // Le shell ne doit JAMAIS naviguer ailleurs que sur file:// local
+    if (!url.startsWith("file://")) {
       event.preventDefault();
       shell.openExternal(url);
     }
+  });
+
+  // Sécurité du webview interne : bloque la navigation hors mytitancloud.com
+  app.on("web-contents-created", (_e, contents) => {
+    if (contents.getType() !== "webview") return;
+    contents.setWindowOpenHandler(({ url }) => {
+      shell.openExternal(url);
+      return { action: "deny" };
+    });
+    contents.on("will-navigate", (event, url) => {
+      const target = new URL(url);
+      const allowed = new URL(APP_URL);
+      if (target.host !== allowed.host && !target.host.endsWith(`.${allowed.host}`)) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    });
   });
 
   mainWindow.on("closed", () => {

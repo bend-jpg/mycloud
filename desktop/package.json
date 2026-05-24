@@ -38,6 +38,7 @@
       "main.js",
       "preload.js",
       "sync-engine.js",
+      "renderer/**/*",
       "package.json"
     ],
     "win": {

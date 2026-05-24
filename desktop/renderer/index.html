@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://mytitancloud.com; img-src * data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://mytitancloud.com;" />
+    <title>MyTitanCloud</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <!-- Sidebar native — l'utilisateur ne sait pas qu'il y a un site web dedans -->
+    <aside class="sidebar">
+      <header class="brand">
+        <div class="brand-logo" aria-hidden="true"></div>
+        <div class="brand-text">
+          <div class="brand-name">MyTitanCloud</div>
+          <div class="brand-version" id="version-label">v0.1.2</div>
+        </div>
+      </header>
+
+      <nav class="nav-list" aria-label="Navigation principale">
+        <button class="nav-item active" data-section="files" data-url="/files">
+          <span class="icon" aria-hidden="true">📁</span>
+          <span>Mes fichiers</span>
+        </button>
+        <button class="nav-item" data-section="photos" data-url="/photos">
+          <span class="icon" aria-hidden="true">📷</span>
+          <span>Photos</span>
+        </button>
+        <button class="nav-item" data-section="family" data-url="/family">
+          <span class="icon" aria-hidden="true">👥</span>
+          <span>Famille</span>
+        </button>
+        <button class="nav-item" data-section="shares" data-url="/shares">
+          <span class="icon" aria-hidden="true">🔗</span>
+          <span>Partages</span>
+        </button>
+        <button class="nav-item" data-section="file-requests" data-url="/file-requests">
+          <span class="icon" aria-hidden="true">📥</span>
+          <span>Demandes</span>
+        </button>
+
+        <div class="nav-section-label">Local</div>
+
+        <button class="nav-item" data-section="sync" data-panel="sync">
+          <span class="icon" aria-hidden="true">🔄</span>
+          <span>Sync dossier</span>
+          <span class="status-dot" id="sync-status-dot" hidden></span>
+        </button>
+        <button class="nav-item" data-section="backup" data-panel="backup">
+          <span class="icon" aria-hidden="true">💾</span>
+          <span>Sauvegarde</span>
+        </button>
+        <button class="nav-item" data-section="drive" data-panel="drive">
+          <span class="icon" aria-hidden="true">💿</span>
+          <span>Disque virtuel</span>
+        </button>
+
+        <div class="nav-section-label">Compte</div>
+
+        <button class="nav-item" data-section="security" data-url="/security">
+          <span class="icon" aria-hidden="true">🔒</span>
+          <span>Sécurité</span>
+        </button>
+        <button class="nav-item" data-section="billing" data-url="/billing">
+          <span class="icon" aria-hidden="true">💳</span>
+          <span>Mon plan</span>
+        </button>
+        <button class="nav-item" data-section="settings" data-url="/settings">
+          <span class="icon" aria-hidden="true">⚙️</span>
+          <span>Paramètres</span>
+        </button>
+      </nav>
+
+      <footer class="sidebar-footer">
+        <div id="footer-storage" class="storage-mini">
+          <div class="storage-bar"><div class="storage-fill" id="storage-fill"></div></div>
+          <div class="storage-text" id="storage-text">Chargement…</div>
+        </div>
+      </footer>
+    </aside>
+
+    <!-- Zone de contenu : soit le webview (site), soit un panneau natif -->
+    <main class="content">
+      <!-- Panneau natif: Sync -->
+      <section class="native-panel" id="panel-sync" hidden>
+        <header class="panel-head">
+          <h1>Synchronisation locale</h1>
+          <p>Choisis un dossier sur ton PC — chaque nouveau fichier sera uploadé automatiquement vers MyTitanCloud.</p>
+        </header>
+        <div class="panel-body">
+          <div class="sync-card">
+            <div class="sync-card-row">
+              <strong>Dossier surveillé</strong>
+              <span id="sync-folder-path" class="muted">Aucun</span>
+            </div>
+            <div class="sync-card-actions">
+              <button class="btn-primary" id="btn-pick-folder">Choisir un dossier</button>
+              <button class="btn-secondary" id="btn-start-sync" disabled>Démarrer la synchronisation</button>
+              <button class="btn-danger" id="btn-stop-sync" hidden>Arrêter</button>
+            </div>
+          </div>
+          <div class="sync-card">
+            <strong>Journal d'activité</strong>
+            <ul class="sync-log" id="sync-log"><li class="muted">Aucune activité encore…</li></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panneau natif: Sauvegarde (folder toggles à la pCloud) -->
+      <section class="native-panel" id="panel-backup" hidden>
+        <header class="panel-head">
+          <h1>Sauvegarde des dossiers</h1>
+          <p>Sélectionne les dossiers de ton PC à sauvegarder en continu vers MyTitanCloud. Récupère facilement les anciennes versions.</p>
+        </header>
+        <div class="panel-body">
+          <div class="backup-pc">
+            <div class="backup-pc-head">
+              <span class="icon" aria-hidden="true">🖥️</span>
+              <strong id="hostname">Ce PC</strong>
+            </div>
+            <ul class="backup-list" id="backup-list">
+              <!-- Items injectés par renderer.js — Desktop, Documents, Downloads, Music, Pictures, Videos -->
+            </ul>
+          </div>
+          <p class="muted small">Astuce : la sauvegarde n'efface jamais tes fichiers locaux. C'est une copie cloud en plus de l'original.</p>
+        </div>
+      </section>
+
+      <!-- Panneau natif: Disque virtuel -->
+      <section class="native-panel" id="panel-drive" hidden>
+        <header class="panel-head">
+          <h1>Disque virtuel</h1>
+          <p>Monte MyTitanCloud comme un disque dur dans ton Explorateur — exactement comme pCloud Drive.</p>
+        </header>
+        <div class="panel-body">
+          <div class="drive-card">
+            <div class="drive-illustration" aria-hidden="true">💿</div>
+            <h2>Disque MyTitanCloud (Z:)</h2>
+            <p id="drive-status" class="muted">Pas encore monté.</p>
+            <div class="drive-actions">
+              <button class="btn-primary" id="btn-mount-drive">Monter le disque</button>
+              <button class="btn-secondary" id="btn-unmount-drive">Démonter</button>
+            </div>
+            <ul class="drive-features">
+              <li>📂 Glisse-dépose des fichiers dans Z: pour les uploader</li>
+              <li>⚡ Pas de stockage local — les fichiers sont streamés depuis le cloud</li>
+              <li>🔒 Reste connecté via ta session — pas de mot de passe à chaque accès</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Webview : pour les sections "site web" (Mes fichiers, Photos, Famille, etc.) -->
+      <webview
+        id="webview"
+        src="https://mytitancloud.com/files?app=desktop"
+        partition="persist:mytitancloud"
+        allowpopups
+        useragent="Mozilla/5.0 MyTitanCloudDesktop/0.1.2"
+      ></webview>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
