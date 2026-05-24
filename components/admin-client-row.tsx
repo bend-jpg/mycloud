@@ -13,6 +13,7 @@ import {
   KeyRound,
   Mail,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { PromptDialog } from "./prompt-dialog";
@@ -60,6 +61,7 @@ export function AdminClientRow({
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { toast } = useToast();
   const planRef = useRef<HTMLDivElement>(null);
 
@@ -142,6 +144,23 @@ export function AdminClientRow({
     }
   }
 
+  function askDelete() {
+    setConfirmDelete(true);
+  }
+  async function performDelete() {
+    setBusy("delete");
+    const res = await fetch(`/api/admin/clients/${user.id}`, { method: "DELETE" });
+    setBusy(null);
+    setConfirmDelete(false);
+    if (res.ok) {
+      toast.success("Client supprimé définitivement");
+      router.refresh();
+    } else {
+      const data = await res.json().catch(() => null);
+      toast.error(data?.message ?? "Échec de la suppression");
+    }
+  }
+
   return (
     <tr
       onClick={openFiche}
@@ -217,33 +236,44 @@ export function AdminClientRow({
           <span className="text-xs text-[var(--success)]">Actif</span>
         )}
       </td>
-      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1">
-          {busy && <Loader2 className="size-4 animate-spin text-[var(--accent)]" />}
+      <td className="px-3 py-3 w-44" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-0.5">
+          {busy && <Loader2 className="size-4 animate-spin text-[var(--accent)] me-1" />}
           <button
             onClick={openMessage}
-            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--accent)]"
+            className="p-2 rounded-lg bg-[var(--background-elevated)] hover:bg-[var(--accent)]/15 text-[var(--foreground)] hover:text-[var(--accent)] transition-colors"
             title="Envoyer un message"
+            aria-label="Envoyer un message"
           >
             <Mail className="size-4" />
           </button>
           <button
             onClick={openPwdDialog}
-            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--secondary)]"
-            title="Reset mot de passe"
+            className="p-2 rounded-lg bg-[var(--background-elevated)] hover:bg-[var(--secondary)]/15 text-[var(--foreground)] hover:text-[var(--secondary)] transition-colors"
+            title="Réinitialiser le mot de passe"
+            aria-label="Réinitialiser le mot de passe"
           >
             <KeyRound className="size-4" />
           </button>
           <button
             onClick={askSuspend}
-            className={`p-1.5 rounded-lg hover:bg-[var(--background-tile)] ${
+            className={`p-2 rounded-lg bg-[var(--background-elevated)] transition-colors ${
               user.suspendedAt
-                ? "text-[var(--success)]"
-                : "text-[var(--foreground-muted)] hover:text-[var(--danger)]"
+                ? "text-[var(--success)] hover:bg-[var(--success)]/15"
+                : "text-[var(--foreground)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/15"
             }`}
-            title={user.suspendedAt ? "Réactiver" : "Suspendre"}
+            title={user.suspendedAt ? "Réactiver le client" : "Suspendre le client"}
+            aria-label={user.suspendedAt ? "Réactiver" : "Suspendre"}
           >
             {user.suspendedAt ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />}
+          </button>
+          <button
+            onClick={askDelete}
+            className="p-2 rounded-lg bg-[var(--background-elevated)] hover:bg-[var(--danger)]/15 text-[var(--foreground)] hover:text-[var(--danger)] transition-colors"
+            title="Supprimer définitivement le client"
+            aria-label="Supprimer le client"
+          >
+            <Trash2 className="size-4" />
           </button>
         </div>
       </td>
@@ -281,6 +311,16 @@ export function AdminClientRow({
         validate={(v) => (v.length < 8 ? "Minimum 8 caractères" : null)}
         onClose={() => setPwdOpen(false)}
         onSubmit={submitPassword}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Supprimer ${user.name ?? user.email} ?`}
+        message="Action irréversible. Le compte, tous ses fichiers, ses partages, ses paiements et son historique seront effacés définitivement. Pour conserver les données mais bloquer l'accès, utilise plutôt 'Suspendre'."
+        confirmLabel="Supprimer définitivement"
+        destructive
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={performDelete}
       />
     </tr>
   );

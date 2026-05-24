@@ -47,7 +47,7 @@ export default async function AdminStaffPage({
               <th className="text-start px-4 py-3 hidden sm:table-cell">2FA</th>
               <th className="text-start px-4 py-3 hidden md:table-cell">Statut</th>
               <th className="text-start px-4 py-3 hidden md:table-cell">Dernière connexion</th>
-              <th className="w-10 px-2"></th>
+              <th className="text-end px-3 py-3 w-44">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">

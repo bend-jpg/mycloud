@@ -199,31 +199,34 @@ export function AdminStaffRow({ user, locale }: { user: StaffLite; locale: strin
       <td className="px-4 py-3 hidden md:table-cell text-xs text-[var(--foreground-muted)]">
         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString(locale) : "Jamais"}
       </td>
-      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1">
-          {busy && <Loader2 className="size-4 animate-spin text-[var(--accent)]" />}
+      <td className="px-3 py-3 w-44" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-0.5">
+          {busy && <Loader2 className="size-4 animate-spin text-[var(--accent)] me-1" />}
           <button
             onClick={openPwdDialog}
-            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--secondary)]"
-            title="Reset mot de passe"
+            className="p-2 rounded-lg bg-[var(--background-elevated)] hover:bg-[var(--secondary)]/15 text-[var(--foreground)] hover:text-[var(--secondary)] transition-colors"
+            title="Réinitialiser le mot de passe"
+            aria-label="Réinitialiser le mot de passe"
           >
             <KeyRound className="size-4" />
           </button>
           <button
             onClick={askDemote}
-            className="p-1.5 rounded-lg hover:bg-[var(--background-tile)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-            title="Dégrader en USER"
+            className="p-2 rounded-lg bg-[var(--background-elevated)] hover:bg-[var(--accent)]/15 text-[var(--foreground)] hover:text-[var(--accent)] transition-colors"
+            title="Dégrader en utilisateur (USER)"
+            aria-label="Dégrader en USER"
           >
             <ArrowDownToLine className="size-4" />
           </button>
           <button
             onClick={askSuspend}
-            className={`p-1.5 rounded-lg hover:bg-[var(--background-tile)] ${
+            className={`p-2 rounded-lg bg-[var(--background-elevated)] transition-colors ${
               user.suspendedAt
-                ? "text-[var(--success)]"
-                : "text-[var(--foreground-muted)] hover:text-[var(--danger)]"
+                ? "text-[var(--success)] hover:bg-[var(--success)]/15"
+                : "text-[var(--foreground)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/15"
             }`}
             title={user.suspendedAt ? "Réactiver le membre" : "Suspendre le membre"}
+            aria-label={user.suspendedAt ? "Réactiver" : "Suspendre"}
           >
             {user.suspendedAt ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />}
           </button>

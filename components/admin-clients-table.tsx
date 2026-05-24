@@ -146,7 +146,7 @@ export function AdminClientsTable({
               <th className="text-end px-4 py-3">Stockage</th>
               <th className="text-start px-4 py-3">Inscrit le</th>
               <th className="text-start px-4 py-3">Statut</th>
-              <th className="w-10 px-2"></th>
+              <th className="text-end px-3 py-3 w-44">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
