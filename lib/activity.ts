@@ -18,6 +18,7 @@ export type ActivityAction =
   | "share.download"
   // Team actions (visible dans /family/[teamId]/activity)
   | "team.file.upload"
+  | "team.file.version" // nouvelle version d'un fichier existant
   | "team.file.delete"
   | "team.file.move"
   | "team.folder.create"

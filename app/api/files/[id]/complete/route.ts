@@ -1,3 +1,20 @@
+// /api/files/[id]/complete — finalisation d'un upload.
+//
+// Flux normal :
+//  1. Vérifie que les bytes sont bien dans le storage
+//  2. Met à jour la vraie taille du fichier
+//  3. Incrémente le quota du payeur (user ou owner du team)
+//  4. Crée une notification quota si seuil franchi
+//  5. Log d'activité team si pertinent
+//
+// Versioning (depuis Round 85) :
+//  6. Cherche si un autre fichier porte le même nom dans le même dossier
+//     du même propriétaire (= duplicate). Si oui :
+//     - Snapshot des bytes du fichier existant ("head") dans une FileVersion
+//     - Met à jour le head pour pointer vers les nouveaux bytes
+//     - Supprime la ligne File du nouvel upload (head est canonique)
+//     → L'utilisateur garde un historique navigable via /api/files/[id]/versions
+
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
@@ -21,27 +38,26 @@ export async function POST(
   const file = await db.file.findFirst({ where: { id, ownerId: session.id } });
   if (!file) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-  // Vérification d'autorisation supplémentaire pour les fichiers de team :
-  // - L'uploader doit toujours être EDITOR+ sur le team
+  // Vérification d'autorisation supplémentaire pour les fichiers de team
   let quotaUserId = file.ownerId;
   if (file.teamId) {
     const m = await getMembership(file.teamId, session.id);
     if (!m || !canWrite(m.role)) {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
-    quotaUserId = m.team.ownerId; // quota sur le propriétaire du team (qui paye)
+    quotaUserId = m.team.ownerId;
   }
 
   // Vérifie que l'objet existe bien dans le storage avant de marquer comme finalisé
   const storage = await getStorage(file.storageBackendId);
-  const head = await storage.headObject(file.storageKey);
-  if (!head) {
+  const headObj = await storage.headObject(file.storageKey);
+  if (!headObj) {
     await db.file.delete({ where: { id } });
     return NextResponse.json({ error: "UPLOAD_NOT_FOUND" }, { status: 404 });
   }
 
   // Met à jour la taille réelle puis compte le fichier dans le quota du payeur
-  const realSize = BigInt(head.size);
+  const realSize = BigInt(headObj.size);
   await db.$transaction([
     db.file.update({ where: { id }, data: { size: realSize } }),
     db.user.update({
@@ -54,6 +70,85 @@ export async function POST(
     }),
   ]);
 
+  // ============================================================
+  // VERSIONING : si un autre fichier porte déjà ce nom dans ce dossier,
+  // on merge — l'ancien devient une FileVersion, le head pointe sur les
+  // nouveaux bytes.
+  // ============================================================
+  let resultFileId = file.id;
+  let resultName = file.name;
+  let merged = false;
+
+  try {
+    const existing = await db.file.findFirst({
+      where: {
+        ownerId: file.ownerId,
+        teamId: file.teamId,
+        folderId: file.folderId,
+        name: file.name,
+        isTrash: false,
+        id: { not: file.id },
+      },
+      orderBy: { uploadedAt: "asc" },
+    });
+
+    if (existing) {
+      // existing = head (le plus ancien, canonique). file = le nouvel upload.
+      // 1. Snapshot de l'état actuel du head dans FileVersion (marqué pas current)
+      // 2. Marque toutes ses versions précédentes comme pas current
+      // 3. Update head pour pointer sur les nouveaux bytes (file.storageKey, etc.)
+      // 4. Crée une FileVersion pour le nouvel état (marqué current)
+      // 5. Supprime file (les bytes restent, référencés par head)
+      await db.$transaction([
+        db.fileVersion.updateMany({
+          where: { fileId: existing.id, isCurrent: true },
+          data: { isCurrent: false },
+        }),
+        db.fileVersion.create({
+          data: {
+            fileId: existing.id,
+            storageBackendId: existing.storageBackendId,
+            storageKey: existing.storageKey,
+            size: existing.size,
+            checksum: existing.checksum,
+            uploadedById: existing.ownerId,
+            isCurrent: false,
+          },
+        }),
+        db.fileVersion.create({
+          data: {
+            fileId: existing.id,
+            storageBackendId: file.storageBackendId,
+            storageKey: file.storageKey,
+            size: realSize,
+            checksum: file.checksum,
+            uploadedById: session.id,
+            isCurrent: true,
+          },
+        }),
+        db.file.update({
+          where: { id: existing.id },
+          data: {
+            storageBackendId: file.storageBackendId,
+            storageKey: file.storageKey,
+            size: realSize,
+            mimeType: file.mimeType,
+            checksum: file.checksum,
+            updatedAt: new Date(),
+          },
+        }),
+        db.file.delete({ where: { id: file.id } }),
+      ]);
+
+      resultFileId = existing.id;
+      resultName = existing.name;
+      merged = true;
+    }
+  } catch {
+    // Si la table FileVersion n'existe pas (defensive — schema pas pushé),
+    // on continue sans versioning. Pas de crash.
+  }
+
   // Notification quota si seuil franchi (80%, 95%, 100%)
   await checkQuotaAlert(quotaUserId).catch(() => undefined);
 
@@ -62,10 +157,14 @@ export async function POST(
     await logActivity({
       userId: session.id,
       teamId: file.teamId,
-      action: "team.file.upload",
-      metadata: { fileName: file.name, size: realSize.toString() },
+      action: merged ? "team.file.version" : "team.file.upload",
+      metadata: { fileName: resultName, size: realSize.toString() },
     });
   }
 
-  return NextResponse.json({ ok: true, file: { id: file.id, name: file.name, size: realSize.toString() } });
+  return NextResponse.json({
+    ok: true,
+    file: { id: resultFileId, name: resultName, size: realSize.toString() },
+    merged,
+  });
 }
