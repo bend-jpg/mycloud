@@ -11,6 +11,7 @@ import { PageHero } from "@/components/page-hero";
 import { BackLink } from "@/components/back-link";
 import { EmptyState } from "@/components/empty-state";
 import { PhotoGallery } from "@/components/photo-gallery";
+import { PhotoBackupBanner } from "@/components/photo-backup-banner";
 import { Camera } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,10 @@ export default async function PhotosPage({
               : `${photos.length} photo(s) — regroupées par mois`
           }
         />
+
+        {/* Bannière de sauvegarde mobile — apparaît UNIQUEMENT dans l'app
+            Capacitor (Android/iOS). Sur web/desktop ne render rien. */}
+        <PhotoBackupBanner />
 
         {photos.length === 0 ? (
           <EmptyState
