@@ -249,6 +249,40 @@ function formatBytes(n) {
 refreshStorageStats();
 setInterval(refreshStorageStats, 60_000);
 
+// ============= Sync sidebar ↔ webview navigation =============
+//
+// Quand l'utilisateur clique un lien INTERNE dans le webview (ex: clic sur
+// "Mes fichiers" dans le breadcrumb, ou sur une carte du dashboard), la
+// sidebar à gauche doit refléter la section actuelle. Sinon l'user voit
+// "Photos" sélectionné dans la sidebar mais le webview montre /files →
+// dissonance UX. On écoute les navigations du webview et on update.
+//
+// Mapping URL pattern → section sidebar :
+const URL_TO_SECTION = [
+  { match: /\/files($|\/|\?)/, section: "files" },
+  { match: /\/photos($|\/|\?)/, section: "photos" },
+  { match: /\/family($|\/|\?)/, section: "family" },
+  { match: /\/shares($|\/|\?)/, section: "shares" },
+  { match: /\/file-requests($|\/|\?)/, section: "file-requests" },
+  { match: /\/security($|\/|\?)/, section: "security" },
+  { match: /\/billing($|\/|\?)/, section: "billing" },
+  { match: /\/settings($|\/|\?)/, section: "settings" },
+  // /dashboard, /accounts, /support etc. retombent sur "files" (le dashboard
+  // est désactivé en mode desktop côté serveur — il redirige vers /files)
+];
+
+function syncSidebarFromUrl(url) {
+  for (const { match, section } of URL_TO_SECTION) {
+    if (match.test(url)) {
+      const item = navItems.find((i) => i.dataset.section === section);
+      if (item && !item.classList.contains("active")) {
+        navItems.forEach((i) => i.classList.toggle("active", i === item));
+      }
+      return;
+    }
+  }
+}
+
 // ============= Auto-mount au login détecté =============
 
 // Quand le webview navigue vers /files ou /dashboard après /login → propose le mount
@@ -257,10 +291,19 @@ webview.addEventListener("did-navigate", (evt) => {
   const url = evt.url;
   const prev = lastUrl;
   lastUrl = url;
+  // Sync immédiatement la sidebar avec l'URL courante
+  syncSidebarFromUrl(url);
+  // Détection login → /files (pour proposer le mount)
   if (!/\/(files|dashboard)/.test(url)) return;
   if (!/\/login/.test(prev)) return;
-  // Vrai login détecté — propose le mount via le main process
   window.titanAPI?.proposeAutoMount?.();
+});
+
+// Idem pour les navigations SPA (Next.js client routing avec ?param) où
+// did-navigate ne fire pas — utilise did-navigate-in-page
+webview.addEventListener("did-navigate-in-page", (evt) => {
+  syncSidebarFromUrl(evt.url);
+  lastUrl = evt.url;
 });
 
 // Version affichée dans la sidebar
