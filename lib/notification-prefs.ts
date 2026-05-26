@@ -12,6 +12,7 @@
 // Si une clé est absente, on utilise les défauts ci-dessous. Si l'objet
 // entier est null/undefined → tous les défauts s'appliquent.
 
+import { cache } from "react";
 import type { NotificationType } from "@prisma/client";
 import { db } from "./db";
 
@@ -62,11 +63,13 @@ export const NOTIFICATION_TYPE_INFO: Array<{
   // ADMIN_ALERT n'est PAS dans la UI utilisateur — c'est interne staff
 ];
 
-/** Récupère les préférences mergées (defaults + overrides DB) pour un user. */
-export async function getUserPrefs(userId: string): Promise<Record<NotificationType, ChannelPrefs>> {
+/** Récupère les préférences mergées (defaults + overrides DB) pour un user.
+ *  Caché par React.cache : si plusieurs notify() pour le même user au même
+ *  render, un seul vrai SELECT. */
+export const getUserPrefs = cache(async function getUserPrefs(userId: string): Promise<Record<NotificationType, ChannelPrefs>> {
   const u = await db.user.findUnique({ where: { id: userId }, select: { notificationPrefs: true } });
   return mergeWithDefaults((u?.notificationPrefs as NotificationPrefs | null) ?? {});
-}
+});
 
 /** Merge utilisé par l'API et le helper notify — défauts + overrides. */
 export function mergeWithDefaults(overrides: NotificationPrefs): Record<NotificationType, ChannelPrefs> {

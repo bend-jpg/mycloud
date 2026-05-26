@@ -1,4 +1,5 @@
 // Helpers permissions team
+import { cache } from "react";
 import { db } from "./db";
 import type { MemberRole } from "@prisma/client";
 
@@ -9,12 +10,12 @@ const ROLE_LEVEL: Record<MemberRole, number> = {
   OWNER: 4,
 };
 
-export async function getMembership(teamId: string, userId: string) {
+export const getMembership = cache(async function getMembership(teamId: string, userId: string) {
   return db.membership.findUnique({
     where: { teamId_userId: { teamId, userId } },
     include: { team: true },
   });
-}
+});
 
 export function canRead(role: MemberRole | null): boolean {
   return role !== null && ROLE_LEVEL[role] >= ROLE_LEVEL.VIEWER;
@@ -33,14 +34,14 @@ export function isOwner(role: MemberRole | null): boolean {
  * Liste les teams (familles) dont l'utilisateur est membre, pour exposer un sélecteur
  * "Partager dans la famille X" dans la liste de fichiers.
  */
-export async function getMyTeams(userId: string) {
+export const getMyTeams = cache(async function getMyTeams(userId: string) {
   const memberships = await db.membership.findMany({
     where: { userId },
     include: { team: { select: { id: true, name: true } } },
     orderBy: { team: { name: "asc" } },
   });
   return memberships.map((m) => ({ id: m.team.id, name: m.team.name }));
-}
+});
 
 /**
  * Pour une liste de fichiers donnés (perso de l'utilisateur), retourne pour chaque file
