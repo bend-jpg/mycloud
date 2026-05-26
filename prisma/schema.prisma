@@ -84,6 +84,10 @@ model User {
   auditLogs     AdminAuditLog[]
   passkeys      Passkey[]
   notifications Notification[]
+  // Préférences de notification par type — clé = NotificationType (string),
+  // valeur = { inApp: bool, email: bool, push: bool }. Si absent ou type
+  // non listé, on utilise les défauts définis dans lib/notification-prefs.ts.
+  notificationPrefs Json?
   activityLogs  ActivityLog[]
   hostingWaitlist HostingWaitlistEntry[]
   favorites     Favorite[]
@@ -585,6 +589,7 @@ enum NotificationType {
   TICKET_REPLY        // l'admin a répondu à ton ticket
   ADMIN_ALERT         // alerte interne pour staff/admin
   SYSTEM              // annonce générique
+  FILES_UPLOADED      // X photos/fichiers ajoutés (sync mobile, sync desktop)
 }
 
 model Notification {

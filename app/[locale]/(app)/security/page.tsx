@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { ActivityLogList } from "@/components/activity-log-list";
+import { NotificationPrefsCard } from "@/components/notification-prefs-card";
 import { PageHero } from "@/components/page-hero";
 import { BackLink } from "@/components/back-link";
 import { ShieldCheck } from "lucide-react";
@@ -47,6 +48,8 @@ export default async function SecurityPage({
             </>
           }
         />
+
+        <NotificationPrefsCard />
 
         <ActivityLogList
           items={items.map((a) => ({

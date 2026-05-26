@@ -231,6 +231,22 @@ export function PhotoBackupBanner() {
       setLastSync(now);
       await setNativePref(PREF_KEY_LAST_SYNC, now);
 
+      // Crée la notification in-app récap "X photos sauvegardées" — utile
+      // pour la voir dans le bell + savoir combien on a uploadé ce mois-ci
+      // via l'historique des notifs. Respecte les prefs FILES_UPLOADED.
+      if (prog.uploaded > 0) {
+        try {
+          await fetch("/api/notifications/files-uploaded", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ count: prog.uploaded, kind: "photos", source: "mobile" }),
+          });
+        } catch {
+          // Notification non critique — on ignore silencieusement si échec
+        }
+      }
+
       nativeHaptic();
       if (prog.failed === 0) {
         toast.success(`${prog.uploaded} photo(s) sauvegardée(s) · ${prog.skipped} déjà présente(s)`);

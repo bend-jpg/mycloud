@@ -28,7 +28,8 @@ type NotifType =
   | "INVITE_RECEIVED"
   | "TICKET_REPLY"
   | "ADMIN_ALERT"
-  | "SYSTEM";
+  | "SYSTEM"
+  | "FILES_UPLOADED";
 
 interface NotificationItem {
   id: string;
@@ -51,6 +52,7 @@ const ICONS: Record<NotifType, React.ComponentType<{ className?: string }>> = {
   TICKET_REPLY: MessageCircle,
   ADMIN_ALERT: AlertTriangle,
   SYSTEM: Bell,
+  FILES_UPLOADED: Download,
 };
 
 const COLORS: Record<NotifType, string> = {
@@ -64,6 +66,7 @@ const COLORS: Record<NotifType, string> = {
   TICKET_REPLY: "text-[var(--secondary)] bg-[var(--secondary)]/10",
   ADMIN_ALERT: "text-yellow-400 bg-yellow-400/10",
   SYSTEM: "text-[var(--foreground-muted)] bg-[var(--background-elevated)]",
+  FILES_UPLOADED: "text-[var(--accent)] bg-[var(--accent)]/10",
 };
 
 export function NotificationsView({ items }: { items: NotificationItem[] }) {

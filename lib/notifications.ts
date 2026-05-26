@@ -1,6 +1,7 @@
 // Helpers pour créer des notifications in-app.
 import { db } from "./db";
 import type { NotificationType } from "@prisma/client";
+import { isChannelEnabled } from "./notification-prefs";
 
 export interface NotifyParams {
   userId: string;
@@ -11,6 +12,8 @@ export interface NotifyParams {
   metadata?: Record<string, unknown>;
   /** Si une notif identique non lue existe déjà, ne pas en créer une nouvelle (dédup) */
   dedupeWindowMs?: number;
+  /** Bypass les prefs user (pour ADMIN_ALERT et notifs critiques système) */
+  bypassPrefs?: boolean;
 }
 
 export async function notify({
@@ -21,7 +24,14 @@ export async function notify({
   link,
   metadata,
   dedupeWindowMs,
+  bypassPrefs,
 }: NotifyParams): Promise<void> {
+  // Vérifie les préférences user pour le canal in-app — sauf si bypass
+  if (!bypassPrefs) {
+    const wantsInApp = await isChannelEnabled(userId, type, "inApp");
+    if (!wantsInApp) return;
+  }
+
   if (dedupeWindowMs && dedupeWindowMs > 0) {
     const existing = await db.notification.findFirst({
       where: {
@@ -39,10 +49,11 @@ export async function notify({
   });
 }
 
-/** Notifie tous les admins (utile pour alertes système) */
+/** Notifie tous les admins (utile pour alertes système). Bypass les prefs
+ *  car ce sont des alertes internes critiques. */
 export async function notifyAdmins(params: Omit<NotifyParams, "userId">): Promise<void> {
   const admins = await db.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
-  await Promise.all(admins.map((a) => notify({ ...params, userId: a.id })));
+  await Promise.all(admins.map((a) => notify({ ...params, userId: a.id, bypassPrefs: true })));
 }
 
 /** Vérifie le quota d'un user et envoie une notif si dépassement de seuil (80%, 95%, 100%) */
