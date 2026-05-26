@@ -15,9 +15,12 @@
 //      qui n'a ni cookie ni UA (rare mais possible si Vercel ne propage pas
 //      le UA dans son edge config).
 
+import { cache } from "react";
 import { headers, cookies } from "next/headers";
 
-export async function isDesktopAppRequest(): Promise<boolean> {
+// React.cache : appelée par SiteHeader + dashboard + breadcrumb + autres
+// composants au même render → un seul vrai check, les autres mémoïsés.
+export const isDesktopAppRequest = cache(async function isDesktopAppRequest(): Promise<boolean> {
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
 
   // 1. Cookie — la source de vérité
@@ -30,4 +33,4 @@ export async function isDesktopAppRequest(): Promise<boolean> {
   // 3. URL search param — fallback ultime (initial loadURL avec ?app=desktop)
   // Le serveur ne voit pas le query côté layout/header, on s'arrête au cookie+UA
   return false;
-}
+});

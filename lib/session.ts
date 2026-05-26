@@ -1,6 +1,13 @@
 // Helper de session : enrobe NextAuth pour exposer un user typé.
 // En dev, si aucune session NextAuth + démo activé, retourne le user demo en fallback.
+//
+// PERF — Round 101 : getSession() est appelé 2-3 fois par render server (page +
+// SiteHeader + isDesktopAppRequest + autres helpers). Chaque appel faisait un
+// auth() + db.user.findUnique() → 200-500ms de duplications. React.cache()
+// déduplique au sein de la MÊME requête HTTP — un seul vrai appel DB, les
+// suivants retournent le résultat mémoïsé. Gain mesuré ~300-800ms par page.
 
+import { cache } from "react";
 import { auth } from "@/auth";
 import { db } from "./db";
 import { ensureBootstrap } from "./bootstrap";
@@ -24,7 +31,7 @@ export interface SessionUser {
   locale: string;
 }
 
-export async function getSession(): Promise<SessionUser | null> {
+export const getSession = cache(async function getSession(): Promise<SessionUser | null> {
   // 1. NextAuth session
   try {
     const session = await auth();
@@ -70,7 +77,7 @@ export async function getSession(): Promise<SessionUser | null> {
   }
 
   return null;
-}
+});
 
 export async function requireSession(): Promise<SessionUser> {
   const s = await getSession();
