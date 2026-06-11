@@ -40,14 +40,25 @@
       "sync-engine.js",
       "webdav-proxy.js",
       "renderer/**/*",
+      "build/icon.png",
+      "build/tray-icon.png",
       "package.json"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         { "target": "nsis", "arch": ["x64"] }
       ]
     },
+    "nsis": {
+      "oneClick": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "shortcutName": "MyTitanCloud",
+      "deleteAppDataOnUninstall": false
+    },
     "mac": {
+      "icon": "build/icon.png",
       "target": [
         { "target": "dmg", "arch": ["x64", "arm64"] }
       ],
@@ -56,6 +67,7 @@
       "gatekeeperAssess": false
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         { "target": "AppImage", "arch": ["x64"] },
         { "target": "deb", "arch": ["x64"] }
