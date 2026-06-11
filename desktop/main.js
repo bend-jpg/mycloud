@@ -12,6 +12,7 @@ const path = require("path");
 const os = require("os");
 const { spawn, execSync } = require("child_process");
 const syncEngine = require("./sync-engine");
+const webdavProxy = require("./webdav-proxy");
 
 const APP_URL = process.env.MYCLOUD_URL ?? "https://mytitancloud.com";
 const isDev = process.argv.includes("--dev");
@@ -30,69 +31,79 @@ let tray = null;
  * Linux (gvfs-mount si dispo, sinon davfs2). Si l'OS refuse (HTTPS strict,
  * permissions, etc), on renvoie false sans crash.
  */
-function mountVirtualDrive() {
+async function mountVirtualDrive() {
   const platform = process.platform;
+  // URL du proxy WebDAV LOCAL (voir webdav-proxy.js). On monte localhost,
+  // pas le cloud : Vercel ne route pas PROPFIND donc un mount direct sur
+  // https://mytitancloud.com/api/dav échoue TOUJOURS (erreurs 67/1920).
+  const LOCAL_DAV = `http://127.0.0.1:${webdavProxy.PORT}/`;
+
+  // Rafraîchit le cookie de session dans le proxy avant de monter —
+  // sans session valide, le proxy renverrait 401 sur tout.
+  await refreshProxyCookie();
+
   try {
     if (platform === "win32") {
-      // Windows : 3 approches en cascade.
-      //
-      // 1. Vérifier d'abord que WebClient service est démarré. Sans lui, net use
-      //    sur HTTPS donne "Le nom de réseau spécifié n'est plus disponible" ou
-      //    "Système 1396". On essaie de démarrer le service silencieusement.
+      // WebClient service requis pour les montages WebDAV Windows
       try {
         execSync(`sc start WebClient`, { stdio: "ignore", timeout: 5000, windowsHide: true });
       } catch {
         // Déjà démarré, ou refus de droits — on continue quand même
       }
-      // Si un Z: existe déjà (run précédent), on le démonte d'abord
+      // Démonte un Z: fantôme d'un run précédent
       try {
         execSync(`net use Z: /delete /yes`, { stdio: "ignore", timeout: 5000, windowsHide: true });
       } catch {
         // Pas de Z: existant, normal
       }
 
-      // 2. Essai net use direct sur HTTPS. Capture l'erreur précise pour la
-      //    remonter à l'utilisateur (pas de "spawnSync ETIMEDOUT" générique).
       try {
-        const out = execSync(`net use Z: "${DAV_URL}" /persistent:yes`, {
+        execSync(`net use Z: "${LOCAL_DAV}" /persistent:no`, {
           timeout: 20_000,
           windowsHide: true,
           stdio: ["ignore", "pipe", "pipe"],
         });
-        if (out.toString().toLowerCase().includes("réussi") || out.length === 0) {
-          return { ok: true, mountPoint: "Z:" };
+        // Ouvre l'Explorateur directement sur le nouveau disque
+        try {
+          spawn("explorer", ["Z:\\"], { detached: true });
+        } catch {
+          // Pas grave si l'ouverture auto échoue
         }
+        return { ok: true, mountPoint: "Z:" };
       } catch (err) {
         const stderr = (err.stderr ? err.stderr.toString() : "") + (err.stdout ? err.stdout.toString() : "");
-        // 3. Fallback : ouvre l'URL WebDAV dans l'Explorateur. Windows propose
-        //    alors "Mapper un lecteur réseau" en clic droit. C'est ce qui marche
-        //    le plus souvent quand net use refuse à cause des règles BasicAuthLevel.
-        shell.openExternal(DAV_URL);
+        // Fallback : ouvre l'Explorateur sur l'URL du proxy local — Windows
+        // propose "Mapper un lecteur réseau" en clic droit.
+        shell.openExternal(LOCAL_DAV);
         return {
           ok: true,
           mountPoint: "Explorateur Windows",
-          notice: `L'Explorateur s'est ouvert sur ton WebDAV. Fais clic droit sur le dossier → "Mapper un lecteur réseau" pour avoir un Z: permanent.\n\nDétail technique : ${stderr.trim() || err.message}`,
+          notice: `L'Explorateur s'est ouvert sur ton cloud local. Fais clic droit → "Mapper un lecteur réseau" avec l'adresse ${LOCAL_DAV} pour avoir un Z: permanent.\n\nDétail technique : ${stderr.trim() || err.message}`,
         };
       }
-      return { ok: true, mountPoint: "Z:" };
     }
     if (platform === "darwin") {
-      // macOS : mount_webdav (besoin d'auth interactive, on délègue à Finder)
-      // Open via shell — Finder ouvre une popup de login propre
-      shell.openExternal(DAV_URL);
-      return { ok: true, mountPoint: "Finder (popup login)" };
+      // macOS : monte le proxy local via mount_webdav (pas d'auth nécessaire)
+      try {
+        execSync(`mkdir -p /Volumes/MyTitanCloud && mount_webdav -v MyTitanCloud ${LOCAL_DAV} /Volumes/MyTitanCloud`, {
+          stdio: "ignore",
+          timeout: 15_000,
+        });
+        return { ok: true, mountPoint: "/Volumes/MyTitanCloud" };
+      } catch {
+        shell.openExternal(LOCAL_DAV);
+        return { ok: true, mountPoint: "Finder", notice: "Dans le Finder : Cmd+K puis colle l'adresse " + LOCAL_DAV };
+      }
     }
     if (platform === "linux") {
-      // GNOME / KDE supportent gvfs nativement
       try {
-        execSync(`gio mount ${DAV_URL.replace(/^https/, "davs")}`, {
+        execSync(`gio mount dav://127.0.0.1:${webdavProxy.PORT}/`, {
           stdio: "ignore",
           timeout: 10_000,
         });
         return { ok: true, mountPoint: "~/.gvfs/" };
       } catch {
-        // Fallback : ouvre dans Files / Nautilus
-        spawn("xdg-open", [DAV_URL.replace(/^https/, "davs")], { detached: true });
+        spawn("xdg-open", [`dav://127.0.0.1:${webdavProxy.PORT}/`], { detached: true });
         return { ok: true, mountPoint: "Files (open URL)" };
       }
     }
@@ -100,6 +111,18 @@ function mountVirtualDrive() {
     return { ok: false, error: String(err) };
   }
   return { ok: false, error: "Plateforme non supportée" };
+}
+
+/** Pousse le cookie de session du webview dans le proxy WebDAV local. */
+async function refreshProxyCookie() {
+  try {
+    const wvSession = session.fromPartition("persist:mytitancloud");
+    const cookies = await wvSession.cookies.get({ url: APP_URL });
+    const header = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+    webdavProxy.setCookie(header);
+  } catch {
+    // Pas de session → le proxy renverra 401, l'utilisateur doit se connecter
+  }
 }
 
 // IPC pour que le renderer (le site web) puisse déclencher le mount
@@ -175,9 +198,9 @@ ipcMain.handle("propose-auto-mount", () => {
       detail:
         "Un disque Z: sera ajouté à ton système. Glisse-dépose des fichiers dedans — tout sera synchronisé automatiquement (style pCloud Drive).",
     })
-    .then((res) => {
+    .then(async (res) => {
       if (res.response === 0) {
-        const mountResult = mountVirtualDrive();
+        const mountResult = await mountVirtualDrive();
         if (!mountResult.ok) {
           dialog.showMessageBox(mainWindow, {
             type: "warning",
@@ -308,7 +331,7 @@ function createTray() {
       {
         label: "Monter le disque virtuel",
         click: async () => {
-          const res = mountVirtualDrive();
+          const res = await mountVirtualDrive();
           if (res.ok) {
             dialog.showMessageBox({
               type: "info",
@@ -366,6 +389,14 @@ if (!gotLock) {
     createMainWindow();
     createTray();
 
+    // Démarre le proxy WebDAV local (127.0.0.1:42042) — pont entre
+    // l'Explorateur et le cloud. Voir webdav-proxy.js pour le pourquoi.
+    webdavProxy.start({ base: APP_URL, onLog: (m) => console.log(m) });
+    // Cookie de session rafraîchi maintenant + toutes les 10 min (la session
+    // du webview peut être renouvelée par NextAuth pendant l'utilisation)
+    refreshProxyCookie();
+    setInterval(refreshProxyCookie, 10 * 60_000);
+
     app.on("activate", () => {
       // macOS : recrée la fenêtre quand on clique sur le dock alors qu'aucune n'est ouverte
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -375,5 +406,17 @@ if (!gotLock) {
   app.on("window-all-closed", () => {
     // macOS garde l'app dans la barre de menu même quand toutes les fenêtres sont fermées
     if (process.platform !== "darwin") app.quit();
+  });
+
+  app.on("before-quit", () => {
+    webdavProxy.stop();
+    // Démonte proprement le Z: pour pas laisser un disque mort dans l'Explorateur
+    if (process.platform === "win32") {
+      try {
+        execSync("net use Z: /delete /yes", { stdio: "ignore", timeout: 5000, windowsHide: true });
+      } catch {
+        // Pas monté — rien à faire
+      }
+    }
   });
 }

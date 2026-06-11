@@ -14,6 +14,7 @@
 import { db } from "@/lib/db";
 import { authBasic, unauthorized, buildPropfindXml, encodePath, normalizePath } from "@/lib/webdav";
 import { getStorage } from "@/lib/storage";
+import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -34,8 +35,17 @@ async function handler(req: Request, { params }: { params: Promise<{ path?: stri
     });
   }
 
-  const auth = await authBasic(req);
-  if (!auth) return unauthorized();
+  // Auth : Basic (clients WebDAV externes) OU session cookie (proxy WebDAV
+  // local de l'app desktop, qui forwarde le cookie du webview).
+  let auth = await authBasic(req);
+  if (!auth) {
+    try {
+      const s = await requireSession();
+      auth = { userId: s.id };
+    } catch {
+      return unauthorized();
+    }
+  }
 
   const { path: rawPath } = await params;
   const pathSegments = normalizePath(rawPath);

@@ -7,10 +7,33 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <!-- Sidebar native — l'utilisateur ne sait pas qu'il y a un site web dedans -->
+    <!-- Icônes SVG réutilisables (paths lucide) — référencées par <use href="#i-..."> -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+        <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+        <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+        <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></symbol>
+        <symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+        <symbol id="i-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
+        <symbol id="i-harddrive" viewBox="0 0 24 24"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+        <symbol id="i-card" viewBox="0 0 24 24"><rect width="22" height="14" x="1" y="5" rx="2"/><line x1="1" x2="23" y1="10" y2="10"/></symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+        <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></symbol>
+        <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+      </defs>
+    </svg>
+
+    <!-- Sidebar native — navigation unique de l'application -->
     <aside class="sidebar">
       <header class="brand">
-        <div class="brand-logo" aria-hidden="true"></div>
+        <div class="brand-logo" aria-hidden="true">
+          <svg class="ic" width="20" height="20"><use href="#i-cloud"/></svg>
+        </div>
         <div class="brand-text">
           <div class="brand-name">MyTitanCloud</div>
           <div class="brand-version" id="version-label">v0.1.2</div>
@@ -18,55 +41,57 @@
       </header>
 
       <nav class="nav-list" aria-label="Navigation principale">
+        <div class="nav-section-label">Cloud</div>
+
         <button class="nav-item active" data-section="files" data-url="/files">
-          <span class="icon" aria-hidden="true">📁</span>
+          <svg class="ic" width="17" height="17"><use href="#i-folder"/></svg>
           <span>Mes fichiers</span>
         </button>
         <button class="nav-item" data-section="photos" data-url="/photos">
-          <span class="icon" aria-hidden="true">📷</span>
+          <svg class="ic" width="17" height="17"><use href="#i-image"/></svg>
           <span>Photos</span>
         </button>
         <button class="nav-item" data-section="family" data-url="/family">
-          <span class="icon" aria-hidden="true">👥</span>
+          <svg class="ic" width="17" height="17"><use href="#i-users"/></svg>
           <span>Famille</span>
         </button>
         <button class="nav-item" data-section="shares" data-url="/shares">
-          <span class="icon" aria-hidden="true">🔗</span>
+          <svg class="ic" width="17" height="17"><use href="#i-share"/></svg>
           <span>Partages</span>
         </button>
         <button class="nav-item" data-section="file-requests" data-url="/file-requests">
-          <span class="icon" aria-hidden="true">📥</span>
+          <svg class="ic" width="17" height="17"><use href="#i-inbox"/></svg>
           <span>Demandes</span>
         </button>
 
-        <div class="nav-section-label">Local</div>
+        <div class="nav-section-label">Cet ordinateur</div>
 
         <button class="nav-item" data-section="sync" data-panel="sync">
-          <span class="icon" aria-hidden="true">🔄</span>
+          <svg class="ic" width="17" height="17"><use href="#i-refresh"/></svg>
           <span>Sync dossier</span>
           <span class="status-dot" id="sync-status-dot" hidden></span>
         </button>
         <button class="nav-item" data-section="backup" data-panel="backup">
-          <span class="icon" aria-hidden="true">💾</span>
+          <svg class="ic" width="17" height="17"><use href="#i-archive"/></svg>
           <span>Sauvegarde</span>
         </button>
         <button class="nav-item" data-section="drive" data-panel="drive">
-          <span class="icon" aria-hidden="true">💿</span>
+          <svg class="ic" width="17" height="17"><use href="#i-harddrive"/></svg>
           <span>Disque virtuel</span>
         </button>
 
         <div class="nav-section-label">Compte</div>
 
         <button class="nav-item" data-section="security" data-url="/security">
-          <span class="icon" aria-hidden="true">🔒</span>
+          <svg class="ic" width="17" height="17"><use href="#i-lock"/></svg>
           <span>Sécurité</span>
         </button>
         <button class="nav-item" data-section="billing" data-url="/billing">
-          <span class="icon" aria-hidden="true">💳</span>
+          <svg class="ic" width="17" height="17"><use href="#i-card"/></svg>
           <span>Mon plan</span>
         </button>
         <button class="nav-item" data-section="settings" data-url="/settings">
-          <span class="icon" aria-hidden="true">⚙️</span>
+          <svg class="ic" width="17" height="17"><use href="#i-settings"/></svg>
           <span>Paramètres</span>
         </button>
       </nav>
@@ -84,22 +109,25 @@
       <!-- Panneau natif: Sync -->
       <section class="native-panel" id="panel-sync" hidden>
         <header class="panel-head">
-          <h1>Synchronisation locale</h1>
-          <p>Choisis un dossier sur ton PC — chaque nouveau fichier sera uploadé automatiquement vers MyTitanCloud.</p>
+          <div class="panel-head-icon"><svg class="ic" width="22" height="22"><use href="#i-refresh"/></svg></div>
+          <div>
+            <h1>Synchronisation locale</h1>
+            <p>Choisis un dossier sur ton PC — chaque nouveau fichier sera uploadé automatiquement vers MyTitanCloud.</p>
+          </div>
         </header>
         <div class="panel-body">
-          <div class="sync-card">
-            <div class="sync-card-row">
+          <div class="card">
+            <div class="card-row">
               <strong>Dossier surveillé</strong>
               <span id="sync-folder-path" class="muted">Aucun</span>
             </div>
-            <div class="sync-card-actions">
+            <div class="card-actions">
               <button class="btn-primary" id="btn-pick-folder">Choisir un dossier</button>
               <button class="btn-secondary" id="btn-start-sync" disabled>Démarrer la synchronisation</button>
               <button class="btn-danger" id="btn-stop-sync" hidden>Arrêter</button>
             </div>
           </div>
-          <div class="sync-card">
+          <div class="card">
             <strong>Journal d'activité</strong>
             <ul class="sync-log" id="sync-log"><li class="muted">Aucune activité encore…</li></ul>
           </div>
@@ -109,13 +137,16 @@
       <!-- Panneau natif: Sauvegarde (folder toggles à la pCloud) -->
       <section class="native-panel" id="panel-backup" hidden>
         <header class="panel-head">
-          <h1>Sauvegarde des dossiers</h1>
-          <p>Sélectionne les dossiers de ton PC à sauvegarder en continu vers MyTitanCloud. Récupère facilement les anciennes versions.</p>
+          <div class="panel-head-icon"><svg class="ic" width="22" height="22"><use href="#i-archive"/></svg></div>
+          <div>
+            <h1>Sauvegarde des dossiers</h1>
+            <p>Sélectionne les dossiers de ton PC à sauvegarder en continu vers MyTitanCloud. Récupère facilement les anciennes versions.</p>
+          </div>
         </header>
         <div class="panel-body">
-          <div class="backup-pc">
+          <div class="card">
             <div class="backup-pc-head">
-              <span class="icon" aria-hidden="true">🖥️</span>
+              <svg class="ic" width="18" height="18"><use href="#i-monitor"/></svg>
               <strong id="hostname">Ce PC</strong>
             </div>
             <ul class="backup-list" id="backup-list">
@@ -129,12 +160,17 @@
       <!-- Panneau natif: Disque virtuel -->
       <section class="native-panel" id="panel-drive" hidden>
         <header class="panel-head">
-          <h1>Disque virtuel</h1>
-          <p>Monte MyTitanCloud comme un disque dur dans ton Explorateur — exactement comme pCloud Drive.</p>
+          <div class="panel-head-icon"><svg class="ic" width="22" height="22"><use href="#i-harddrive"/></svg></div>
+          <div>
+            <h1>Disque virtuel</h1>
+            <p>Monte MyTitanCloud comme un disque dur dans ton Explorateur — exactement comme pCloud Drive.</p>
+          </div>
         </header>
         <div class="panel-body">
-          <div class="drive-card">
-            <div class="drive-illustration" aria-hidden="true">💿</div>
+          <div class="card drive-card">
+            <div class="drive-illustration" aria-hidden="true">
+              <svg class="ic" width="40" height="40"><use href="#i-harddrive"/></svg>
+            </div>
             <h2>Disque MyTitanCloud (Z:)</h2>
             <p id="drive-status" class="muted">Pas encore monté.</p>
             <div class="drive-actions">
@@ -142,9 +178,9 @@
               <button class="btn-secondary" id="btn-unmount-drive">Démonter</button>
             </div>
             <ul class="drive-features">
-              <li>📂 Glisse-dépose des fichiers dans Z: pour les uploader</li>
-              <li>⚡ Pas de stockage local — les fichiers sont streamés depuis le cloud</li>
-              <li>🔒 Reste connecté via ta session — pas de mot de passe à chaque accès</li>
+              <li><svg class="ic" width="15" height="15"><use href="#i-upload"/></svg> Glisse-dépose des fichiers dans Z: pour les uploader</li>
+              <li><svg class="ic" width="15" height="15"><use href="#i-zap"/></svg> Pas de stockage local — les fichiers sont streamés depuis le cloud</li>
+              <li><svg class="ic" width="15" height="15"><use href="#i-lock"/></svg> Identifiants demandés une seule fois par Windows</li>
             </ul>
           </div>
         </div>

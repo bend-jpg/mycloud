@@ -16,11 +16,8 @@ import {
   FolderOpen,
   Users,
   Share2,
-  CreditCard,
-  Settings,
   Shield,
   UserCog,
-  LifeBuoy,
   Clock,
   Camera,
   Inbox,
@@ -165,25 +162,9 @@ export default async function DashboardPage({
             description="Crée un lien pour qu'on t'envoie des fichiers, même sans compte"
             accent="cyan"
           />
-          <BoxTile
-            href="/billing"
-            icon={<CreditCard className="size-6" />}
-            title={t("tiles.billing.title")}
-            description={t("tiles.billing.desc")}
-            accent="green"
-          />
-          <BoxTile
-            href="/support"
-            icon={<LifeBuoy className="size-6" />}
-            title="Support"
-            description="Tickets et WhatsApp avec notre équipe"
-          />
-          <BoxTile
-            href="/settings"
-            icon={<Settings className="size-6" />}
-            title={t("tiles.settings.title")}
-            description={t("tiles.settings.desc")}
-          />
+          {/* Mon plan / Support / Paramètres retirés du dashboard — déjà
+              accessibles via le menu avatar (clic sur l'initiale en haut à
+              droite). Les garder ici faisait doublon et noyait le contenu. */}
           {session.isAdmin && (
             <BoxTile
               href="/admin"
