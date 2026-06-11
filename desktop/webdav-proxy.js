@@ -26,6 +26,16 @@ let cloudBase = "https://mytitancloud.com";
 let cookieHeader = ""; // session du webview, rafraîchie par main.js
 let server = null;
 
+// Token secret par session d'app : le disque se monte sur
+// http://127.0.0.1:42042/<token>/ — toute requête sans le bon premier
+// segment est rejetée. Empêche un autre processus/utilisateur local (ou une
+// attaque DNS-rebinding) d'accéder au cloud via le proxy sans connaître le
+// token, qui n'existe qu'en mémoire de l'app.
+let pathToken = null;
+function setToken(t) {
+  pathToken = t || null;
+}
+
 // Cache path→folderId pour les PUT/MKCOL (rempli par les listings)
 const folderIdByPath = new Map(); // "" = racine → null
 folderIdByPath.set("", null);
@@ -54,20 +64,18 @@ function xmlEscape(s) {
     .replace(/"/g, "&quot;");
 }
 
-function hrefEncode(p) {
-  // encode chaque segment mais garde les "/"
-  return (
-    "/" +
-    p
-      .split("/")
-      .filter(Boolean)
-      .map(encodeURIComponent)
-      .join("/")
-  );
+function davHref(p, isDir) {
+  // Les hrefs renvoyés à Windows doivent inclure le préfixe token — c'est
+  // avec ces chemins que l'Explorateur adresse ensuite chaque fichier.
+  const base = pathToken ? `/${pathToken}` : "";
+  const segs = String(p === "/" ? "" : p).split("/").filter(Boolean).map(encodeURIComponent);
+  let href = segs.length ? `${base}/${segs.join("/")}` : `${base}/`;
+  if (isDir && !href.endsWith("/")) href += "/";
+  return href;
 }
 
 function propfindEntry({ path, isDir, size, mtime, mime, displayName }) {
-  const href = isDir ? `${hrefEncode(path)}/`.replace("//", "/") : hrefEncode(path);
+  const href = davHref(path, isDir);
   const date = new Date(mtime || Date.now()).toUTCString();
   return `<D:response>
 <D:href>${href === "/" ? "/" : href}</D:href>
@@ -298,7 +306,24 @@ function start({ base, onLog } = {}) {
 
   server = http.createServer(async (req, res) => {
     const method = req.method.toUpperCase();
-    const path = pathFromUrl(req.url || "/");
+
+    // Anti DNS-rebinding : seul un Host local légitime est accepté. Un site
+    // malveillant dont le domaine résout vers 127.0.0.1 enverrait son propre
+    // Host — rejeté ici.
+    const host = (req.headers.host || "").toLowerCase();
+    if (!host.startsWith("127.0.0.1") && !host.startsWith("localhost")) {
+      return sendStatus(res, 403);
+    }
+
+    let path = pathFromUrl(req.url || "/");
+
+    // Validation du token secret (premier segment du chemin)
+    if (pathToken) {
+      const segs = path.split("/").filter(Boolean);
+      if (segs[0] !== pathToken) return sendStatus(res, 404);
+      path = segs.slice(1).join("/");
+    }
+
     try {
       if (method === "OPTIONS") {
         res.writeHead(200, {
@@ -352,4 +377,4 @@ function stop() {
   }
 }
 
-module.exports = { start, stop, setCookie, setCloudBase, PORT };
+module.exports = { start, stop, setCookie, setCloudBase, setToken, PORT };

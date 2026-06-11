@@ -147,11 +147,12 @@ btnMountDrive?.addEventListener("click", async () => {
   btnMountDrive.disabled = false;
   if (res?.ok) {
     driveStatus.classList.remove("muted");
+    const acct = res.account ? ` · compte <strong>${res.account}</strong>` : "";
     if (res.notice) {
       // Cas "Explorateur ouvert au lieu de Z:" → on l'explique sans alarmer
-      driveStatus.innerHTML = `✨ ${res.mountPoint} — <span style="opacity:.7">${res.notice.replace(/\n/g, "<br>")}</span>`;
+      driveStatus.innerHTML = `✨ ${res.mountPoint}${acct} — <span style="opacity:.7">${res.notice.replace(/\n/g, "<br>")}</span>`;
     } else {
-      driveStatus.textContent = `✅ Monté sur ${res.mountPoint}`;
+      driveStatus.innerHTML = `✅ Monté sur ${res.mountPoint}${acct}`;
     }
   } else {
     driveStatus.textContent = `❌ ${res?.error ?? "Montage refusé par le système"}`;
@@ -162,13 +163,24 @@ btnUnmountDrive?.addEventListener("click", async () => {
   const res = await window.titanAPI.unmountDrive?.();
   driveStatus.textContent = res?.ok ? "Disque démonté" : "Pas de disque à démonter";
   driveStatus.classList.add("muted");
+  refreshDriveStatus();
 });
 
-function refreshDriveStatus() {
-  // Pas de vrai check d'état pour V0 — on garde le dernier état affiché
-  if (!driveStatus.textContent || driveStatus.textContent === "Pas encore monté.") {
-    driveStatus.textContent = "Pas encore monté.";
-    driveStatus.classList.add("muted");
+async function refreshDriveStatus() {
+  // Affiche POUR QUEL COMPTE le disque sera monté — cohérence + sécurité.
+  // Si personne n'est connecté dans l'app, le montage est désactivé.
+  const who = await window.titanAPI.driveWhoAmI?.().catch(() => null);
+  if (who?.email) {
+    if (btnMountDrive) btnMountDrive.disabled = false;
+    if (!driveStatus.textContent || /Pas encore monté|Connecte-toi/.test(driveStatus.textContent)) {
+      driveStatus.innerHTML = `Pas encore monté. Le disque donnera accès au compte <strong>${who.email}</strong>.`;
+      driveStatus.classList.add("muted");
+    }
+  } else {
+    if (btnMountDrive) btnMountDrive.disabled = true;
+    driveStatus.textContent =
+      "⚠ Aucun compte connecté — va dans « Mes fichiers » et connecte-toi d'abord. Le disque suivra ce compte.";
+    driveStatus.classList.remove("muted");
   }
 }
 

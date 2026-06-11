@@ -11,8 +11,14 @@ const { app, BrowserWindow, shell, Menu, Tray, nativeImage, dialog, ipcMain, ses
 const path = require("path");
 const os = require("os");
 const { spawn, execSync } = require("child_process");
+const crypto = require("crypto");
 const syncEngine = require("./sync-engine");
 const webdavProxy = require("./webdav-proxy");
+
+// Token secret du proxy WebDAV — régénéré à chaque lancement de l'app.
+// Le disque se monte sur http://127.0.0.1:42042/<token>/ : un processus
+// qui ne connaît pas le token ne peut pas exploiter le proxy.
+const DAV_TOKEN = crypto.randomBytes(10).toString("hex");
 
 const APP_URL = process.env.MYCLOUD_URL ?? "https://mytitancloud.com";
 const isDev = process.argv.includes("--dev");
@@ -36,11 +42,22 @@ async function mountVirtualDrive() {
   // URL du proxy WebDAV LOCAL (voir webdav-proxy.js). On monte localhost,
   // pas le cloud : Vercel ne route pas PROPFIND donc un mount direct sur
   // https://mytitancloud.com/api/dav échoue TOUJOURS (erreurs 67/1920).
-  const LOCAL_DAV = `http://127.0.0.1:${webdavProxy.PORT}/`;
+  const LOCAL_DAV = `http://127.0.0.1:${webdavProxy.PORT}/${DAV_TOKEN}/`;
 
   // Rafraîchit le cookie de session dans le proxy avant de monter —
   // sans session valide, le proxy renverrait 401 sur tout.
   await refreshProxyCookie();
+
+  // SÉCURITÉ/COHÉRENCE : refuse de monter si personne n'est connecté dans
+  // l'app, et identifie clairement POUR QUEL COMPTE le disque sera monté.
+  const who = await whoAmI();
+  if (!who) {
+    return {
+      ok: false,
+      error:
+        "Aucun compte connecté. Connecte-toi d'abord dans l'application (section « Mes fichiers »), puis réessaie — le disque donnera accès aux fichiers de CE compte.",
+    };
+  }
 
   try {
     if (platform === "win32") {
@@ -69,7 +86,7 @@ async function mountVirtualDrive() {
         } catch {
           // Pas grave si l'ouverture auto échoue
         }
-        return { ok: true, mountPoint: "Z:" };
+        return { ok: true, mountPoint: "Z:", account: who.email };
       } catch (err) {
         const stderr = (err.stderr ? err.stderr.toString() : "") + (err.stdout ? err.stdout.toString() : "");
         // Fallback : ouvre l'Explorateur sur l'URL du proxy local — Windows
@@ -78,6 +95,7 @@ async function mountVirtualDrive() {
         return {
           ok: true,
           mountPoint: "Explorateur Windows",
+          account: who.email,
           notice: `L'Explorateur s'est ouvert sur ton cloud local. Fais clic droit → "Mapper un lecteur réseau" avec l'adresse ${LOCAL_DAV} pour avoir un Z: permanent.\n\nDétail technique : ${stderr.trim() || err.message}`,
         };
       }
@@ -89,28 +107,46 @@ async function mountVirtualDrive() {
           stdio: "ignore",
           timeout: 15_000,
         });
-        return { ok: true, mountPoint: "/Volumes/MyTitanCloud" };
+        return { ok: true, mountPoint: "/Volumes/MyTitanCloud", account: who.email };
       } catch {
         shell.openExternal(LOCAL_DAV);
-        return { ok: true, mountPoint: "Finder", notice: "Dans le Finder : Cmd+K puis colle l'adresse " + LOCAL_DAV };
+        return { ok: true, mountPoint: "Finder", account: who.email, notice: "Dans le Finder : Cmd+K puis colle l'adresse " + LOCAL_DAV };
       }
     }
     if (platform === "linux") {
+      const linuxDav = `dav://127.0.0.1:${webdavProxy.PORT}/${DAV_TOKEN}/`;
       try {
-        execSync(`gio mount dav://127.0.0.1:${webdavProxy.PORT}/`, {
+        execSync(`gio mount ${linuxDav}`, {
           stdio: "ignore",
           timeout: 10_000,
         });
-        return { ok: true, mountPoint: "~/.gvfs/" };
+        return { ok: true, mountPoint: "~/.gvfs/", account: who.email };
       } catch {
-        spawn("xdg-open", [`dav://127.0.0.1:${webdavProxy.PORT}/`], { detached: true });
-        return { ok: true, mountPoint: "Files (open URL)" };
+        spawn("xdg-open", [linuxDav], { detached: true });
+        return { ok: true, mountPoint: "Files (open URL)", account: who.email };
       }
     }
   } catch (err) {
     return { ok: false, error: String(err) };
   }
   return { ok: false, error: "Plateforme non supportée" };
+}
+
+/** Identité du compte connecté dans le webview — null si déconnecté.
+ *  Sert de garde-fou avant le montage du disque : on sait toujours POUR
+ *  QUEL COMPTE le Z: sera monté. */
+async function whoAmI() {
+  try {
+    const wvSession = session.fromPartition("persist:mytitancloud");
+    const cookies = await wvSession.cookies.get({ url: APP_URL });
+    const header = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+    if (!header) return null;
+    const res = await fetch(`${APP_URL}/api/me`, { headers: { cookie: header } });
+    if (!res.ok) return null;
+    return await res.json(); // { id, email, name }
+  } catch {
+    return null;
+  }
 }
 
 /** Pousse le cookie de session du webview dans le proxy WebDAV local. */
@@ -169,6 +205,10 @@ ipcMain.handle("get-sync-state", () => syncEngine.getState());
 
 // Métadonnées exposées au renderer pour la sidebar native
 ipcMain.handle("get-version", () => app.getVersion());
+
+// Identité du compte connecté — affichée dans le panneau "Disque virtuel"
+// pour que l'utilisateur sache TOUJOURS quel compte sera monté.
+ipcMain.handle("drive-whoami", () => whoAmI());
 ipcMain.handle("get-hostname", () => os.hostname());
 
 // Démontage du disque virtuel (Windows uniquement pour l'instant — net use /delete)
@@ -391,11 +431,26 @@ if (!gotLock) {
 
     // Démarre le proxy WebDAV local (127.0.0.1:42042) — pont entre
     // l'Explorateur et le cloud. Voir webdav-proxy.js pour le pourquoi.
+    webdavProxy.setToken(DAV_TOKEN);
     webdavProxy.start({ base: APP_URL, onLog: (m) => console.log(m) });
     // Cookie de session rafraîchi maintenant + toutes les 10 min (la session
     // du webview peut être renouvelée par NextAuth pendant l'utilisation)
     refreshProxyCookie();
     setInterval(refreshProxyCookie, 10 * 60_000);
+
+    // SÉCURITÉ/COHÉRENCE : sync IMMÉDIATE du cookie à chaque login/logout
+    // dans le webview — le disque suit toujours le compte réellement
+    // connecté (déconnexion → le proxy renvoie 401, plus d'accès).
+    try {
+      const wvSession = session.fromPartition("persist:mytitancloud");
+      let cookieSyncTimer = null;
+      wvSession.cookies.on("changed", () => {
+        clearTimeout(cookieSyncTimer);
+        cookieSyncTimer = setTimeout(refreshProxyCookie, 500); // debounce
+      });
+    } catch {
+      // L'interval de 10 min sert de filet de sécurité
+    }
 
     app.on("activate", () => {
       // macOS : recrée la fenêtre quand on clique sur le dock alors qu'aucune n'est ouverte

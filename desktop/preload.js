@@ -21,6 +21,9 @@ const sharedSurface = {
   mountDrive: () => ipcRenderer.invoke("mount-virtual-drive"),
   mountVirtualDrive: () => ipcRenderer.invoke("mount-virtual-drive"), // legacy
   unmountDrive: () => ipcRenderer.invoke("unmount-virtual-drive"),
+  // Identité du compte connecté ({id,email,name} ou null) — affichée dans
+  // le panneau Disque virtuel pour savoir quel compte sera monté
+  driveWhoAmI: () => ipcRenderer.invoke("drive-whoami"),
 
   // Déclenche manuellement la popup d'auto-mount post-login depuis le main
   proposeAutoMount: () => ipcRenderer.invoke("propose-auto-mount"),

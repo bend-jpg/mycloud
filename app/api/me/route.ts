@@ -16,6 +16,22 @@ const schema = z.object({
   brandWatermark: z.boolean().optional(),
 });
 
+/** Identité du compte connecté — utilisé par l'app desktop pour afficher
+ *  POUR QUEL COMPTE le disque virtuel sera monté (cohérence + sécurité). */
+export async function GET() {
+  let session;
+  try {
+    session = await requireSession();
+  } catch {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+  return NextResponse.json({
+    id: session.id,
+    email: session.email,
+    name: session.name,
+  });
+}
+
 export async function PATCH(req: Request) {
   let session;
   try {
