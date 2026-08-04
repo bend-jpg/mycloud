@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
 import { Search, Users } from "lucide-react";
 import { AdminClientsTable } from "@/components/admin-clients-table";
+import { AdminCreateClientButton } from "@/components/admin-create-client-button";
 import { PageHero } from "@/components/page-hero";
 import { isEmailConfigured } from "@/lib/email";
 import { isWhatsappConfigured } from "@/lib/whatsapp";
@@ -49,31 +50,35 @@ export default async function ClientsListPage({
         description={`${users.length} client(s) ${q || plan ? "(filtré)" : ""}`}
       />
 
-      <form className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-60">
-          <Search className="size-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)]" />
-          <input
-            type="search"
-            name="q"
-            defaultValue={q ?? ""}
-            placeholder="Email ou nom…"
-            className="w-full rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] ps-10 pe-4 py-2 text-sm"
-          />
-        </div>
-        <select
-          name="plan"
-          defaultValue={plan ?? ""}
-          className="rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] px-3 py-2 text-sm"
-        >
-          <option value="">Tous les plans</option>
-          {allPlans.map((p) => (
-            <option key={p.slug} value={p.slug}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="btn-primary text-sm">Filtrer</button>
-      </form>
+      <div className="flex flex-wrap items-start gap-3">
+        <form className="flex flex-wrap gap-3 flex-1 min-w-0">
+          <div className="relative flex-1 min-w-60">
+            <Search className="size-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)]" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={q ?? ""}
+              placeholder="Email ou nom…"
+              className="w-full rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] ps-10 pe-4 py-2 text-sm"
+            />
+          </div>
+          <select
+            name="plan"
+            defaultValue={plan ?? ""}
+            className="rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] px-3 py-2 text-sm"
+          >
+            <option value="">Tous les plans</option>
+            {allPlans.map((p) => (
+              <option key={p.slug} value={p.slug}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="btn-ghost text-sm">Filtrer</button>
+        </form>
+        {/* Création directe d'un compte client depuis l'admin */}
+        <AdminCreateClientButton allPlans={allPlans} />
+      </div>
 
       <AdminClientsTable
         locale={locale}
