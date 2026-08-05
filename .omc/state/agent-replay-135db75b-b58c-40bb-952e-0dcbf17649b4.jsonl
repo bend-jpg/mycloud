@@ -186,3 +186,10 @@
 {"t":0,"agent":"ad19b8f","agent_type":"architect","event":"agent_stop","success":true,"duration_ms":1071914}
 {"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":975786}
 {"t":0,"agent":"ad19b8f","agent_type":"architect","event":"agent_stop","success":true,"duration_ms":1080182}
+{"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":989899}
+{"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":999498}
+{"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1003882}
+{"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1007213}
+{"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1013741}
+{"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1017133}
+{"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1020145}

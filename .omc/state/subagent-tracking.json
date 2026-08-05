@@ -97,8 +97,8 @@
       "started_at": "2026-08-05T08:19:34.736Z",
       "parent_mode": "none",
       "status": "completed",
-      "completed_at": "2026-08-05T08:35:50.522Z",
-      "duration_ms": 975786
+      "completed_at": "2026-08-05T08:36:34.881Z",
+      "duration_ms": 1020145
     },
     {
       "agent_id": "aed8748050f9bb7c3",
@@ -138,7 +138,7 @@
     }
   ],
   "total_spawned": 19,
-  "total_completed": 119,
+  "total_completed": 126,
   "total_failed": 0,
-  "last_updated": "2026-08-05T08:35:54.897Z"
+  "last_updated": "2026-08-05T08:36:34.986Z"
 }

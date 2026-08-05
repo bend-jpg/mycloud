@@ -33,9 +33,26 @@ export async function GET(
   if (!allowed) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
 
   const storage = await getStorage(file.storageBackendId);
-  // ⚠️ on passe undefined comme fileName → pas de Content-Disposition: attachment
-  // → le navigateur affiche en inline (idéal pour <img>, <iframe>, <video>)
-  const presigned = await storage.createPresignedDownload(file.storageKey, undefined, 3600);
+
+  // Types actifs : le navigateur les EXÉCUTE (scripts, gestionnaires
+  // d'événements). Les servir en inline revient à héberger du contenu
+  // arbitraire exécutable sur notre domaine de stockage — utilisable pour
+  // de l'hameçonnage ou de la distribution de malware sous notre nom.
+  //
+  // L'impact reste limité car l'aperçu redirige vers R2 : le script
+  // s'exécute sur l'origine du stockage, pas sur celle de l'application,
+  // et ne peut donc pas voler la session d'un utilisateur. On force
+  // malgré tout le téléchargement pour ces types — aucun d'eux n'a besoin
+  // d'être affiché en inline (les images, vidéos, audio et PDF le restent).
+  const ACTIVE_TYPES = /^(text\/html|application\/xhtml\+xml|image\/svg\+xml|application\/xml|text\/xml)/i;
+  const forceDownload = ACTIVE_TYPES.test(file.mimeType);
+
+  // Passer un fileName déclenche Content-Disposition: attachment côté S3/R2.
+  const presigned = await storage.createPresignedDownload(
+    file.storageKey,
+    forceDownload ? file.name : undefined,
+    3600,
+  );
 
   // Cache 1h côté navigateur pour limiter les re-fetch des thumbnails (immutable
   // pendant la durée du signed URL R2). private = pas mis en cache CDN partagé.
