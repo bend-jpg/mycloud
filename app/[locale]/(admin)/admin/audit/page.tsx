@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
-import { Search, Filter, FileText } from "lucide-react";
+import { Search, Filter, FileText, Download } from "lucide-react";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHero } from "@/components/page-hero";
 import { Pagination, buildPageHref } from "@/components/pagination";
@@ -46,6 +46,12 @@ export default async function AdminAuditPage({
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+
+  // Filtres à transmettre à l'export (le numéro de page n'a pas de sens :
+  // on exporte l'ensemble du résultat filtré, pas la page affichée).
+  const exportQuery = new URLSearchParams(
+    Object.entries({ q, action }).filter(([, v]) => Boolean(v)) as [string, string][],
+  ).toString();
   const distinctActions = Array.from(
     new Set(allActions.map((a) => a.action.split(".")[0])),
   ).sort();
@@ -60,6 +66,21 @@ export default async function AdminAuditPage({
           totalCount === 0
             ? "Aucune action enregistrée"
             : `${totalCount} action(s) · page ${currentPage} sur ${totalPages}`
+        }
+        cta={
+          totalCount > 0 ? (
+            // L'export reprend les filtres actifs : ce qui est affiché est ce
+            // qui est exporté. Un export ignorant les filtres produirait un
+            // fichier ne correspondant pas à ce qu'on croit avoir demandé.
+            <a
+              href={`/api/admin/audit/export${exportQuery ? `?${exportQuery}` : ""}`}
+              className="btn-primary text-sm"
+              download
+            >
+              <Download className="size-4" />
+              Exporter en CSV
+            </a>
+          ) : undefined
         }
       />
 
