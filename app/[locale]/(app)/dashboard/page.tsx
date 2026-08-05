@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 import { FileIcon } from "@/components/file-icon";
 import { WelcomeModal } from "@/components/welcome-modal";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
+import { OverQuotaBanner } from "@/components/over-quota-banner";
 import { StorageDonut, UploadsBarChart } from "@/components/stats-charts";
 import { getUserStorageStats } from "@/lib/storage-stats";
 import { formatBytes } from "@/lib/utils";
@@ -141,6 +142,11 @@ export default async function DashboardPage({
             </div>
           </div>
         </div>
+
+        {/* Espace dépassé (typiquement après un passage à un forfait
+            inférieur) : on explique la situation au lieu de laisser les
+            envois échouer avec un message technique. */}
+        <OverQuotaBanner used={used} quota={total} />
 
         {/* Onboarding checklist — caché automatiquement quand tout est complété
             ou si l'utilisateur l'a explicitement fermée */}

@@ -9,6 +9,7 @@ import { FileList } from "@/components/file-list";
 import { NativeSyncCard } from "@/components/native-sync-card";
 import { NewFolderButton } from "@/components/new-folder-button";
 import { FilesBreadcrumb } from "@/components/files-breadcrumb";
+import { OverQuotaBanner } from "@/components/over-quota-banner";
 import { formatBytes } from "@/lib/utils";
 
 export default async function FilesPage({
@@ -66,6 +67,10 @@ export default async function FilesPage({
     <>
       <SiteHeader />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
+        {/* Espace dépassé : prévenir ICI est essentiel, c'est la page où
+            l'utilisateur va tenter d'ajouter des fichiers. */}
+        <OverQuotaBanner used={used} quota={quota} />
+
         {/* Header : breadcrumb + boutons d'action + barre stockage */}
         <div className="space-y-4">
           <FilesBreadcrumb items={[]} />
