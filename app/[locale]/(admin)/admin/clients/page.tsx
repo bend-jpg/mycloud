@@ -7,6 +7,7 @@ import { AdminCreateClientButton } from "@/components/admin-create-client-button
 import { PageHero } from "@/components/page-hero";
 import { isEmailConfigured } from "@/lib/email";
 import { isWhatsappConfigured } from "@/lib/whatsapp";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function ClientsListPage({
   params,
@@ -17,6 +18,12 @@ export default async function ClientsListPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  // Autorisation AVANT toute requête. Le garde du layout ne protège pas :
+  // Next rend layout et page en parallèle, donc sans ce contrôle la page
+  // interroge la base et ses données partent dans la réponse malgré la
+  // redirection. Vérifié en production sur /admin/storage.
+  await guardAdminPage("page.clients", locale);
   const { q, plan, page } = await searchParams;
 
   // Pagination : sans elle, `take: 100` rendait le 101ᵉ client purement

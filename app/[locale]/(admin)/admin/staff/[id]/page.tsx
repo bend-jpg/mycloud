@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { ChevronLeft, Mail, Phone, Calendar, Shield } from "lucide-react";
 import { AdminStaffEditPanel } from "@/components/admin-staff-edit-panel";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Super-admin",
@@ -23,6 +24,12 @@ export default async function StaffDetailPage({
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
+
+  // Autorisation AVANT toute requête. Le garde du layout ne protège pas :
+  // Next rend layout et page en parallèle, donc sans ce contrôle la page
+  // interroge la base et ses données partent dans la réponse malgré la
+  // redirection. Vérifié en production sur /admin/storage.
+  await guardAdminPage("page.staff", locale);
 
   const user = await db.user.findUnique({
     where: { id },

@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { ChevronLeft, ChevronRight, Home, Shield } from "lucide-react";
 import { FileList } from "@/components/file-list";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function AdminClientFolderPage({
   params,
@@ -14,6 +15,12 @@ export default async function AdminClientFolderPage({
 }) {
   const { locale, id, folderId } = await params;
   setRequestLocale(locale);
+
+  // Autorisation AVANT toute requête. Le garde du layout ne protège pas :
+  // Next rend layout et page en parallèle, donc sans ce contrôle la page
+  // interroge la base et ses données partent dans la réponse malgré la
+  // redirection. Vérifié en production sur /admin/storage.
+  await guardAdminPage("page.clients", locale);
 
   const user = await db.user.findUnique({
     where: { id },

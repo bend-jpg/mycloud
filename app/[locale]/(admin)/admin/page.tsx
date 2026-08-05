@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { formatBytes } from "@/lib/utils";
 import { globalCostStats } from "@/lib/cost-stats";
+import { guardAdminPage } from "@/lib/admin-guard";
 import {
   Users,
   HardDrive,
@@ -34,6 +35,12 @@ export default async function AdminHomePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  // Autorisation AVANT toute requête. Le garde du layout ne protège pas :
+  // Next rend layout et page en parallèle, donc sans ce contrôle la page
+  // interroge la base et ses données partent dans la réponse malgré la
+  // redirection. Vérifié en production sur /admin/storage.
+  await guardAdminPage("page.overview", locale);
 
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 86400_000);

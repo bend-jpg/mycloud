@@ -11,6 +11,7 @@ import { PageHero } from "@/components/page-hero";
 import { BackLink } from "@/components/back-link";
 import { AppReleasesEditor } from "@/components/app-releases-editor";
 import { Download } from "lucide-react";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,12 @@ export default async function AdminAppReleasesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  // Autorisation AVANT toute requête. Le garde du layout ne protège pas :
+  // Next rend layout et page en parallèle, donc sans ce contrôle la page
+  // interroge la base et ses données partent dans la réponse malgré la
+  // redirection. Vérifié en production sur /admin/storage.
+  await guardAdminPage("page.overview", locale);
 
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);

@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session";
 import { TicketThread } from "@/components/ticket-thread";
 import { ChevronLeft, User } from "lucide-react";
 import { redirect } from "next/navigation";
+import { guardAdminPage } from "@/lib/admin-guard";
 
 export default async function AdminTicketDetailPage({
   params,
@@ -14,6 +15,12 @@ export default async function AdminTicketDetailPage({
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
+
+  // Autorisation AVANT toute requête. Le garde du layout ne protège pas :
+  // Next rend layout et page en parallèle, donc sans ce contrôle la page
+  // interroge la base et ses données partent dans la réponse malgré la
+  // redirection. Vérifié en production sur /admin/storage.
+  await guardAdminPage("page.tickets", locale);
 
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);

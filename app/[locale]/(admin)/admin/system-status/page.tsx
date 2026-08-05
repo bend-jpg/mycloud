@@ -8,6 +8,7 @@ import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { PageHero } from "@/components/page-hero";
 import { BackLink } from "@/components/back-link";
+import { guardAdminPage } from "@/lib/admin-guard";
 import {
   Activity,
   CheckCircle2,
@@ -48,6 +49,12 @@ export default async function SystemStatusPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  // Autorisation AVANT toute requête. Le garde du layout ne protège pas :
+  // Next rend layout et page en parallèle, donc sans ce contrôle la page
+  // interroge la base et ses données partent dans la réponse malgré la
+  // redirection. Vérifié en production sur /admin/storage.
+  await guardAdminPage("page.overview", locale);
 
   const session = await getSession();
   if (!session) redirect(`/${locale}/login`);
