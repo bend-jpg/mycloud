@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-05T08:57:15.307Z",
+  "updatedAt": "2026-08-05T09:07:43.430Z",
   "missions": [
     {
       "id": "session:135db75b-b58c-40bb-952e-0dcbf17649b4:none",
@@ -7,7 +7,7 @@
       "name": "none",
       "objective": "Session mission",
       "createdAt": "2026-06-11T14:07:40.636Z",
-      "updatedAt": "2026-08-05T08:57:15.307Z",
+      "updatedAt": "2026-08-05T09:07:43.430Z",
       "status": "running",
       "workerCount": 16,
       "taskCounts": {
@@ -27,7 +27,7 @@
           "currentStep": null,
           "latestUpdate": "completed",
           "completedSummary": null,
-          "updatedAt": "2026-08-05T08:57:15.307Z"
+          "updatedAt": "2026-08-05T09:07:43.430Z"
         },
         {
           "name": "Explore:a8ec300",
@@ -748,6 +748,102 @@
           "agent": "security-reviewer:ae71254",
           "detail": "completed",
           "sourceKey": "session-stop:abf56ce99eddb3b7a"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:03:36.576Z",
+          "at": "2026-08-05T09:03:36.576Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:04:16.415Z",
+          "at": "2026-08-05T09:04:16.415Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:05:16.435Z",
+          "at": "2026-08-05T09:05:16.435Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:05:47.289Z",
+          "at": "2026-08-05T09:05:47.289Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:06:05.066Z",
+          "at": "2026-08-05T09:06:05.066Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:06:19.398Z",
+          "at": "2026-08-05T09:06:19.398Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:06:34.335Z",
+          "at": "2026-08-05T09:06:34.335Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:06:49.452Z",
+          "at": "2026-08-05T09:06:49.452Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:07:03.311Z",
+          "at": "2026-08-05T09:07:03.311Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:07:17.316Z",
+          "at": "2026-08-05T09:07:17.316Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:07:30.068Z",
+          "at": "2026-08-05T09:07:30.068Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
+        },
+        {
+          "id": "session-stop:a656e896919039334:2026-08-05T09:07:43.430Z",
+          "at": "2026-08-05T09:07:43.430Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:a656e896919039334"
         }
       ]
     }

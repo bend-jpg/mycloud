@@ -3,17 +3,18 @@ import { db } from "@/lib/db";
 import { AdminPaymentRow } from "@/components/admin-payment-row";
 import { Search, Filter, CreditCard } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
+import { Pagination, buildPageHref } from "@/components/pagination";
 
 export default async function AdminPaymentsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; status?: string; method?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; method?: string; page?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { q, status, method } = await searchParams;
+  const { q, status, method, page } = await searchParams;
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
@@ -26,11 +27,18 @@ export default async function AdminPaymentsPage({
     ];
   }
 
-  const [payments, stats] = await Promise.all([
+  const PER_PAGE = 50;
+  const currentPage = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
+
+  // Le total encaissé est agrégé sur TOUT le jeu filtré (pas sur la page
+  // affichée) : un chiffre d'affaires qui changerait en tournant les pages
+  // serait trompeur.
+  const [payments, stats, totalCount] = await Promise.all([
     db.payment.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: 200,
+      skip: (currentPage - 1) * PER_PAGE,
+      take: PER_PAGE,
       include: { user: { select: { id: true, email: true, name: true } } },
     }),
     db.payment.aggregate({
@@ -38,9 +46,11 @@ export default async function AdminPaymentsPage({
       _sum: { amount: true },
       _count: true,
     }),
+    db.payment.count({ where }),
   ]);
 
   const totalEur = (stats._sum.amount ?? 0) / 100;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
@@ -50,7 +60,7 @@ export default async function AdminPaymentsPage({
         title="Paiements"
         description={
           <>
-            {payments.length} résultat(s) · Total encaissés :{" "}
+            {totalCount} résultat(s) · page {currentPage} sur {totalPages} · Total encaissés :{" "}
             <strong className="text-[var(--foreground)]">{totalEur.toFixed(2)} €</strong> sur {stats._count} paiements
           </>
         }
@@ -134,6 +144,13 @@ export default async function AdminPaymentsPage({
           </div>
         )}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        label="Pagination des paiements"
+        buildHref={(p) => buildPageHref("/admin/payments", { q, status, method }, p)}
+      />
     </main>
   );
 }

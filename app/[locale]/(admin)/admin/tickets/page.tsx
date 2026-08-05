@@ -4,17 +4,18 @@ import { db } from "@/lib/db";
 import { Ticket as TicketIcon, Search, Filter, LifeBuoy } from "lucide-react";
 import { AdminTicketRow } from "@/components/admin-ticket-row";
 import { PageHero } from "@/components/page-hero";
+import { Pagination, buildPageHref } from "@/components/pagination";
 
 export default async function AdminTicketsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; status?: string; priority?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; priority?: string; page?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { q, status, priority } = await searchParams;
+  const { q, status, priority, page } = await searchParams;
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
@@ -26,15 +27,23 @@ export default async function AdminTicketsPage({
     ];
   }
 
-  const tickets = await db.ticket.findMany({
-    where,
-    orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
-    include: {
-      openedBy: { select: { id: true, email: true, name: true } },
-      _count: { select: { messages: true } },
-    },
-    take: 200,
-  });
+  const PER_PAGE = 50;
+  const currentPage = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
+
+  const [tickets, totalCount] = await Promise.all([
+    db.ticket.findMany({
+      where,
+      orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+      include: {
+        openedBy: { select: { id: true, email: true, name: true } },
+        _count: { select: { messages: true } },
+      },
+      skip: (currentPage - 1) * PER_PAGE,
+      take: PER_PAGE,
+    }),
+    db.ticket.count({ where }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
@@ -42,7 +51,11 @@ export default async function AdminTicketsPage({
         icon={LifeBuoy}
         variant="pink"
         title="Support"
-        description={`${tickets.length} ticket(s). Clique sur une ligne pour répondre.`}
+        description={
+          totalCount === 0
+            ? "Aucun ticket"
+            : `${totalCount} ticket(s) · page ${currentPage} sur ${totalPages}. Clique sur une ligne pour répondre.`
+        }
       />
 
       <form className="flex flex-wrap items-end gap-3">
@@ -121,6 +134,13 @@ export default async function AdminTicketsPage({
           </table>
         )}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        label="Pagination des tickets"
+        buildHref={(p) => buildPageHref("/admin/tickets", { q, status, priority }, p)}
+      />
     </main>
   );
 }

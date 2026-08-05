@@ -3,18 +3,19 @@ import { db } from "@/lib/db";
 import { Search, Filter, FileText } from "lucide-react";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHero } from "@/components/page-hero";
+import { Pagination, buildPageHref } from "@/components/pagination";
 
 export default async function AdminAuditPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; action?: string }>;
+  searchParams: Promise<{ q?: string; action?: string; page?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
   await guardAdminPage("page.audit", locale);
-  const { q, action } = await searchParams;
+  const { q, action, page } = await searchParams;
 
   const where: Record<string, unknown> = {};
   if (action) where.action = { contains: action };
@@ -26,14 +27,28 @@ export default async function AdminAuditPage({
     ];
   }
 
-  const logs = await db.adminAuditLog.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 500,
-    include: { actor: { select: { email: true, name: true } } },
-  });
+  const PER_PAGE = 100;
+  const currentPage = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
 
-  const distinctActions = Array.from(new Set(logs.map((l) => l.action.split(".")[0]))).sort();
+  const [logs, totalCount, allActions] = await Promise.all([
+    db.adminAuditLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PER_PAGE,
+      take: PER_PAGE,
+      include: { actor: { select: { email: true, name: true } } },
+    }),
+    db.adminAuditLog.count({ where }),
+    // La liste des filtres doit couvrir TOUT le journal, pas seulement la
+    // page affichée — sinon les options disponibles changeraient à chaque
+    // changement de page.
+    db.adminAuditLog.groupBy({ by: ["action"] }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+  const distinctActions = Array.from(
+    new Set(allActions.map((a) => a.action.split(".")[0])),
+  ).sort();
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
@@ -41,7 +56,11 @@ export default async function AdminAuditPage({
         icon={FileText}
         variant="red"
         title="Journal d'audit"
-        description={`${logs.length} action(s). 500 dernières entrées max.`}
+        description={
+          totalCount === 0
+            ? "Aucune action enregistrée"
+            : `${totalCount} action(s) · page ${currentPage} sur ${totalPages}`
+        }
       />
 
       <form className="flex flex-wrap items-end gap-3">
@@ -95,6 +114,13 @@ export default async function AdminAuditPage({
           <p className="text-center text-sm text-[var(--foreground-muted)] py-12">Aucune action enregistrée.</p>
         )}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        label="Pagination du journal d'audit"
+        buildHref={(p) => buildPageHref("/admin/audit", { q, action }, p)}
+      />
     </main>
   );
 }
