@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "WEBAUTHN_NOT_AVAILABLE" }, { status: 400 });
   }
   const ip = getClientIp(req);
-  const rl = rateLimit(`passkey-init:${ip}`, 20, 15 * 60 * 1000);
+  const rl = await rateLimit(`passkey-init:${ip}`, 20, 15 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: "TOO_MANY_ATTEMPTS" }, { status: 429 });
 
   // Login passwordless : on n'a pas l'email, donc allowCredentials vide

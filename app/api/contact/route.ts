@@ -17,7 +17,7 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  const rl = rateLimit(`contact:${ip}`, 3, 60 * 60 * 1000); // 3/h par IP
+  const rl = await rateLimit(`contact:${ip}`, 3, 60 * 60 * 1000); // 3/h par IP
   if (!rl.allowed) {
     return NextResponse.json({ error: "TOO_MANY_ATTEMPTS" }, { status: 429 });
   }

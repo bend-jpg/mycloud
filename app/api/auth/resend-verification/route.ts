@@ -23,7 +23,7 @@ const GENERIC = {
 export async function POST(req: Request) {
   // Limite les envois : évite d'utiliser le service pour spammer une adresse
   const ip = getClientIp(req);
-  const rl = rateLimit(`resend-verif:${ip}`, 5, 60 * 60 * 1000);
+  const rl = await rateLimit(`resend-verif:${ip}`, 5, 60 * 60 * 1000);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "RATE_LIMITED", message: "Trop de demandes. Réessaie dans une heure." },

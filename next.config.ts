@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -47,4 +48,23 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withSentryConfig(withNextIntl(nextConfig), {
+  // Envoi des sources cartographiées : permet à Sentry d'afficher la ligne
+  // de code exacte au lieu de JavaScript minifié. Nécessite SENTRY_AUTH_TOKEN
+  // (facultatif) — sans lui, le build réussit et les erreurs remontent
+  // quand même, simplement avec des traces moins lisibles.
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Pas de journalisation verbeuse pendant le build
+  silent: true,
+
+  // Masque les sources cartographiées au public après envoi à Sentry :
+  // sinon n'importe qui pourrait lire le code source depuis le navigateur.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+
+  // Sert les requêtes Sentry via notre domaine : évite qu'un bloqueur de
+  // publicité n'empêche la remontée des erreurs (cas très fréquent).
+  tunnelRoute: "/monitoring",
+});

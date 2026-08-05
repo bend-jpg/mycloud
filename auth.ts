@@ -27,8 +27,12 @@ const providers: import("next-auth").NextAuthConfig["providers"] = [
 
       // Anti brute-force : 10 tentatives par IP / 15 min, 5 par email / 15 min
       const ip = request ? getClientIp(request as Request) : "unknown";
-      const ipRl = rateLimit(`login-ip:${ip}`, 10, 15 * 60 * 1000);
-      const emailRl = rateLimit(`login-email:${email}`, 5, 15 * 60 * 1000);
+      // Les deux compteurs sont vérifiés en parallèle : chacun est un
+      // aller-retour Redis, les enchaîner doublerait la latence de connexion.
+      const [ipRl, emailRl] = await Promise.all([
+        rateLimit(`login-ip:${ip}`, 10, 15 * 60 * 1000),
+        rateLimit(`login-email:${email}`, 5, 15 * 60 * 1000),
+      ]);
       if (!ipRl.allowed || !emailRl.allowed) return null;
 
       const user = await db.user.findUnique({ where: { email } });

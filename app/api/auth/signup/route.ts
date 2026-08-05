@@ -17,7 +17,7 @@ const schema = z.object({
 export async function POST(req: Request) {
   // Anti-bot : 5 signups par IP par heure (large pour les vrais users en NAT)
   const ip = getClientIp(req);
-  const rl = rateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
+  const rl = await rateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "TOO_MANY_ATTEMPTS", message: "Trop de tentatives. Réessaie dans 1h." },

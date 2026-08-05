@@ -33,7 +33,7 @@ async function handle(req: Request, token: string, password: string | null) {
     // Anti brute-force : 8 tentatives/15 min par IP+token
     const ip = getClientIp(req);
     const rlKey = `share-pwd:${token}:${ip}`;
-    const rl = rateLimit(rlKey, 8, 15 * 60 * 1000);
+    const rl = await rateLimit(rlKey, 8, 15 * 60 * 1000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "TOO_MANY_ATTEMPTS", message: "Trop de tentatives. Réessaie dans 15 min." },
@@ -42,7 +42,7 @@ async function handle(req: Request, token: string, password: string | null) {
     }
     const ok = await bcrypt.compare(password, link.passwordHash);
     if (!ok) return NextResponse.json({ error: "BAD_PASSWORD" }, { status: 401 });
-    rateLimitReset(rlKey); // mot de passe bon : on remet à zéro le compteur
+    await rateLimitReset(rlKey); // mot de passe bon : on remet à zéro le compteur
   }
 
   if (link.kind !== "FILE" || !link.file) {

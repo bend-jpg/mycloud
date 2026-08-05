@@ -15,7 +15,7 @@ const schema = z.object({
 export async function POST(req: Request) {
   const ip = getClientIp(req);
   // Même rate-limit que sur le login complet (sinon ce endpoint serait une faille)
-  const ipRl = rateLimit(`login-ip:${ip}`, 10, 15 * 60 * 1000);
+  const ipRl = await rateLimit(`login-ip:${ip}`, 10, 15 * 60 * 1000);
   if (!ipRl.allowed) {
     return NextResponse.json({ error: "TOO_MANY_ATTEMPTS" }, { status: 429 });
   }
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "INVALID_CREDENTIALS" }, { status: 401 });
 
   const { email, password } = parsed.data;
-  const emailRl = rateLimit(`login-email:${email}`, 5, 15 * 60 * 1000);
+  const emailRl = await rateLimit(`login-email:${email}`, 5, 15 * 60 * 1000);
   if (!emailRl.allowed) {
     return NextResponse.json({ error: "TOO_MANY_ATTEMPTS" }, { status: 429 });
   }
