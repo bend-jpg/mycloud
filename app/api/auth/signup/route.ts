@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { ensureBootstrap } from "@/lib/bootstrap";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { sendEmail, welcomeEmail, isEmailConfigured } from "@/lib/email";
+import { sendVerificationEmail, verificationRequired } from "@/lib/email-verification";
 
 const schema = z.object({
   name: z.string().min(1).max(120),
@@ -52,18 +53,25 @@ export async function POST(req: Request) {
       role: isBootstrapAdmin ? "ADMIN" : "USER",
       planId: starter?.id,
       storageQuota: starter?.storageBytes ?? BigInt(0),
-      emailVerified: new Date(),
+      // L'adresse n'est PAS considérée vérifiée d'office : sinon n'importe
+      // qui s'inscrit avec l'email d'un tiers. Exception : si l'envoi
+      // d'emails n'est pas configuré, on auto-vérifie — sinon plus personne
+      // ne pourrait jamais valider son adresse.
+      emailVerified: verificationRequired() ? null : new Date(),
     },
   });
 
-  // Welcome email (best-effort, ne fail pas le signup si l'email plante)
+  // Emails best-effort : l'inscription ne doit jamais échouer à cause du
+  // fournisseur d'emails.
   if (isEmailConfigured()) {
     const tpl = welcomeEmail(name);
     sendEmail({ to: email, ...tpl }).catch(() => undefined);
+    sendVerificationEmail(email, name).catch(() => undefined);
   }
 
   return NextResponse.json({
     ok: true,
     user: { id: user.id, email: user.email, role: user.role },
+    verificationRequired: verificationRequired(),
   });
 }

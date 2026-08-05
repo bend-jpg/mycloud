@@ -101,6 +101,26 @@ export function welcomeEmail(name: string): { subject: string; html: string } {
   };
 }
 
+/** Email de confirmation d'adresse envoyé à l'inscription. */
+export function verifyEmailTemplate(name: string, verifyUrl: string): { subject: string; html: string } {
+  return {
+    subject: "Confirme ton adresse email — MyTitanCloud",
+    html: baseLayout(
+      `<h1 style="font-size:22px;margin:0 0 12px;">Bonjour ${name},</h1>
+      <p style="color:#a1a1aa;line-height:1.6;">
+        Il ne reste qu'une étape : confirme que cette adresse email est bien la tienne
+        pour activer complètement ton espace MyTitanCloud.
+      </p>
+      <p style="color:#a1a1aa;line-height:1.6;">
+        Ce lien est valable 24 heures. Si tu n'es pas à l'origine de cette inscription,
+        ignore simplement ce message — aucun compte ne sera activé avec ton adresse.
+      </p>`,
+      "Confirmer mon adresse",
+      verifyUrl
+    ),
+  };
+}
+
 export function inviteEmail(
   teamName: string,
   inviterName: string,
