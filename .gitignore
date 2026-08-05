@@ -61,3 +61,7 @@ mobile/node_modules/
 mobile/android/
 mobile/ios/
 mobile/package-lock.json
+
+# État de l'outillage d'agent — jamais versionné (identifiants de session,
+# vidages d'erreurs). Deux copies s'étaient glissées dans app/.
+.omc/

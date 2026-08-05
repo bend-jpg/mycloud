@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"python3 - <<'EOF'\\nimport re,html\\nraw=open('/tmp/s1.html',encoding='utf-8',errors='replace').read()\\n# le payload RSC est du JSON échappé dans des <script>\\ntxt=raw.replace('\\\\\\\\\\\"','\\\"')...",
-  "error": "Exit code 49\nPython was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.",
-  "timestamp": "2026-08-05T13:01:54.627Z",
-  "retry_count": 1
-}

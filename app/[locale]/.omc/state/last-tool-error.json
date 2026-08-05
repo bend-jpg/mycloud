@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"find . -name \\\"middleware.ts\\\" -o -name \\\"middleware.js\\\" | grep -v node_modules; echo \\\"--- config i18n ---\\\"; ls i18n/ 2>/dev/null; cat i18n/routing.ts 2>/dev/null | head -25; echo \\\"---...",
-  "error": "Exit code 2\n--- config i18n ---\n--- proxy? ---",
-  "timestamp": "2026-08-05T13:03:12.092Z",
-  "retry_count": 1
-}

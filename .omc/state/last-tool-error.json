@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"echo \\\"=== middleware.ts ===\\\" && cat middleware.ts && echo && echo \\\"=== lib/session.ts ===\\\" && cat lib/session.ts\",\"description\":\"Inspect middleware and session helper\"}",
-  "error": "Exit code 1\n=== middleware.ts ===\ncat: middleware.ts: No such file or directory",
-  "timestamp": "2026-08-05T13:02:25.475Z",
-  "retry_count": 1
-}
