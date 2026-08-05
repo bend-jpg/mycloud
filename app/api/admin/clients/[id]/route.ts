@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/session";
+import { deleteUserCompletely } from "@/lib/delete-user";
 
 const schema = z
   .object({
@@ -109,11 +110,39 @@ export async function DELETE(
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
   const { id } = await params;
-  await db.$transaction([
-    db.user.delete({ where: { id } }),
-    db.adminAuditLog.create({
-      data: { actorId: admin.id, action: "client.delete", targetType: "User", targetId: id },
-    }),
-  ]);
-  return NextResponse.json({ ok: true });
+
+  // Garde-fou : un administrateur ne peut pas supprimer son propre compte
+  // depuis cette interface (il se verrouillerait dehors, et on perdrait
+  // potentiellement le dernier accès admin).
+  if (id === admin.id) {
+    return NextResponse.json(
+      { error: "SELF_DELETE", message: "Tu ne peux pas supprimer ton propre compte administrateur." },
+      { status: 400 },
+    );
+  }
+
+  // Trace AVANT la suppression : une fois l'utilisateur effacé, on ne peut
+  // plus lire son email pour le journal.
+  const target = await db.user.findUnique({ where: { id }, select: { email: true } });
+  if (!target) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+
+  // Supprime aussi les objets de stockage (RGPD + coût). Voir lib/delete-user.
+  const result = await deleteUserCompletely(id);
+
+  await db.adminAuditLog.create({
+    data: {
+      actorId: admin.id,
+      action: "client.delete",
+      targetType: "User",
+      targetId: id,
+      metadata: {
+        email: target.email,
+        deletedObjects: result.deletedObjects,
+        keptSharedObjects: result.keptSharedObjects,
+        storageErrors: result.storageErrors,
+      } as object,
+    },
+  });
+
+  return NextResponse.json({ ok: true, ...result });
 }

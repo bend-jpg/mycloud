@@ -193,3 +193,4 @@
 {"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1013741}
 {"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1017133}
 {"t":0,"agent":"ac240b5","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":1020145}
+{"t":0,"agent":"ab40c13","agent_type":"unknown","event":"agent_stop","success":true}

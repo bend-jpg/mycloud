@@ -9,6 +9,7 @@ import {
   Smartphone,
   Fingerprint,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { ThemePicker } from "./theme-picker";
 import { ProfileForm } from "./settings-profile-form";
@@ -112,6 +113,20 @@ export function SettingsTabs({ user }: Props) {
                   locale: user.locale,
                 }}
               />
+            </div>
+
+            {/* Droit d'accès et à la portabilité (RGPD art. 15 & 20) : le
+                client doit pouvoir récupérer ses données sans nous écrire. */}
+            <div className="tile cursor-default !min-h-0">
+              <h2 className="text-lg font-semibold mb-1">Mes données</h2>
+              <p className="text-sm text-[var(--foreground-muted)] mb-4">
+                Télécharge une archive contenant tes informations de compte et tes fichiers.
+                Tu peux les réutiliser où tu veux, c&apos;est ton droit.
+              </p>
+              <a href="/api/me/export" className="btn-ghost text-sm inline-flex" download>
+                <Download className="size-4" />
+                Exporter toutes mes données
+              </a>
             </div>
           </>
         )}
