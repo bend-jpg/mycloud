@@ -88,6 +88,13 @@ jobs:
       # Le client Prisma doit exister avant le typecheck (les types des modèles
       # en dépendent). Normalement déjà généré par le postinstall, mais on le
       # refait pour couvrir le cas du repli ci-dessus.
+      # Placé avant tout le reste : ne lit que des fichiers, échoue en une
+      # seconde. Empêche le retour de la fuite de données du 5 août 2026 —
+      # une page admin ajoutée sans contrôle d'accès sert ses données à
+      # n'importe qui, sans que ça se voie dans un navigateur.
+      - name: Contrôle des gardes du back-office
+        run: node scripts/check-admin-guards.js
+
       - name: Generate Prisma client
         run: npx prisma generate
 
