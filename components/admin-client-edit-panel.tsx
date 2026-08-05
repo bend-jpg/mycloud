@@ -267,7 +267,14 @@ function PlanTab({
           {allPlans.map((p) => (
             <button
               key={p.slug}
-              onClick={() => setPlanSlug(p.slug)}
+              onClick={() => {
+                setPlanSlug(p.slug);
+                // Aligne le quota sur le plan choisi. Sans ça, le champ gardait
+                // l'ancienne valeur et, comme l'API applique le quota APRÈS le
+                // plan, elle écrasait le quota du nouveau plan (un client passé
+                // en Famille restait bloqué à 50 Go).
+                setQuotaGb((Number(p.storageBytes) / GB).toFixed(1));
+              }}
               className={`rounded-xl p-3 text-start border transition-colors ${
                 planSlug === p.slug
                   ? "border-[var(--accent)] bg-[var(--accent)]/10"

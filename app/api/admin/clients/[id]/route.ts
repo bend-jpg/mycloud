@@ -44,8 +44,21 @@ export async function PATCH(
     auditChanges.planSlug = data.planSlug;
   }
   if (data.storageQuotaBytes !== undefined) {
-    updates.storageQuota = BigInt(data.storageQuotaBytes);
-    auditChanges.storageQuotaBytes = data.storageQuotaBytes;
+    // Le quota n'est un OVERRIDE que si l'admin l'a réellement modifié.
+    // Les formulaires envoient le champ même quand il n'a pas été touché :
+    // en l'appliquant aveuglément après le plan, on écrasait le quota du
+    // nouveau plan par l'ancienne valeur (client passé en Famille qui restait
+    // plafonné à 50 Go). On compare donc à la valeur actuelle en base.
+    const current = await db.user.findUnique({
+      where: { id },
+      select: { storageQuota: true },
+    });
+    const requested = BigInt(data.storageQuotaBytes);
+    const unchanged = current !== null && current.storageQuota === requested;
+    if (!unchanged || updates.storageQuota === undefined) {
+      updates.storageQuota = requested;
+      auditChanges.storageQuotaBytes = data.storageQuotaBytes;
+    }
   }
   if (data.suspended !== undefined) {
     updates.suspendedAt = data.suspended ? new Date() : null;

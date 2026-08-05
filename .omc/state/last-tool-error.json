@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"grep -r \\\"limitsNavigationsToAppBoundDomains\\\\|allowMixedContent\\\" \\\"C:\\\\Users\\\\Marketing-Digital\\\\Desktop\\\\dev-claude\\\\mycloud\\\\desktop\\\\*\\\" 2>/dev/null\"}",
-  "error": "Exit code 2",
-  "timestamp": "2026-06-11T14:10:16.176Z",
+  "tool_input_preview": "{\"command\":\"cd \\\"C:/Users/Marketing-Digital/Desktop/dev-claude/mycloud\\\" && for n in admin-client-actions notification-bell api-fetch notif-bell; do echo \\\"=== $n ===\\\"; grep -rn \\\"$n\\\" --include=\\\"*....",
+  "error": "Exit code 143\nCommand timed out after 2m 0s\n=== admin-client-actions ===",
+  "timestamp": "2026-08-05T08:23:43.521Z",
   "retry_count": 1
 }

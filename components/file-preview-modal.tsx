@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight, Play, Pause, Share2 } from "lucide-react";
 import { FileIcon } from "./file-icon";
+import { FileTextEditor } from "./file-text-editor";
 import { formatBytes } from "@/lib/utils";
 import { useToast } from "./toast";
 
@@ -471,11 +472,7 @@ export function FilePreviewModal({
           />
         )}
         {isText && (
-          <iframe
-            src={previewUrl}
-            className="w-full h-full max-w-5xl rounded-lg shadow-2xl bg-white text-black"
-            title={file.name}
-          />
+          <FileTextEditor fileId={file.id} fileName={file.name} downloadUrl={downloadUrl} />
         )}
         {!isImage && !isVideo && !isAudio && !isPdf && !isText && (
           <div className="bg-white/5 rounded-2xl p-12 text-center max-w-md">

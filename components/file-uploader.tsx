@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Upload, X, CheckCircle2, AlertCircle, FileUp, CloudUpload, Plus } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, FileUp, FolderUp, CloudUpload, Plus } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 
 interface UploadItem {
@@ -12,6 +12,62 @@ interface UploadItem {
   progress: number;
   status: "queued" | "uploading" | "completing" | "done" | "error";
   error?: string;
+  /** Dossier de destination résolu (upload de dossier). null = dossier courant. */
+  targetFolderId?: string | null;
+  /** Chemin affiché dans la liste, ex "Vacances/2026/img.jpg". */
+  relativePath?: string;
+}
+
+/** Fichier accompagné de son chemin relatif quand il vient d'un dossier. */
+interface PendingFile {
+  file: File;
+  relativePath: string; // "" si à la racine de la sélection
+}
+
+/**
+ * Parcourt récursivement les entrées d'un drag & drop pour en extraire tous
+ * les fichiers, y compris ceux imbriqués dans des dossiers.
+ * `readEntries` ne renvoie que 100 entrées par appel : il faut boucler
+ * jusqu'à recevoir un lot vide, sinon les gros dossiers sont tronqués.
+ */
+async function traverseEntry(
+  entry: FileSystemEntry,
+  prefix: string,
+  out: PendingFile[],
+): Promise<void> {
+  if (entry.isFile) {
+    const fileEntry = entry as FileSystemFileEntry;
+    const file = await new Promise<File>((resolve, reject) => fileEntry.file(resolve, reject));
+    out.push({ file, relativePath: prefix });
+    return;
+  }
+  if (entry.isDirectory) {
+    const reader = (entry as FileSystemDirectoryEntry).createReader();
+    const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
+    let batch: FileSystemEntry[];
+    do {
+      batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+        reader.readEntries(resolve, reject),
+      );
+      for (const child of batch) await traverseEntry(child, nextPrefix, out);
+    } while (batch.length > 0);
+  }
+}
+
+/** Extrait les fichiers d'un DataTransfer en préservant l'arborescence. */
+async function filesFromDataTransfer(dt: DataTransfer): Promise<PendingFile[]> {
+  const entries: FileSystemEntry[] = [];
+  for (const item of Array.from(dt.items ?? [])) {
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+  }
+  // Navigateur sans l'API entries : on retombe sur les fichiers à plat
+  if (entries.length === 0) {
+    return Array.from(dt.files ?? []).map((file) => ({ file, relativePath: "" }));
+  }
+  const out: PendingFile[] = [];
+  for (const entry of entries) await traverseEntry(entry, "", out);
+  return out;
 }
 
 export function FileUploader({
@@ -28,6 +84,7 @@ export function FileUploader({
   const [pageDragOver, setPageDragOver] = useState(false);
   const dragCounterRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -46,7 +103,9 @@ export function FileUploader({
             name: item.file.name,
             size: item.file.size,
             mimeType: item.file.type || "application/octet-stream",
-            folderId: folderId ?? null,
+            // Upload de dossier : le fichier va dans le sous-dossier recréé,
+            // pas dans le dossier courant.
+            folderId: item.targetFolderId !== undefined ? item.targetFolderId : folderId ?? null,
             teamId: teamId ?? null,
           }),
         });
@@ -94,17 +153,57 @@ export function FileUploader({
   );
 
   const handleFiles = useCallback(
-    (files: FileList | File[]) => {
-      const newItems: UploadItem[] = Array.from(files).map((file) => ({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        file,
+    async (input: FileList | File[] | PendingFile[]) => {
+      // Normalise : sélection de fichiers simples, sélection de dossier
+      // (webkitRelativePath) ou drag & drop d'arborescence (PendingFile).
+      const pending: PendingFile[] = Array.from(input as ArrayLike<unknown>).map((entry) => {
+        if (entry && typeof entry === "object" && "file" in entry) return entry as PendingFile;
+        const file = entry as File;
+        // webkitRelativePath = "Dossier/sous/fichier.txt" → on garde le dossier
+        const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? "";
+        const dir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
+        return { file, relativePath: dir };
+      });
+      if (pending.length === 0) return;
+
+      // Crée l'arborescence AVANT d'uploader : un seul appel par dossier
+      // distinct, mis en cache pour ne pas recréer 200 fois le même.
+      const folderIdByPath = new Map<string, string | null>();
+      folderIdByPath.set("", folderId ?? null);
+      const uniqueDirs = Array.from(new Set(pending.map((p) => p.relativePath))).filter(Boolean);
+
+      for (const dir of uniqueDirs) {
+        try {
+          const res = await fetch("/api/folders/ensure-path", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              path: dir.split("/").filter(Boolean),
+              parentId: folderId ?? null,
+              teamId: teamId ?? null,
+            }),
+          });
+          const data = await res.json().catch(() => null);
+          folderIdByPath.set(dir, res.ok ? data?.folderId ?? null : folderId ?? null);
+        } catch {
+          // Dossier non créé → le fichier atterrit dans le dossier courant
+          // plutôt que d'échouer complètement.
+          folderIdByPath.set(dir, folderId ?? null);
+        }
+      }
+
+      const newItems: UploadItem[] = pending.map((p, i) => ({
+        id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
+        file: p.file,
         progress: 0,
         status: "queued",
+        targetFolderId: folderIdByPath.get(p.relativePath) ?? folderId ?? null,
+        relativePath: p.relativePath ? `${p.relativePath}/${p.file.name}` : undefined,
       }));
       setItems((prev) => [...prev, ...newItems]);
       newItems.forEach(startUpload);
     },
-    [startUpload]
+    [startUpload, folderId, teamId]
   );
 
   // Drag-drop global : dropper depuis n'importe où sur la page (pas seulement
@@ -135,9 +234,12 @@ export function FileUploader({
       e.preventDefault();
       dragCounterRef.current = 0;
       setPageDragOver(false);
-      if (e.dataTransfer?.files?.length) {
-        handleFiles(e.dataTransfer.files);
-      }
+      if (!e.dataTransfer) return;
+      // Parcourt l'arborescence : déposer un DOSSIER envoie tout son contenu
+      // en recréant la structure côté cloud.
+      filesFromDataTransfer(e.dataTransfer).then((pending) => {
+        if (pending.length) handleFiles(pending);
+      });
     }
     window.addEventListener("dragenter", onEnter);
     window.addEventListener("dragover", onOver);
@@ -162,12 +264,13 @@ export function FileUploader({
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
-          if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+          filesFromDataTransfer(e.dataTransfer).then((pending) => {
+            if (pending.length) handleFiles(pending);
+          });
         }}
-        className={`tile cursor-pointer transition-all ${
+        className={`tile transition-all ${
           dragOver ? "border-[var(--accent)] bg-[var(--background-elevated)]" : ""
         }`}
-        onClick={() => inputRef.current?.click()}
       >
         <input
           ref={inputRef}
@@ -176,14 +279,51 @@ export function FileUploader({
           className="hidden"
           onChange={(e) => e.target.files && handleFiles(e.target.files)}
         />
+        {/* Second input avec webkitdirectory : sélectionne un DOSSIER entier.
+            Attribut non standard côté types React, d'où le cast. */}
+        <input
+          ref={folderInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) handleFiles(e.target.files);
+            e.target.value = ""; // permet de re-sélectionner le même dossier
+          }}
+          {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+        />
         <div className="flex flex-col items-center justify-center text-center py-6">
           <div className="tile-icon mb-3">
             <Upload className="size-6" />
           </div>
-          <p className="font-semibold">Dépose tes fichiers ici</p>
+          <p className="font-semibold">Dépose tes fichiers ou tes dossiers ici</p>
           <p className="text-sm text-[var(--foreground-muted)] mt-1">
-            ou clique pour les sélectionner. Multi-fichiers OK.
+            L&apos;arborescence des dossiers est conservée.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                inputRef.current?.click();
+              }}
+              className="btn-ghost text-sm"
+            >
+              <FileUp className="size-4" />
+              Choisir des fichiers
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                folderInputRef.current?.click();
+              }}
+              className="btn-ghost text-sm"
+            >
+              <FolderUp className="size-4" />
+              Choisir un dossier
+            </button>
+          </div>
         </div>
       </div>
 

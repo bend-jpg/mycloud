@@ -21,6 +21,7 @@ import {
   Clock,
   Camera,
   Inbox,
+  Crown,
 } from "lucide-react";
 
 export default async function DashboardPage({
@@ -45,7 +46,14 @@ export default async function DashboardPage({
   const [user, recentFiles, stats, onboardingStatus] = await Promise.all([
     db.user.findUnique({
       where: { id: session.id },
-      select: { name: true, storageUsed: true, storageQuota: true },
+      select: {
+        name: true,
+        storageUsed: true,
+        storageQuota: true,
+        // Le nom du plan est affiché dans le hero : le client doit voir en un
+        // coup d'œil ce qu'il a souscrit et combien d'espace il lui reste.
+        plan: { select: { name: true } },
+      },
     }),
     db.file.findMany({
       where: { ownerId: session.id, isTrash: false, teamId: null },
@@ -91,13 +99,24 @@ export default async function DashboardPage({
               <h1 className="text-3xl md:text-4xl font-bold">
                 {t("welcome", { name: user?.name ?? session.name })}
               </h1>
-              <p className="text-[var(--foreground-muted)] mt-2 text-sm">
-                {t("usage", { used: formatBytes(used), total: formatBytes(total) })}
-              </p>
+              {/* Le client doit voir son forfait ET son espace restant sans
+                  avoir à aller sur une autre page. */}
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <Link
+                  href="/billing"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] px-3 py-1 text-xs font-semibold hover:bg-[var(--accent)]/25 transition-colors"
+                >
+                  <Crown className="size-3.5" />
+                  Forfait {user?.plan?.name ?? "—"} · {formatBytes(total)}
+                </Link>
+                <span className="text-xs text-[var(--foreground-muted)]">
+                  {t("usage", { used: formatBytes(used), total: formatBytes(total) })}
+                </span>
+              </div>
             </div>
             <div className="w-full md:w-96">
-              <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)] mb-1.5">
-                <span>Stockage utilisé</span>
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="text-[var(--foreground-muted)]">Stockage utilisé</span>
                 <span className="font-semibold text-[var(--foreground)]">{pct}%</span>
               </div>
               <div className="h-2.5 rounded-full bg-[var(--background-elevated)] overflow-hidden">
@@ -105,6 +124,14 @@ export default async function DashboardPage({
                   className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--secondary)] rounded-full transition-all shadow-[0_0_20px_var(--accent-glow)]"
                   style={{ width: `${pct}%` }}
                 />
+              </div>
+              <div className="flex items-center justify-between text-[11px] mt-1.5">
+                <span className="text-[var(--foreground-muted)]">
+                  {formatBytes(used)} utilisés
+                </span>
+                <span className="font-medium text-[var(--success)]">
+                  {formatBytes(Math.max(0, total - used))} disponibles
+                </span>
               </div>
               {pct >= 80 && (
                 <p className="text-[10px] text-yellow-400 mt-1.5">
