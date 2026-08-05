@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { hoursUntilVersionPurge } from "@/lib/file-versions";
+import { loadAuthorizedFile, accessStatus } from "@/lib/file-access";
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   let session;
@@ -15,12 +16,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   }
   const { id } = await ctx.params;
 
-  // Vérifie que le fichier appartient à l'utilisateur
-  const file = await db.file.findFirst({
-    where: { id, ownerId: session.id },
-    select: { id: true },
-  });
-  if (!file) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  // Contrôle d'accès en LECTURE, identique au reste de l'application.
+  //
+  // Auparavant la route exigeait d'être PROPRIÉTAIRE du fichier. Sur un
+  // espace partagé, un membre autorisé à lire ne pouvait donc même pas
+  // consulter l'historique d'un fichier qu'il a le droit d'ouvrir.
+  const access = await loadAuthorizedFile(id, session.id, "read");
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: accessStatus(access.error) });
+  }
 
   // Defensive si la table FileVersion pas encore pushée
   try {
@@ -67,13 +71,55 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { versionId } = body as { versionId?: string };
   if (!versionId) return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
 
-  // Vérifie ownership + version existe + appartient bien à ce fichier
-  const [file, version] = await Promise.all([
-    db.file.findFirst({ where: { id, ownerId: session.id } }),
+  // Contrôle d'accès en ÉCRITURE : restaurer une version modifie le fichier
+  // pour tout le monde, c'est donc une écriture, pas une lecture.
+  //
+  // La route exigeait auparavant d'être PROPRIÉTAIRE du fichier, ce qui
+  // ouvrait un trou et en fermait un autre :
+  //
+  //   • Un membre rétrogradé en lecture seule, mais qui avait déposé le
+  //     fichier à l'origine, restait propriétaire — il pouvait donc encore
+  //     restaurer une version et modifier le fichier de tout le monde,
+  //     contournant la restriction.
+  //   • À l'inverse, un membre explicitement autorisé à écrire ne pouvait
+  //     PAS restaurer, alors qu'il pouvait écraser le contenu par une
+  //     modification directe. Incohérent.
+  //
+  // loadAuthorizedFile applique la même règle que partout ailleurs : sur un
+  // espace partagé, c'est le RÔLE qui décide, pas l'historique de dépôt.
+  const [access, version] = await Promise.all([
+    loadAuthorizedFile(id, session.id, "write"),
     db.fileVersion.findFirst({ where: { id: versionId, fileId: id } }).catch(() => null),
   ]);
-  if (!file) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: accessStatus(access.error) });
+  }
   if (!version) return NextResponse.json({ error: "VERSION_NOT_FOUND" }, { status: 404 });
+
+  const { file } = access;
+
+  // Quota : restaurer une version d'une AUTRE taille change l'espace occupé.
+  // Ce n'était pas répercuté — restaurer une version de 10 Mo par-dessus une
+  // de 2 Mo laissait le compteur à 2 Mo, définitivement faux, et l'écart
+  // s'accumulait à chaque restauration.
+  const delta = version.size - file.size;
+  const quotaUserId = file.teamId
+    ? (await db.team.findUnique({ where: { id: file.teamId }, select: { ownerId: true } }))?.ownerId ??
+      file.ownerId
+    : file.ownerId;
+
+  // On refuse seulement si la restauration fait GROSSIR au-delà du quota.
+  // Revenir à une version plus petite doit toujours être possible, même sur
+  // un compte déjà saturé — c'est justement un moyen de se dépanner.
+  if (delta > BigInt(0)) {
+    const u = await db.user.findUnique({
+      where: { id: quotaUserId },
+      select: { storageUsed: true, storageQuota: true },
+    });
+    if (u && u.storageUsed + delta > u.storageQuota) {
+      return NextResponse.json({ error: "QUOTA_EXCEEDED" }, { status: 413 });
+    }
+  }
 
   try {
     // Transaction : on bascule isCurrent + on met à jour le File pour pointer
@@ -105,6 +151,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           checksum: version.checksum,
           updatedAt: new Date(),
         },
+      }),
+      // 4. Répercute l'écart de taille sur le quota du compte concerné.
+      db.user.update({
+        where: { id: quotaUserId },
+        data: { storageUsed: { increment: delta } },
       }),
     ]);
     return NextResponse.json({ ok: true, restored: versionId });
