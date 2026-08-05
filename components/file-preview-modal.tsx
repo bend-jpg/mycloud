@@ -114,7 +114,7 @@ export function FilePreviewModal({
   // Historique des versions — visible quand showVersions=true
   const [showVersions, setShowVersions] = useState(false);
   const [versions, setVersions] = useState<
-    { id: string; size: string; uploadedAt: string; isCurrent: boolean }[]
+    { id: string; size: string; uploadedAt: string; isCurrent: boolean; hoursLeft: number | null }[]
   >([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
@@ -316,7 +316,8 @@ export function FilePreviewModal({
               Versions précédentes
             </p>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
-              Sauvegardées automatiquement à chaque modification du fichier.
+              Sauvegardées automatiquement à chaque modification. Seule la version
+              précédant la dernière est conservée, pendant 72 heures.
             </p>
           </div>
 
@@ -348,6 +349,23 @@ export function FilePreviewModal({
                         {v.isCurrent && (
                           <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-[var(--success)]/15 text-[var(--success)] px-2 py-0.5 text-[10px] font-medium">
                             Actuelle
+                          </span>
+                        )}
+                        {/* Une version qui disparaîtrait sans prévenir serait
+                            vécue comme une perte de données : le délai
+                            restant est annoncé, et signalé en rouge dans les
+                            dernières heures. */}
+                        {!v.isCurrent && v.hoursLeft !== null && (
+                          <span
+                            className={`ms-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              v.hoursLeft <= 12
+                                ? "bg-[var(--danger)]/15 text-[var(--danger)]"
+                                : "bg-white/10 text-[var(--foreground-muted)]"
+                            }`}
+                          >
+                            {v.hoursLeft === 0
+                              ? "expire aujourd'hui"
+                              : `${v.hoursLeft} h restantes`}
                           </span>
                         )}
                       </p>

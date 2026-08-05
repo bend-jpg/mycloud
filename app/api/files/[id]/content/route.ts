@@ -13,6 +13,7 @@ import { requireSession } from "@/lib/session";
 import { getStorage } from "@/lib/storage";
 import { getMembership, canRead, canWrite } from "@/lib/teams";
 import { isTextEditable } from "@/lib/file-kinds";
+import { replaceFileContent } from "@/lib/file-write";
 
 // 5 Mo de texte : au-delà, l'édition en ligne n'a plus de sens (et le
 // navigateur rame). Les fichiers plus gros restent téléchargeables.
@@ -103,63 +104,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!parsed.success) return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
 
   const buf = Buffer.from(parsed.data.content, "utf8");
-  const oldSize = Number(file.size);
-  const delta = BigInt(buf.length - oldSize);
 
-  // Quota : on ne bloque que si le fichier GROSSIT et dépasse la limite
-  const quotaUserId = file.teamId
-    ? (await db.team.findUnique({ where: { id: file.teamId }, select: { ownerId: true } }))?.ownerId ?? file.ownerId
-    : file.ownerId;
-  if (delta > BigInt(0)) {
-    const u = await db.user.findUnique({
-      where: { id: quotaUserId },
-      select: { storageUsed: true, storageQuota: true },
-    });
-    if (u && u.storageUsed + delta > u.storageQuota) {
-      return NextResponse.json({ error: "QUOTA_EXCEEDED" }, { status: 413 });
-    }
-  }
+  // Archivage de l'ancienne version, quota, historique et application de la
+  // règle de conservation : tout est dans replaceFileContent. Cette route en
+  // avait sa propre copie, identique à celle de l'édition de tableurs — deux
+  // copies d'un mécanisme aussi délicat finissent toujours par diverger.
+  const result = await replaceFileContent(file, buf, session.id);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 413 });
 
-  // Archive l'ancienne version SOUS UNE NOUVELLE CLÉ (sinon l'écrasement
-  // détruirait les bytes que la version est censée pointer).
-  const storage = await getStorage(file.storageBackendId);
-  const versionKey = `${file.storageKey}.v${Date.now()}`;
-  try {
-    await storage.copyObject(file.storageKey, versionKey);
-  } catch {
-    // Backend sans copie serveur : on relit puis on réécrit
-    const old = await storage.getObject(file.storageKey);
-    await storage.putObject(versionKey, old);
-  }
-
-  // Écrit le nouveau contenu à la clé courante
-  await storage.putObject(file.storageKey, buf, { contentType: file.mimeType });
-
-  await db.$transaction([
-    db.fileVersion.updateMany({ where: { fileId: file.id, isCurrent: true }, data: { isCurrent: false } }),
-    db.fileVersion.create({
-      data: {
-        fileId: file.id,
-        storageBackendId: file.storageBackendId,
-        storageKey: versionKey,
-        size: BigInt(oldSize),
-        uploadedById: session.id,
-        isCurrent: false,
-      },
-    }),
-    db.fileVersion.create({
-      data: {
-        fileId: file.id,
-        storageBackendId: file.storageBackendId,
-        storageKey: file.storageKey,
-        size: BigInt(buf.length),
-        uploadedById: session.id,
-        isCurrent: true,
-      },
-    }),
-    db.file.update({ where: { id: file.id }, data: { size: BigInt(buf.length), updatedAt: new Date() } }),
-    db.user.update({ where: { id: quotaUserId }, data: { storageUsed: { increment: delta } } }),
-  ]);
-
-  return NextResponse.json({ ok: true, size: buf.length });
+  return NextResponse.json({ ok: true, size: result.size });
 }

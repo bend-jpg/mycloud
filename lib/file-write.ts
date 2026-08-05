@@ -18,6 +18,7 @@
 
 import { db } from "./db";
 import { getStorage } from "./storage";
+import { cleanupFileVersions } from "./file-versions";
 
 export interface WritableFile {
   id: string;
@@ -80,10 +81,14 @@ export async function replaceFileContent(
 
   await storage.putObject(file.storageKey, buf, { contentType: contentType ?? file.mimeType });
 
+  const now = new Date();
+
   await db.$transaction([
     db.fileVersion.updateMany({
       where: { fileId: file.id, isCurrent: true },
-      data: { isCurrent: false },
+      // supersededAt marque le moment où la version cesse d'être courante :
+      // c'est de là que part son délai de conservation.
+      data: { isCurrent: false, supersededAt: now },
     }),
     db.fileVersion.create({
       data: {
@@ -93,6 +98,8 @@ export async function replaceFileContent(
         size: BigInt(oldSize),
         uploadedById: editorUserId,
         isCurrent: false,
+        // Créée déjà archivée : son compteur démarre maintenant.
+        supersededAt: now,
       },
     }),
     db.fileVersion.create({
@@ -114,6 +121,17 @@ export async function replaceFileContent(
       data: { storageUsed: { increment: delta } },
     }),
   ]);
+
+  // Applique immédiatement la règle « une seule version précédente » : sans
+  // ça, enregistrer dix fois laisserait dix copies dans le bucket en
+  // attendant la maintenance nocturne. Le nettoyage ne doit jamais faire
+  // échouer l'enregistrement lui-même — le contenu est déjà écrit et la
+  // maintenance repassera.
+  try {
+    await cleanupFileVersions(file.id, now);
+  } catch (e) {
+    console.error("[file-write] Nettoyage des versions échoué", e instanceof Error ? e.message : e);
+  }
 
   return { ok: true, size: buf.length };
 }

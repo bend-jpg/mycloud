@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { hoursUntilVersionPurge } from "@/lib/file-versions";
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   let session;
@@ -33,6 +34,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         uploadedAt: true,
         uploadedById: true,
         isCurrent: true,
+        supersededAt: true,
       },
     });
     return NextResponse.json({
@@ -43,6 +45,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         uploadedAt: v.uploadedAt.toISOString(),
         uploadedById: v.uploadedById,
         isCurrent: v.isCurrent,
+        // Heures restantes avant suppression définitive : l'interface doit
+        // pouvoir prévenir AVANT que la version disparaisse.
+        hoursLeft: v.isCurrent ? null : hoursUntilVersionPurge(v),
       })),
     });
   } catch {
@@ -74,15 +79,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Transaction : on bascule isCurrent + on met à jour le File pour pointer
     // sur les bytes de cette version
     await db.$transaction([
-      // 1. Marque toutes les versions comme non-current
+      // 1. Marque toutes les versions comme non-current.
+      //    supersededAt est remis à maintenant : la version qu'on vient de
+      //    quitter redevient le point de secours, son délai de conservation
+      //    doit donc repartir de zéro. Sans ça, restaurer une vieille version
+      //    ferait disparaître aussitôt le travail abandonné, sans retour
+      //    possible.
       db.fileVersion.updateMany({
-        where: { fileId: id },
-        data: { isCurrent: false },
+        where: { fileId: id, isCurrent: true },
+        data: { isCurrent: false, supersededAt: new Date() },
       }),
       // 2. Marque cette version comme current
       db.fileVersion.update({
         where: { id: versionId },
-        data: { isCurrent: true },
+        // Redevenue courante : elle n'est plus soumise à la rétention.
+        data: { isCurrent: true, supersededAt: null },
       }),
       // 3. Met à jour le File pour pointer sur les bytes de cette version
       db.file.update({

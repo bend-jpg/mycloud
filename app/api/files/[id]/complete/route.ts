@@ -102,7 +102,8 @@ export async function POST(
       await db.$transaction([
         db.fileVersion.updateMany({
           where: { fileId: existing.id, isCurrent: true },
-          data: { isCurrent: false },
+          // Départ du délai de conservation de 72 h.
+          data: { isCurrent: false, supersededAt: new Date() },
         }),
         db.fileVersion.create({
           data: {
@@ -113,6 +114,7 @@ export async function POST(
             checksum: existing.checksum,
             uploadedById: existing.ownerId,
             isCurrent: false,
+            supersededAt: new Date(),
           },
         }),
         db.fileVersion.create({
