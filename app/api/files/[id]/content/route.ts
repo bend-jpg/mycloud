@@ -12,21 +12,17 @@ import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getStorage } from "@/lib/storage";
 import { getMembership, canRead, canWrite } from "@/lib/teams";
+import { isTextEditable } from "@/lib/file-kinds";
 
 // 5 Mo de texte : au-delà, l'édition en ligne n'a plus de sens (et le
 // navigateur rame). Les fichiers plus gros restent téléchargeables.
 const MAX_EDITABLE_BYTES = 5 * 1024 * 1024;
 
-/** Types considérés comme éditables en texte brut. */
-function isTextEditable(mimeType: string, name: string): boolean {
-  if (mimeType.startsWith("text/")) return true;
-  if (/(json|xml|javascript|typescript|x-sh|x-httpd-php|yaml|csv|sql|markdown)/i.test(mimeType)) return true;
-  // Certains fichiers arrivent en application/octet-stream : on se rabat sur
-  // l'extension, qui reste le signal le plus fiable côté navigateur.
-  return /\.(txt|md|markdown|csv|tsv|json|jsonc|xml|ya?ml|toml|ini|cfg|conf|env|log|sql|html?|css|scss|less|js|mjs|cjs|jsx|ts|tsx|php|py|rb|go|rs|java|kt|c|h|cpp|hpp|cs|sh|bash|zsh|ps1|bat|dockerfile|gitignore|svg)$/i.test(
-    name,
-  );
-}
+// La détection vivait ici, en double avec celle de la modale d'aperçu, et
+// les deux acceptaient tout type MIME contenant « xml » — ce qui incluait
+// les fichiers Office (application/vnd.openXMLformats-…). Ouvrir un .xlsx
+// lançait donc l'éditeur de texte, et enregistrer détruisait le fichier.
+// Voir lib/file-kinds.ts.
 
 /** Charge le fichier + vérifie que l'appelant a le droit demandé. */
 async function loadAuthorized(id: string, userId: string, need: "read" | "write") {

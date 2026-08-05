@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { X, Download, ExternalLink, FileText, Star, History, RotateCcw, Loader2, ChevronLeft, ChevronRight, Play, Pause, Share2 } from "lucide-react";
 import { FileIcon } from "./file-icon";
 import { FileTextEditor } from "./file-text-editor";
+import { FileSpreadsheetEditor } from "./file-spreadsheet-editor";
+import { FileDocViewer } from "./file-doc-viewer";
+import { isSpreadsheet, isWordDocument, isTextEditable } from "@/lib/file-kinds";
 import { formatBytes } from "@/lib/utils";
 import { useToast } from "./toast";
 
@@ -195,15 +198,19 @@ export function FilePreviewModal({
   const previewUrl = `/api/files/${file.id}/preview`;
   const downloadUrl = `/api/files/${file.id}/download`;
 
-  const isImage = file.mimeType.startsWith("image/");
+  // La détection était faite ici à la main et acceptait tout type MIME
+  // contenant « xml » — donc les fichiers Office, dont le type est
+  // application/vnd.openXMLformats-… Un .xlsx s'ouvrait dans l'éditeur de
+  // texte et l'enregistrer le détruisait. Elle vit maintenant dans
+  // lib/file-kinds.ts, partagée avec le serveur pour qu'ils ne puissent plus
+  // diverger.
+  const isSheet = isSpreadsheet(file.mimeType, file.name);
+  const isWord = isWordDocument(file.mimeType, file.name);
+  const isImage = !isSheet && !isWord && file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isAudio = file.mimeType.startsWith("audio/");
   const isPdf = file.mimeType === "application/pdf";
-  const isText =
-    file.mimeType.startsWith("text/") ||
-    file.mimeType.includes("json") ||
-    file.mimeType.includes("xml") ||
-    file.mimeType.includes("javascript");
+  const isText = !isSheet && !isWord && isTextEditable(file.mimeType, file.name);
 
   return (
     <div
@@ -474,7 +481,13 @@ export function FilePreviewModal({
         {isText && (
           <FileTextEditor fileId={file.id} fileName={file.name} downloadUrl={downloadUrl} />
         )}
-        {!isImage && !isVideo && !isAudio && !isPdf && !isText && (
+        {isSheet && (
+          <FileSpreadsheetEditor fileId={file.id} fileName={file.name} downloadUrl={downloadUrl} />
+        )}
+        {isWord && (
+          <FileDocViewer fileId={file.id} fileName={file.name} downloadUrl={downloadUrl} />
+        )}
+        {!isImage && !isVideo && !isAudio && !isPdf && !isText && !isSheet && !isWord && (
           <div className="bg-white/5 rounded-2xl p-12 text-center max-w-md">
             <FileText className="size-16 text-white/40 mx-auto mb-4" />
             <p className="text-white font-medium">{file.name}</p>

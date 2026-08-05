@@ -95,6 +95,12 @@ jobs:
       - name: Contrôle des gardes du back-office
         run: node scripts/check-admin-guards.js
 
+      # Tests unitaires : contrôle d'accès, détection de type de fichier,
+      # nettoyage HTML, aller-retour Excel. Aucune base de données requise,
+      # environ 1,5 s — donc placés avant les étapes coûteuses.
+      - name: Tests unitaires
+        run: npm test
+
       - name: Generate Prisma client
         run: npx prisma generate
 
