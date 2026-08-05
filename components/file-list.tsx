@@ -143,6 +143,7 @@ export function FileList({
   const [selectFolders, setSelectFolders] = useState<Set<string>>(new Set());
   const [sortOpen, setSortOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [shareFolderBusy, setShareFolderBusy] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
   const [starBusy, setStarBusy] = useState(false);
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
@@ -255,6 +256,57 @@ export function FileList({
     } else {
       const data = await res.json().catch(() => null);
       throw new Error(data?.error ?? "Erreur lors du renommage");
+    }
+  }
+
+  /**
+   * Partage les dossiers sélectionnés (arborescence + contenu) vers une
+   * famille.
+   *
+   * Les dossiers sont traités un par un plutôt qu'en parallèle : chacun
+   * consomme du quota côté propriétaire de l'espace, et des requêtes
+   * simultanées pourraient toutes passer le contrôle avant qu'aucune ne
+   * l'ait décrémenté — laissant l'espace au-dessus de sa limite.
+   */
+  async function shareFoldersToTeam(teamId: string) {
+    if (shareFolderBusy) return;
+    setShareFolderBusy(true);
+    let ok = 0;
+    let failed = 0;
+    let lastError: string | null = null;
+
+    for (const folderId of Array.from(selectFolders)) {
+      const res = await fetch(`/api/folders/${folderId}/share-to-team`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamId }),
+      });
+      if (res.ok) ok++;
+      else {
+        failed++;
+        const data = await res.json().catch(() => null);
+        lastError = data?.error ?? null;
+      }
+    }
+
+    setShareFolderBusy(false);
+    if (ok > 0) toast.success(`${ok} dossier(s) partagé(s)`);
+    if (failed > 0) {
+      // Message explicite : « erreur » tout court ne dit pas à l'utilisateur
+      // quoi faire, alors que ces deux cas ont une action évidente.
+      const reason =
+        lastError === "TARGET_QUOTA_EXCEEDED"
+          ? "espace insuffisant dans la famille"
+          : lastError === "FOLDER_TOO_LARGE"
+            ? "dossier trop volumineux — partage-le par sous-dossiers"
+            : lastError === "TEAM_FORBIDDEN"
+              ? "tu n'as pas le droit d'écrire dans cette famille"
+              : (lastError ?? "erreur");
+      toast.error(`${failed} dossier(s) non partagé(s) : ${reason}`);
+    }
+    if (ok > 0) {
+      clearSelection();
+      router.refresh();
     }
   }
 
@@ -536,6 +588,33 @@ export function FileList({
                 {zipBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileArchive className="size-3.5" />}
                 Zip ({selected.size})
               </button>
+            )}
+            {/* Partage de DOSSIERS entiers vers une famille.
+                Placé dans la barre de sélection plutôt que sur chaque carte :
+                l'action porte naturellement sur une sélection, et ça évite
+                de surcharger les vignettes. Un seul menu déroulant natif —
+                fiable au clavier et sur mobile, sans code de positionnement. */}
+            {canShareToTeams && selectFolders.size > 0 && myTeams.length > 0 && (
+              <select
+                value=""
+                disabled={shareFolderBusy}
+                onChange={(e) => {
+                  if (e.target.value) shareFoldersToTeam(e.target.value);
+                  e.currentTarget.value = "";
+                }}
+                className="btn-ghost text-xs bg-transparent"
+                title="Partager les dossiers sélectionnés dans une famille"
+                aria-label="Partager les dossiers sélectionnés dans une famille"
+              >
+                <option value="">
+                  {shareFolderBusy ? "Partage…" : `Partager ${selectFolders.size} dossier(s) dans…`}
+                </option>
+                {myTeams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             )}
             <button onClick={() => setConfirmBulk(true)} disabled={bulkBusy} className="btn-ghost text-xs !text-[var(--danger)]">
               <Trash2 className="size-3.5" />
