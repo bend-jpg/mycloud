@@ -1,6 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { db } from "@/lib/db";
-import { Search, Users } from "lucide-react";
+import { Search, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { AdminClientsTable } from "@/components/admin-clients-table";
 import { AdminCreateClientButton } from "@/components/admin-create-client-button";
 import { PageHero } from "@/components/page-hero";
@@ -12,34 +13,56 @@ export default async function ClientsListPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; plan?: string }>;
+  searchParams: Promise<{ q?: string; plan?: string; page?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { q, plan } = await searchParams;
+  const { q, plan, page } = await searchParams;
 
-  const users = await db.user.findMany({
-    where: {
-      AND: [
-        { role: "USER" }, // exclut le staff interne (visible sur /admin/staff)
-        { parentUserId: null }, // exclut les sous-comptes (visibles depuis fiche client)
-        q
-          ? {
-              OR: [
-                { email: { contains: q, mode: "insensitive" } },
-                { name: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {},
-        plan ? { plan: { slug: plan } } : {},
-      ],
-    },
-    include: { plan: { select: { name: true, slug: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  // Pagination : sans elle, `take: 100` rendait le 101ᵉ client purement
+  // INVISIBLE dans l'interface — un bug fonctionnel, pas un simple souci
+  // de performance.
+  const PER_PAGE = 50;
+  const currentPage = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
 
-  const allPlans = await db.plan.findMany({ select: { slug: true, name: true }, orderBy: { sortOrder: "asc" } });
+  const where = {
+    AND: [
+      { role: "USER" as const }, // exclut le staff interne (visible sur /admin/staff)
+      { parentUserId: null }, // exclut les sous-comptes (visibles depuis fiche client)
+      q
+        ? {
+            OR: [
+              { email: { contains: q, mode: "insensitive" as const } },
+              { name: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : {},
+      plan ? { plan: { slug: plan } } : {},
+    ],
+  };
+
+  const [users, totalCount, allPlans] = await Promise.all([
+    db.user.findMany({
+      where,
+      include: { plan: { select: { name: true, slug: true } } },
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PER_PAGE,
+      take: PER_PAGE,
+    }),
+    db.user.count({ where }),
+    db.plan.findMany({ select: { slug: true, name: true }, orderBy: { sortOrder: "asc" } }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+  // Conserve les filtres actifs quand on change de page
+  const pageHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (q) sp.set("q", q);
+    if (plan) sp.set("plan", plan);
+    if (p > 1) sp.set("page", String(p));
+    const qs = sp.toString();
+    return `/admin/clients${qs ? `?${qs}` : ""}`;
+  };
 
   return (
     <main className="p-4 sm:p-8 space-y-6">
@@ -47,7 +70,11 @@ export default async function ClientsListPage({
         icon={Users}
         variant="cyan"
         title="Clients"
-        description={`${users.length} client(s) ${q || plan ? "(filtré)" : ""}`}
+        description={
+          totalCount === 0
+            ? "Aucun client"
+            : `${totalCount} client(s)${q || plan ? " (filtré)" : ""} · page ${currentPage} sur ${totalPages}`
+        }
       />
 
       <div className="flex flex-wrap items-start gap-3">
@@ -98,6 +125,32 @@ export default async function ClientsListPage({
           role: u.role,
         }))}
       />
+
+      {totalPages > 1 && (
+        <nav className="flex items-center justify-between gap-3" aria-label="Pagination des clients">
+          <Link
+            href={pageHref(currentPage - 1)}
+            aria-disabled={currentPage === 1}
+            className={`btn-ghost text-sm ${currentPage === 1 ? "pointer-events-none opacity-40" : ""}`}
+          >
+            <ChevronLeft className="size-4 rtl:rotate-180" />
+            Précédent
+          </Link>
+
+          <span className="text-sm text-[var(--foreground-muted)]">
+            Page {currentPage} sur {totalPages}
+          </span>
+
+          <Link
+            href={pageHref(currentPage + 1)}
+            aria-disabled={currentPage >= totalPages}
+            className={`btn-ghost text-sm ${currentPage >= totalPages ? "pointer-events-none opacity-40" : ""}`}
+          >
+            Suivant
+            <ChevronRight className="size-4 rtl:rotate-180" />
+          </Link>
+        </nav>
+      )}
     </main>
   );
 }
