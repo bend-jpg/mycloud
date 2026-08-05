@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-05T11:49:02.661Z",
+  "updatedAt": "2026-08-05T12:09:05.510Z",
   "missions": [
     {
       "id": "session:135db75b-b58c-40bb-952e-0dcbf17649b4:none",
@@ -7,7 +7,7 @@
       "name": "none",
       "objective": "Session mission",
       "createdAt": "2026-06-11T14:07:40.636Z",
-      "updatedAt": "2026-08-05T11:49:02.661Z",
+      "updatedAt": "2026-08-05T12:09:05.510Z",
       "status": "running",
       "workerCount": 16,
       "taskCounts": {
@@ -27,7 +27,7 @@
           "currentStep": null,
           "latestUpdate": "completed",
           "completedSummary": null,
-          "updatedAt": "2026-08-05T11:49:02.661Z"
+          "updatedAt": "2026-08-05T12:09:05.510Z"
         },
         {
           "name": "Explore:a8ec300",
@@ -1020,6 +1020,30 @@
           "agent": "security-reviewer:ae71254",
           "detail": "completed",
           "sourceKey": "session-stop:a27587fccbecf3375"
+        },
+        {
+          "id": "session-stop:aea69cf03803f85b4:2026-08-05T12:06:49.483Z",
+          "at": "2026-08-05T12:06:49.483Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:aea69cf03803f85b4"
+        },
+        {
+          "id": "session-stop:aea69cf03803f85b4:2026-08-05T12:08:21.771Z",
+          "at": "2026-08-05T12:08:21.771Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:aea69cf03803f85b4"
+        },
+        {
+          "id": "session-stop:aea69cf03803f85b4:2026-08-05T12:09:05.510Z",
+          "at": "2026-08-05T12:09:05.510Z",
+          "kind": "completion",
+          "agent": "security-reviewer:ae71254",
+          "detail": "completed",
+          "sourceKey": "session-stop:aea69cf03803f85b4"
         }
       ]
     }
