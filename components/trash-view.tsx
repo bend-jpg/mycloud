@@ -17,6 +17,7 @@ import { FileIcon } from "./file-icon";
 import { EmptyState } from "./empty-state";
 import { ConfirmDialog } from "./confirm-dialog";
 import { formatBytes } from "@/lib/utils";
+import { daysUntilPurge, TRASH_RETENTION_DAYS } from "@/lib/trash-retention";
 
 interface TrashFile {
   id: string;
@@ -30,6 +31,30 @@ interface TrashFolder {
   id: string;
   name: string;
   deletedAt: string | null;
+}
+
+/**
+ * Délai restant avant suppression définitive.
+ *
+ * Affiche le compte à rebours plutôt que la date de mise à la corbeille :
+ * ce qui compte pour l'utilisateur, c'est le temps qu'il lui reste pour
+ * récupérer son fichier, pas le moment où il l'a jeté. Une purge automatique
+ * sans avertissement visible serait vécue comme une perte de données.
+ */
+function PurgeCountdown({ deletedAt }: { deletedAt: string | null }) {
+  const days = daysUntilPurge(deletedAt ? new Date(deletedAt) : null);
+  if (days === null) return <>—</>;
+  if (days === 0) {
+    return <span className="text-[var(--danger)]">supprimé aujourd&apos;hui</span>;
+  }
+  return (
+    <span
+      className={days <= 3 ? "text-[var(--danger)]" : undefined}
+      title={deletedAt ? `À la corbeille depuis le ${new Date(deletedAt).toLocaleString()}` : undefined}
+    >
+      {days} j restant{days > 1 ? "s" : ""}
+    </span>
+  );
 }
 
 export function TrashView({
@@ -200,7 +225,12 @@ export function TrashView({
               <th className="w-8 px-2 py-2"></th>
               <th className="text-start px-4 py-2">Nom</th>
               <th className="text-end px-4 py-2 hidden sm:table-cell">Taille</th>
-              <th className="text-end px-4 py-2 hidden md:table-cell">Supprimé</th>
+              <th
+                className="text-end px-4 py-2 hidden md:table-cell"
+                title={`Les éléments sont supprimés définitivement ${TRASH_RETENTION_DAYS} jours après leur mise à la corbeille.`}
+              >
+                Suppression dans
+              </th>
               <th className="w-32 px-2"></th>
             </tr>
           </thead>
@@ -223,7 +253,7 @@ export function TrashView({
                   </td>
                   <td className="px-4 py-2 text-end text-xs text-[var(--foreground-muted)] hidden sm:table-cell">—</td>
                   <td className="px-4 py-2 text-end text-xs text-[var(--foreground-muted)] hidden md:table-cell">
-                    {f.deletedAt ? new Date(f.deletedAt).toLocaleString() : "—"}
+                    <PurgeCountdown deletedAt={f.deletedAt} />
                   </td>
                   <td className="px-2 text-center">
                     <button
@@ -257,7 +287,7 @@ export function TrashView({
                     {formatBytes(Number(f.size))}
                   </td>
                   <td className="px-4 py-2 text-end text-xs text-[var(--foreground-muted)] hidden md:table-cell">
-                    {f.deletedAt ? new Date(f.deletedAt).toLocaleString() : "—"}
+                    <PurgeCountdown deletedAt={f.deletedAt} />
                   </td>
                   <td className="px-2 text-center">
                     <button

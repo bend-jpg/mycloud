@@ -11,8 +11,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { getStorage } from "@/lib/storage";
 import { getMembership, canWrite } from "@/lib/teams";
+import { hardDeleteFiles, PURGEABLE_SELECT } from "@/lib/purge-files";
 
 const schema = z.object({
   action: z.enum(["restore", "delete", "empty"]),
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   if (action === "empty") {
     const files = await db.file.findMany({
       where: { ownerId: session.id, isTrash: true },
-      select: { id: true, storageKey: true, storageBackendId: true, size: true, teamId: true },
+      select: PURGEABLE_SELECT,
     });
     const folders = await db.folder.findMany({
       where: { ownerId: session.id, isTrash: true, teamId: null },
@@ -64,7 +64,9 @@ export async function POST(req: Request) {
   // Charge + vérif droits
   const files = await db.file.findMany({
     where: { id: { in: fileIds }, isTrash: true },
-    select: { id: true, ownerId: true, teamId: true, storageKey: true, storageBackendId: true, size: true },
+    // thumbnailKey inclus : sans lui, la miniature restait dans le bucket
+    // après suppression définitive, facturée indéfiniment.
+    select: PURGEABLE_SELECT,
   });
   const folders = await db.folder.findMany({
     where: { id: { in: folderIds }, isTrash: true },
@@ -107,52 +109,4 @@ export async function POST(req: Request) {
     await db.folder.deleteMany({ where: { id: { in: folders.map((f) => f.id) } } });
   }
   return NextResponse.json({ ok: true, deletedFiles: files.length, deletedFolders: folders.length });
-}
-
-/**
- * Hard delete avec ref counting sur storageKey (un blob R2 peut être référencé par
- * plusieurs File rows à cause du partage famille).
- */
-async function hardDeleteFiles(
-  files: { id: string; storageKey: string; storageBackendId: string; size: bigint; teamId: string | null }[],
-  userId: string,
-) {
-  if (files.length === 0) return;
-
-  for (const f of files) {
-    const otherRefs = await db.file.count({
-      where: {
-        storageKey: f.storageKey,
-        storageBackendId: f.storageBackendId,
-        NOT: { id: f.id },
-      },
-    });
-    if (otherRefs === 0) {
-      try {
-        const storage = await getStorage(f.storageBackendId);
-        await storage.deleteObject(f.storageKey);
-      } catch {
-        // ignore — on persiste la suppression DB même si R2 fail
-      }
-    }
-
-    // Quota : décrémente côté owner du team si team, sinon owner du file
-    let quotaUserId = f.teamId
-      ? (await db.team.findUnique({ where: { id: f.teamId }, select: { ownerId: true } }))?.ownerId
-      : userId;
-    if (!quotaUserId) quotaUserId = userId;
-
-    await db.$transaction([
-      db.file.delete({ where: { id: f.id } }),
-      db.user.update({ where: { id: quotaUserId }, data: { storageUsed: { decrement: f.size } } }),
-      ...(otherRefs === 0
-        ? [
-            db.storageBackend.update({
-              where: { id: f.storageBackendId },
-              data: { usedBytes: { decrement: f.size } },
-            }),
-          ]
-        : []),
-    ]);
-  }
 }

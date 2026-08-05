@@ -7,6 +7,7 @@ import { TrashView } from "@/components/trash-view";
 import { PageHero } from "@/components/page-hero";
 import { BackLink } from "@/components/back-link";
 import { Trash2 } from "lucide-react";
+import { TRASH_RETENTION_DAYS } from "@/lib/trash-retention";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,9 @@ export default async function TrashPage({
           description={
             <>
               {files.length + folders.length} élément(s) — {(totalBytes / 1024 / 1024).toFixed(1)} Mo
-              récupérables. Les fichiers en corbeille comptent toujours dans ton quota.
+              récupérables. Les fichiers en corbeille comptent toujours dans ton quota, et
+              sont supprimés définitivement {TRASH_RETENTION_DAYS} jours après leur mise à
+              la corbeille.
             </>
           }
         />

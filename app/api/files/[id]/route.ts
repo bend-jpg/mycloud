@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { getStorage } from "@/lib/storage";
 import { getMembership, canWrite } from "@/lib/teams";
 import { logActivity } from "@/lib/activity";
+import { hardDeleteFiles, PURGEABLE_SELECT } from "@/lib/purge-files";
 
 // Le quota est crédité à l'owner du team (perso = uploader, team = team.ownerId)
 async function quotaUserIdForFile(file: { ownerId: string; teamId: string | null }): Promise<string> {
@@ -39,33 +39,13 @@ export async function DELETE(
   if (!allowed) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
 
   if (hard) {
-    // Ref counting : on ne supprime physiquement le blob R2 que si plus aucune autre
-    // File row ne référence ce storageKey (cas du "partage famille" qui crée une copie DB
-    // avec le même storageKey pour économiser le stockage).
-    const otherRefs = await db.file.count({
-      where: {
-        storageKey: file.storageKey,
-        storageBackendId: file.storageBackendId,
-        NOT: { id },
-      },
-    });
-    const quotaUserId = await quotaUserIdForFile(file);
-    if (otherRefs === 0) {
-      const storage = await getStorage(file.storageBackendId);
-      await storage.deleteObject(file.storageKey).catch(() => {});
-    }
-    await db.$transaction([
-      db.file.delete({ where: { id } }),
-      db.user.update({ where: { id: quotaUserId }, data: { storageUsed: { decrement: file.size } } }),
-      ...(otherRefs === 0
-        ? [
-            db.storageBackend.update({
-              where: { id: file.storageBackendId },
-              data: { usedBytes: { decrement: file.size } },
-            }),
-          ]
-        : []),
-    ]);
+    // Le comptage de références (partage familial), la suppression des
+    // objets, la miniature, les versions archivées et l'ajustement du quota
+    // sont regroupés dans lib/purge-files.ts. Cette route avait sa propre
+    // version, qui oubliait la miniature et les versions : elles restaient
+    // dans le bucket, facturées, sans plus rien pour les référencer.
+    const full = await db.file.findUnique({ where: { id }, select: PURGEABLE_SELECT });
+    if (full) await hardDeleteFiles([full], await quotaUserIdForFile(file));
   } else {
     await db.file.update({ where: { id }, data: { isTrash: true, deletedAt: new Date() } });
   }
