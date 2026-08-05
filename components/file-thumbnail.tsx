@@ -35,7 +35,7 @@ export function FileThumbnail({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/api/files/${fileId}/preview`}
+      src={`/api/files/${fileId}/preview?thumb=1`}
       alt={alt ?? ""}
       loading="lazy"
       decoding="async"

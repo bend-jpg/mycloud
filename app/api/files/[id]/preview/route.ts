@@ -8,7 +8,7 @@ import { getStorage } from "@/lib/storage";
 import { getMembership, canRead } from "@/lib/teams";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   let session;
@@ -47,9 +47,15 @@ export async function GET(
   const ACTIVE_TYPES = /^(text\/html|application\/xhtml\+xml|image\/svg\+xml|application\/xml|text\/xml)/i;
   const forceDownload = ACTIVE_TYPES.test(file.mimeType);
 
+  // ?thumb=1 → sert la vignette légère si elle existe. Utilisé par la grille
+  // de fichiers et la galerie photos : sans ça, des cases de 200 px
+  // téléchargent des photos de 2 Mo.
+  const wantsThumb = new URL(req.url).searchParams.get("thumb") === "1";
+  const keyToServe = wantsThumb && file.thumbnailKey ? file.thumbnailKey : file.storageKey;
+
   // Passer un fileName déclenche Content-Disposition: attachment côté S3/R2.
   const presigned = await storage.createPresignedDownload(
-    file.storageKey,
+    keyToServe,
     forceDownload ? file.name : undefined,
     3600,
   );

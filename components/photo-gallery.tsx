@@ -176,7 +176,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`/api/files/${photo.id}/preview`}
+                      src={`/api/files/${photo.id}/preview?thumb=1`}
                       alt={photo.name}
                       loading="lazy"
                       className="w-full h-full object-cover"

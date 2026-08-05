@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Upload, X, CheckCircle2, AlertCircle, FileUp, FolderUp, CloudUpload, Plus } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
+import { makeThumbnail } from "@/lib/make-thumbnail";
 
 interface UploadItem {
   id: string;
@@ -139,6 +140,23 @@ export function FileUploader({
         update({ status: "completing", progress: 100 });
         const completeRes = await fetch(`/api/files/${fileId}/complete`, { method: "POST" });
         if (!completeRes.ok) throw new Error("Échec de la finalisation");
+
+        // 4. Vignette (images uniquement) — générée par le navigateur pour
+        //    que les grilles n'affichent pas des photos de 2 Mo dans des
+        //    cases de 200 px. Best-effort : un échec ne compromet pas
+        //    l'upload, on retombe simplement sur l'image d'origine.
+        try {
+          const thumb = await makeThumbnail(item.file);
+          if (thumb) {
+            await fetch(`/api/files/${fileId}/thumbnail`, {
+              method: "PUT",
+              headers: { "Content-Type": "image/jpeg" },
+              body: thumb,
+            });
+          }
+        } catch {
+          // vignette optionnelle
+        }
 
         update({ status: "done" });
         router.refresh();
