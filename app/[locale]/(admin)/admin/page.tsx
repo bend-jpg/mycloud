@@ -67,7 +67,7 @@ export default async function AdminHomePage({
     recentSignups,
     recentPayments,
     recentTickets,
-    overQuotaUsers,
+    overQuotaCount,
   ] = await Promise.all([
     db.user.count(),
     db.user.count({ where: { suspendedAt: null, role: "USER" } }),
@@ -128,17 +128,25 @@ export default async function AdminHomePage({
         openedBy: { select: { name: true, email: true } },
       },
     }),
-    db.user.findMany({
-      where: {
-        suspendedAt: null,
-        role: "USER",
-        storageQuota: { gt: 0 },
-      },
-      select: { id: true, name: true, email: true, storageUsed: true, storageQuota: true },
-      take: 1000,
-    }).then((users) =>
-      users.filter((u) => Number(u.storageUsed) / Number(u.storageQuota) >= 0.9),
-    ),
+    // Clients à ≥90% de leur quota.
+    //
+    // Version précédente : chargement de 1000 utilisateurs en mémoire puis
+    // filtrage en JavaScript. Deux défauts — le tableau de bord tirait 1000
+    // lignes à chaque affichage, et surtout au-delà de 1000 clients l'alerte
+    // devenait silencieusement fausse : les suivants n'étaient jamais
+    // examinés. Une alerte qui ment quand le service grandit est pire que
+    // pas d'alerte.
+    //
+    // Prisma ne sait pas comparer deux colonnes entre elles dans un where,
+    // d'où le SQL brut. Seul le nombre est utilisé en aval.
+    db.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "User"
+      WHERE "suspendedAt" IS NULL
+        AND "role" = 'USER'
+        AND "storageQuota" > 0
+        AND "storageUsed" >= "storageQuota" * 0.9
+    `.then((rows) => Number(rows[0]?.count ?? 0)),
   ]);
 
   // ============================================================
@@ -159,10 +167,10 @@ export default async function AdminHomePage({
       href: "/admin/payments?status=FAILED",
     });
   }
-  if (overQuotaUsers.length > 0) {
+  if (overQuotaCount > 0) {
     alerts.push({
       kind: "warning",
-      text: `${overQuotaUsers.length} client(s) à ≥90% de leur quota`,
+      text: `${overQuotaCount} client(s) à ≥90% de leur quota`,
       href: "/admin/clients",
     });
   }
