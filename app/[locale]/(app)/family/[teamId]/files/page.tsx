@@ -10,6 +10,11 @@ import { FileList } from "@/components/file-list";
 import { NewFolderButton } from "@/components/new-folder-button";
 import { ChevronLeft, Home, Lock } from "lucide-react";
 
+// Rendu à chaque visite : sans ça, revenir sur la page après un import
+// affichait la version mise en cache, sans les nouveaux fichiers — il
+// fallait recharger à la main.
+export const dynamic = "force-dynamic";
+
 export default async function TeamFilesPage({
   params,
 }: {

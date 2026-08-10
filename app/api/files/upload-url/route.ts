@@ -92,6 +92,10 @@ export async function POST(req: Request) {
       storageKey: key,
       size: BigInt(size),
       mimeType,
+      // En attente tant que /complete n'a pas vérifié que les octets sont
+      // bien arrivés. Invisible dans les listes jusque-là : sans ça, un
+      // envoi interrompu laisse un fichier impossible à ouvrir.
+      uploadPending: true,
     },
   });
 

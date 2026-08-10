@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Upload, X, CheckCircle2, AlertCircle, FileUp, FolderUp, CloudUpload, Plus } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, FileUp, FolderUp, CloudUpload, Plus, Loader2 } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { makeThumbnail } from "@/lib/make-thumbnail";
+import { useToast } from "./toast";
 
 interface UploadItem {
   id: string;
@@ -26,10 +27,55 @@ interface PendingFile {
 }
 
 /**
+ * Nombre d'envois simultanés.
+ *
+ * La version précédente les lançait TOUS en même temps. Sur l'import d'un
+ * dossier de site web (une centaine de fichiers), ça ouvrait une centaine de
+ * requêtes d'un coup : le serveur ne suivait pas, la plupart échouaient, et
+ * comme les dossiers avaient bien été créés il restait une arborescence
+ * complète et vide. Constaté en production : 42 dossiers sur 43 sans aucun
+ * fichier.
+ *
+ * Trois à la fois : assez pour saturer une connexion domestique, assez peu
+ * pour ne jamais écrouler le serveur.
+ */
+const MAX_PARALLEL = 3;
+
+/** Tentatives supplémentaires en cas d'erreur passagère (réseau, serveur). */
+const MAX_RETRIES = 2;
+
+interface BatchState {
+  running: boolean;
+  total: number;
+  done: number;
+  failed: number;
+}
+
+/** Durée lisible : « 45 s », « 2 min 10 s ». */
+function formatEta(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
+  if (seconds < 60) return `${Math.ceil(seconds)} s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return s > 0 ? `${m} min ${s} s` : `${m} min`;
+}
+
+/**
  * Parcourt récursivement les entrées d'un drag & drop pour en extraire tous
  * les fichiers, y compris ceux imbriqués dans des dossiers.
- * `readEntries` ne renvoie que 100 entrées par appel : il faut boucler
- * jusqu'à recevoir un lot vide, sinon les gros dossiers sont tronqués.
+ *
+ * DEUX PIÈGES, tous les deux sources de contenu manquant en silence :
+ *
+ *  1. `readEntries` ne renvoie que 100 entrées par appel. Il faut rappeler
+ *     le lecteur jusqu'à recevoir un lot vide, sinon un dossier de 300
+ *     fichiers n'en livre que 100.
+ *
+ *  2. Il ne faut PAS descendre dans un sous-dossier au milieu de la lecture
+ *     du dossier parent. Le lecteur est un itérateur à état : recréer un
+ *     lecteur enfant pendant qu'on l'utilise fait retourner un lot vide
+ *     prématurément au parent, et le reste de son contenu disparaît sans
+ *     aucune erreur. On vide donc ENTIÈREMENT le dossier courant, puis
+ *     seulement ensuite on descend dans ses sous-dossiers.
  */
 async function traverseEntry(
   entry: FileSystemEntry,
@@ -42,17 +88,23 @@ async function traverseEntry(
     out.push({ file, relativePath: prefix });
     return;
   }
-  if (entry.isDirectory) {
-    const reader = (entry as FileSystemDirectoryEntry).createReader();
-    const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
-    let batch: FileSystemEntry[];
-    do {
-      batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
-        reader.readEntries(resolve, reject),
-      );
-      for (const child of batch) await traverseEntry(child, nextPrefix, out);
-    } while (batch.length > 0);
+  if (!entry.isDirectory) return;
+
+  const reader = (entry as FileSystemDirectoryEntry).createReader();
+  const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+  // Étape 1 — vider complètement ce dossier, sans rien faire d'autre.
+  const children: FileSystemEntry[] = [];
+  for (;;) {
+    const batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+      reader.readEntries(resolve, reject),
+    );
+    if (batch.length === 0) break;
+    children.push(...batch);
   }
+
+  // Étape 2 — seulement maintenant, descendre dans chaque enfant.
+  for (const child of children) await traverseEntry(child, nextPrefix, out);
 }
 
 /** Extrait les fichiers d'un DataTransfer en préservant l'arborescence. */
@@ -79,7 +131,22 @@ export function FileUploader({
   teamId?: string | null;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [items, setItems] = useState<UploadItem[]>([]);
+  const [batchState, setBatchState] = useState<BatchState>({
+    running: false,
+    total: 0,
+    done: 0,
+    failed: 0,
+  });
+  // Compteurs d'octets tenus dans des refs : ils changent des dizaines de fois
+  // par seconde pendant un envoi, en faire un état rerendrait tout le
+  // composant à chaque paquet reçu. `tick` provoque un rafraîchissement
+  // régulier de l'affichage, deux fois par seconde, ce qui suffit à l'œil.
+  const bytesDoneRef = useRef(0);
+  const totalBytesRef = useRef(0);
+  const startedAtRef = useRef(0);
+  const [, setTick] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   /** Overlay plein-écran quand un drag arrive depuis l'extérieur (bureau, autre onglet). */
   const [pageDragOver, setPageDragOver] = useState(false);
@@ -89,8 +156,16 @@ export function FileUploader({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const startUpload = useCallback(
-    async (item: UploadItem) => {
+  /**
+   * Envoie UN fichier. Renvoie true en cas de succès.
+   *
+   * Les erreurs réseau passagères sont réessayées : sur un import de
+   * plusieurs dizaines de fichiers, il suffit qu'une requête tombe pour que
+   * le fichier manque définitivement, sans que l'utilisateur le remarque au
+   * milieu de la liste.
+   */
+  const uploadOne = useCallback(
+    async (item: UploadItem, attempt = 0): Promise<boolean> => {
       const update = (patch: Partial<UploadItem>) =>
         setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
 
@@ -124,15 +199,23 @@ export function FileUploader({
         const { fileId, uploadUrl, method, headers } = await initRes.json();
 
         // 2. Upload des bytes avec progression
+        let lastLoaded = 0;
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open(method, uploadUrl);
           for (const [k, v] of Object.entries(headers ?? {})) xhr.setRequestHeader(k, v as string);
           xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) update({ progress: Math.round((e.loaded / e.total) * 100) });
+            if (!e.lengthComputable) return;
+            // Compteur GLOBAL d'octets envoyés : sert à calculer la vitesse et
+            // le temps restant sur l'ensemble de l'import, pas fichier par
+            // fichier.
+            bytesDoneRef.current += e.loaded - lastLoaded;
+            lastLoaded = e.loaded;
+            update({ progress: Math.round((e.loaded / e.total) * 100) });
           };
           xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`PUT ${xhr.status}`)));
           xhr.onerror = () => reject(new Error("Erreur réseau"));
+          xhr.ontimeout = () => reject(new Error("Délai dépassé"));
           xhr.send(item.file);
         });
 
@@ -158,16 +241,95 @@ export function FileUploader({
           // vignette optionnelle
         }
 
-        update({ status: "done" });
-        router.refresh();
-        setTimeout(() => {
-          setItems((prev) => prev.filter((i) => i.id !== item.id));
-        }, 2000);
+        update({ status: "done", progress: 100 });
+        return true;
       } catch (e) {
-        update({ status: "error", error: e instanceof Error ? e.message : "Erreur" });
+        const message = e instanceof Error ? e.message : "Erreur";
+        // Le quota et la taille maximale sont des refus définitifs : les
+        // réessayer ne ferait que perdre du temps et masquer la vraie cause.
+        const definitif = /[Qq]uota|volumineux|plan/.test(message);
+
+        if (!definitif && attempt < MAX_RETRIES) {
+          // Les octets déjà comptés pour cette tentative sont retirés du
+          // compteur global, sinon la progression dépasserait 100 %.
+          bytesDoneRef.current = Math.max(0, bytesDoneRef.current - item.file.size * (item.progress / 100));
+          update({ status: "queued", progress: 0, error: undefined });
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          return uploadOne(item, attempt + 1);
+        }
+
+        update({ status: "error", error: message });
+        return false;
       }
     },
-    [folderId, teamId, router]
+    [folderId, teamId]
+  );
+
+  /**
+   * Traite une série de fichiers en limitant le nombre d'envois simultanés.
+   *
+   * C'EST LA CORRECTION DU BUG PRINCIPAL. La version précédente lançait
+   * `newItems.forEach(startUpload)` : sur l'import d'un dossier de site web,
+   * ça ouvrait une centaine de requêtes en même temps. Le serveur et la base
+   * ne suivaient pas, la plupart des envois échouaient — et comme les
+   * dossiers, eux, avaient bien été créés, il restait une arborescence
+   * complète et vide. Constaté en production : 42 dossiers sur 43 sans aucun
+   * fichier.
+   *
+   * Trois fichiers à la fois : assez pour saturer une connexion domestique,
+   * assez peu pour ne jamais écrouler le serveur.
+   */
+  const runQueue = useCallback(
+    async (queue: UploadItem[]) => {
+      if (queue.length === 0) return;
+
+      startedAtRef.current = Date.now();
+      bytesDoneRef.current = 0;
+      totalBytesRef.current = queue.reduce((s, i) => s + i.file.size, 0);
+      setBatchState({ running: true, total: queue.length, done: 0, failed: 0 });
+
+      const ticker = setInterval(() => setTick((t) => t + 1), 500);
+
+      let cursor = 0;
+      let done = 0;
+      let failed = 0;
+
+      const worker = async () => {
+        while (cursor < queue.length) {
+          const item = queue[cursor++];
+          const ok = await uploadOne(item);
+          if (ok) done++;
+          else failed++;
+          setBatchState({ running: true, total: queue.length, done, failed });
+        }
+      };
+
+      await Promise.all(
+        Array.from({ length: Math.min(MAX_PARALLEL, queue.length) }, worker),
+      );
+
+      clearInterval(ticker);
+      setBatchState({ running: false, total: queue.length, done, failed });
+
+      // Un SEUL rafraîchissement, à la fin. L'ancienne version en déclenchait
+      // un par fichier — inutile, et coûteux sur un import massif.
+      router.refresh();
+
+      if (failed === 0) {
+        toast.success(
+          queue.length === 1
+            ? `« ${queue[0].file.name} » importé`
+            : `${done} fichier(s) importés`,
+        );
+        // Tout s'est bien passé : la liste se referme d'elle-même.
+        setTimeout(() => setItems((prev) => prev.filter((i) => i.status !== "done")), 2500);
+      } else {
+        // En cas d'échec on ne referme RIEN : l'utilisateur doit voir quels
+        // fichiers manquent, sinon il repart en croyant l'import complet.
+        toast.error(`${failed} fichier(s) non importés sur ${queue.length}`);
+      }
+    },
+    [uploadOne, router, toast],
   );
 
   const handleFiles = useCallback(
@@ -219,9 +381,9 @@ export function FileUploader({
         relativePath: p.relativePath ? `${p.relativePath}/${p.file.name}` : undefined,
       }));
       setItems((prev) => [...prev, ...newItems]);
-      newItems.forEach(startUpload);
+      await runQueue(newItems);
     },
-    [startUpload, folderId, teamId]
+    [runQueue, folderId, teamId]
   );
 
   // Drag-drop global : dropper depuis n'importe où sur la page (pas seulement
@@ -348,11 +510,59 @@ export function FileUploader({
       {items.length > 0 && (
         <div className="fixed bottom-6 end-6 w-96 max-w-[calc(100vw-3rem)] z-50 space-y-2">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-2">
-              <FileUp className="size-4 text-[var(--accent)]" />
-              <span className="font-medium text-sm">
-                {items.filter((i) => i.status === "done").length}/{items.length} terminé(s)
-              </span>
+            {/* En-tête : ce que l'utilisateur regarde pendant un gros import.
+                Il doit y trouver trois réponses — où j'en suis, combien de
+                temps il reste, et est-ce que c'est fini. */}
+            <div className="px-4 py-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                {batchState.running ? (
+                  <Loader2 className="size-4 text-[var(--accent)] animate-spin" />
+                ) : batchState.failed > 0 ? (
+                  <AlertCircle className="size-4 text-[var(--danger)]" />
+                ) : (
+                  <CheckCircle2 className="size-4 text-[var(--success)]" />
+                )}
+                <span className="font-medium text-sm">
+                  {batchState.running
+                    ? `Import en cours — ${batchState.done + batchState.failed}/${batchState.total}`
+                    : batchState.failed > 0
+                      ? `Terminé avec ${batchState.failed} échec(s)`
+                      : `Import terminé — ${batchState.done} fichier(s)`}
+                </span>
+              </div>
+
+              {batchState.running && totalBytesRef.current > 0 && (
+                <>
+                  <div className="mt-2 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                    <div
+                      className="h-full bg-[var(--accent)] transition-all"
+                      style={{
+                        width: `${Math.min(100, Math.round((bytesDoneRef.current / totalBytesRef.current) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--foreground-muted)] mt-1.5">
+                    {formatBytes(bytesDoneRef.current)} sur {formatBytes(totalBytesRef.current)}
+                    {(() => {
+                      const elapsed = (Date.now() - startedAtRef.current) / 1000;
+                      // Pas d'estimation avant 2 s : sur un démarrage la
+                      // vitesse est erratique et afficherait « 4 h restantes »
+                      // pendant un instant, ce qui inquiète pour rien.
+                      if (elapsed < 2 || bytesDoneRef.current <= 0) return null;
+                      const speed = bytesDoneRef.current / elapsed;
+                      const remaining = (totalBytesRef.current - bytesDoneRef.current) / speed;
+                      return ` · ${formatBytes(speed)}/s · ${formatEta(remaining)} restantes`;
+                    })()}
+                  </p>
+                </>
+              )}
+
+              {!batchState.running && batchState.failed > 0 && (
+                <p className="text-xs text-[var(--danger)] mt-1.5">
+                  Les fichiers en rouge n&apos;ont pas été importés. Réessaie-les
+                  ou vérifie ton espace disponible.
+                </p>
+              )}
             </div>
             <ul className="max-h-80 overflow-y-auto divide-y divide-[var(--border)]">
               {items.map((item) => (

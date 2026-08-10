@@ -378,6 +378,15 @@ model File {
   thumbnailKey  String?  // miniature dans storage
   metadata      Json?    // EXIF, durée vidéo, etc.
   isTrash       Boolean  @default(false)
+  /**
+   * true tant que les octets ne sont pas confirmés dans le stockage.
+   *
+   * La ligne File est créée AVANT l'envoi (pour générer la clé et vérifier
+   * le quota). Si l'envoi échoue, la ligne restait — l'utilisateur voyait un
+   * fichier impossible à ouvrir. Elle est désormais invisible tant que
+   * /complete n'a pas vérifié que l'objet existe réellement.
+   */
+  uploadPending Boolean  @default(false)
   uploadedAt    DateTime @default(now())
   updatedAt     DateTime @updatedAt
   deletedAt     DateTime?
@@ -399,6 +408,8 @@ model File {
   @@index([storageKey, storageBackendId])
   // Upload monthly bucket sur /dashboard
   @@index([ownerId, uploadedAt])
+  // Balayage des envois jamais terminés par la maintenance
+  @@index([uploadPending, uploadedAt])
 }
 
 // ============================================================

@@ -59,7 +59,9 @@ export async function POST(
   // Met à jour la taille réelle puis compte le fichier dans le quota du payeur
   const realSize = BigInt(headObj.size);
   await db.$transaction([
-    db.file.update({ where: { id }, data: { size: realSize } }),
+    // Les octets sont confirmés présents (headObject ci-dessus) : le fichier
+    // devient visible.
+    db.file.update({ where: { id }, data: { size: realSize, uploadPending: false } }),
     db.user.update({
       where: { id: quotaUserId },
       data: { storageUsed: { increment: realSize } },

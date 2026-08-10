@@ -12,6 +12,11 @@ import { FilesBreadcrumb } from "@/components/files-breadcrumb";
 import { OverQuotaBanner } from "@/components/over-quota-banner";
 import { formatBytes } from "@/lib/utils";
 
+// Rendu à chaque visite : sans ça, revenir sur la page après un import
+// affichait la version mise en cache, sans les nouveaux fichiers — il
+// fallait recharger à la main.
+export const dynamic = "force-dynamic";
+
 export default async function FilesPage({
   params,
 }: {

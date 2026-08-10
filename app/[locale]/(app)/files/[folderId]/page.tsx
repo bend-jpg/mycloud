@@ -11,6 +11,11 @@ import { NewFolderButton } from "@/components/new-folder-button";
 import { FilesBreadcrumb, type BreadcrumbItem } from "@/components/files-breadcrumb";
 import { ChevronLeft } from "lucide-react";
 
+// Rendu à chaque visite : sans ça, revenir sur la page après un import
+// affichait la version mise en cache, sans les nouveaux fichiers — il
+// fallait recharger à la main.
+export const dynamic = "force-dynamic";
+
 export default async function FolderPage({
   params,
 }: {

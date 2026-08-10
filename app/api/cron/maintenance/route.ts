@@ -124,8 +124,25 @@ export async function GET(req: Request) {
     versionErrors += s.storageErrors;
   }
 
+  // ───────────── 3. Envois jamais terminés ─────────────
+  //
+  // La ligne File est créée avant l'envoi des octets. Si l'envoi échoue ou
+  // que l'onglet se ferme, elle reste en base avec uploadPending = true :
+  // invisible dans l'application, mais elle occupe une place et fausse les
+  // comptages. Au-delà de 24 h, l'envoi ne reprendra jamais.
+  //
+  // Ces lignes n'ont RIEN dans le stockage — c'est justement leur problème —
+  // donc une suppression directe suffit, sans passer par la purge d'objets.
+  // Le quota n'a pas non plus à être ajusté : il n'est crédité qu'au moment
+  // de la confirmation.
+  const abandonedCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const abandoned = await db.file.deleteMany({
+    where: { uploadPending: true, uploadedAt: { lte: abandonedCutoff } },
+  });
+
   const result = {
     ok: true,
+    abandonedUploads: abandoned.count,
     trash: {
       retentionDays: TRASH_RETENTION_DAYS,
       cutoff: cutoff.toISOString(),
