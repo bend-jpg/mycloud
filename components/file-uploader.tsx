@@ -386,6 +386,57 @@ export function FileUploader({
     [runQueue, folderId, teamId]
   );
 
+  /**
+   * Protection contre l'interruption d'un import en cours.
+   *
+   * L'envoi vit dans ce composant. Cliquer sur un dossier, un lien du menu ou
+   * le bouton retour change de page, démonte le composant, et les envois en
+   * cours sont abandonnés SANS AUCUN MESSAGE : l'utilisateur croit que son
+   * import continue alors qu'il vient de le tuer.
+   *
+   * Deux garde-fous :
+   *   – les liens internes demandent confirmation (interception en phase de
+   *     capture, donc avant que la navigation ne parte) ;
+   *   – fermer ou recharger l'onglet déclenche l'avertissement du navigateur.
+   */
+  useEffect(() => {
+    if (!batchState.running) return;
+
+    function onClickCapture(e: MouseEvent) {
+      // Clic modifié (nouvel onglet) ou bouton secondaire : la page actuelle
+      // reste, l'import n'est pas menacé.
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link) return;
+      if (link.target === "_blank" || link.hasAttribute("download")) return;
+
+      const stay = !confirm(
+        "Un import est en cours.\n\n" +
+          "Quitter cette page l'interrompt : les fichiers non encore envoyés " +
+          "ne seront pas importés.\n\n" +
+          "Quitter quand même ?",
+      );
+      if (stay) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      // Les navigateurs modernes ignorent le texte, mais exigent que la
+      // valeur de retour soit définie pour afficher leur propre message.
+      e.returnValue = "";
+    }
+
+    document.addEventListener("click", onClickCapture, true);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("click", onClickCapture, true);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [batchState.running]);
+
   // Drag-drop global : dropper depuis n'importe où sur la page (pas seulement
   // dans la dropzone) déclenche l'upload. On utilise un compteur pour gérer
   // les enter/leave imbriqués sans flicker — dragenter incremente, dragleave

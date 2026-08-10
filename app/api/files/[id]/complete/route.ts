@@ -35,7 +35,20 @@ export async function POST(
   }
 
   const { id } = await params;
-  const file = await db.file.findFirst({ where: { id, ownerId: session.id } });
+
+  // `uploadPending: undefined` = « peu importe l'état ».
+  //
+  // C'EST INDISPENSABLE ICI. Le client Prisma masque automatiquement les
+  // fichiers dont les octets ne sont pas confirmés (voir lib/db.ts), pour
+  // qu'un envoi interrompu ne laisse pas un fichier fantôme dans les listes.
+  // Mais cette route est précisément celle qui CONFIRME les octets : sans
+  // cette échappatoire, elle ne retrouve jamais le fichier qu'elle doit
+  // finaliser et tous les envois échouent avec « Échec de la finalisation ».
+  //
+  // Mentionner le champ, même à undefined, suffit à désactiver le filtre.
+  const file = await db.file.findFirst({
+    where: { id, ownerId: session.id, uploadPending: undefined },
+  });
   if (!file) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   // Vérification d'autorisation supplémentaire pour les fichiers de team
