@@ -6,7 +6,7 @@ import { FileIcon } from "./file-icon";
 import { FileTextEditor } from "./file-text-editor";
 import { FileSpreadsheetEditor } from "./file-spreadsheet-editor";
 import { FileDocViewer } from "./file-doc-viewer";
-import { isSpreadsheet, isWordDocument, isTextEditable } from "@/lib/file-kinds";
+import { isSpreadsheet, isWordDocument, isTextEditable, isImageFile } from "@/lib/file-kinds";
 import { formatBytes } from "@/lib/utils";
 import { useToast } from "./toast";
 
@@ -206,7 +206,10 @@ export function FilePreviewModal({
   // diverger.
   const isSheet = isSpreadsheet(file.mimeType, file.name);
   const isWord = isWordDocument(file.mimeType, file.name);
-  const isImage = !isSheet && !isWord && file.mimeType.startsWith("image/");
+  // Détection par extension incluse : une photo peut arriver en
+  // application/octet-stream (cas des .jfif de Windows) et n'aurait alors
+  // affiché qu'un bouton de téléchargement.
+  const isImage = !isSheet && !isWord && isImageFile(file.mimeType, file.name);
   const isVideo = file.mimeType.startsWith("video/");
   const isAudio = file.mimeType.startsWith("audio/");
   const isPdf = file.mimeType === "application/pdf";

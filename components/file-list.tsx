@@ -1029,6 +1029,7 @@ function GridView({
               <FileThumbnail
                 fileId={f.id}
                 mimeType={f.mimeType}
+                fileName={f.name}
                 alt={f.name}
                 className="w-full h-full"
                 iconClassName="size-12"

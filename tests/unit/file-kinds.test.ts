@@ -107,6 +107,25 @@ describe("fichiers réellement éditables en texte", () => {
   });
 });
 
+describe("images aux extensions moins courantes", () => {
+  // Cas réel : un .jfif (photo JPEG enregistrée par Windows) arrive en
+  // application/octet-stream. S'il était pris pour du texte, l'ouvrir
+  // afficherait du binaire illisible, et l'enregistrer détruirait la photo.
+  const images: Array<[string, string]> = [
+    ["application/octet-stream", "photo.jfif"],
+    ["application/octet-stream", "photo.jpe"],
+    ["application/octet-stream", "photo.heif"],
+    ["application/octet-stream", "image.jxl"],
+    ["application/octet-stream", "capture.PNG"],
+  ];
+
+  for (const [mime, name] of images) {
+    it(`${name} n'est jamais éditable en texte`, () => {
+      expect(isTextEditable(mime, name)).toBe(false);
+    });
+  }
+});
+
 describe("fichiers binaires courants", () => {
   const binaries: Array<[string, string]> = [
     ["image/jpeg", "photo.jpg"],

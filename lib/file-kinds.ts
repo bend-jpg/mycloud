@@ -63,6 +63,20 @@ export function isBinaryFile(mimeType: string, name: string): boolean {
   return isBinaryMime(mimeType);
 }
 
+/**
+ * Image affichable dans l'aperçu.
+ *
+ * Le type MIME seul ne suffit pas : selon le système, une photo peut arriver
+ * en `application/octet-stream`. C'est le cas des .jfif produits par Windows
+ * — l'utilisateur voyait alors un simple bouton de téléchargement au lieu de
+ * sa photo. On se rabat donc sur l'extension, comme pour le texte.
+ */
+export function isImageFile(mimeType: string, name: string): boolean {
+  if (mimeType === "image/svg+xml") return false; // affiché comme du texte
+  if (mimeType.startsWith("image/")) return true;
+  return /\.(jpe?g|jfif|jpe|pjpeg|png|gif|webp|avif|bmp|tiff?|ico|heic|heif)$/i.test(name);
+}
+
 export function isSpreadsheet(mimeType: string, name: string): boolean {
   return mimeType === XLSX_MIME || /\.xlsx$/i.test(name);
 }

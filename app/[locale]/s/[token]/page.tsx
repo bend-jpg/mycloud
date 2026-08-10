@@ -102,6 +102,7 @@ export default async function PublicSharePage({
                   <FileThumbnail
                     fileId={link.file.id}
                     mimeType={link.file.mimeType}
+                    fileName={link.file.name}
                     alt={link.file.name}
                     className="w-full h-64"
                     iconClassName="size-16"
