@@ -27,22 +27,49 @@ interface PendingFile {
 }
 
 /**
- * Nombre d'envois simultanés.
+ * Nombre d'envois d'octets simultanés.
  *
- * La version précédente les lançait TOUS en même temps. Sur l'import d'un
- * dossier de site web (une centaine de fichiers), ça ouvrait une centaine de
- * requêtes d'un coup : le serveur ne suivait pas, la plupart échouaient, et
- * comme les dossiers avaient bien été créés il restait une arborescence
- * complète et vide. Constaté en production : 42 dossiers sur 43 sans aucun
- * fichier.
+ * Les octets partent DIRECTEMENT chez l'hébergeur de stockage, sans transiter
+ * par notre serveur : on peut donc en paralléliser davantage sans risque pour
+ * lui. Ce qui l'écroulait auparavant, c'étaient les requêtes de préparation
+ * et de confirmation — elles passent désormais par lots.
  *
- * Trois à la fois : assez pour saturer une connexion domestique, assez peu
- * pour ne jamais écrouler le serveur.
+ * Six : de quoi saturer une connexion domestique sans que le navigateur ne
+ * mette lui-même les requêtes en file d'attente.
  */
-const MAX_PARALLEL = 3;
+const MAX_PARALLEL = 6;
+
+/**
+ * Fichiers préparés et confirmés en UN SEUL appel serveur.
+ *
+ * C'est ce qui rend un gros import tenable. Mesuré chez l'utilisateur :
+ * 83 802 fichiers pour 3,94 Go, soit 47 Ko en moyenne. À deux appels par
+ * fichier, ça faisait plus de 167 000 appels de fonction serveur — 37 Ko/s
+ * constatés et plus de 25 heures annoncées, pour des octets qui passent en
+ * moins d'une heure. Par lots de 100 : 1 678 appels.
+ */
+const SERVER_BATCH = 100;
+
+/**
+ * Au-delà de ce nombre de fichiers, aucune vignette n'est générée.
+ *
+ * Chaque vignette est une requête supplémentaire. Sur quelques photos c'est
+ * un confort ; sur des dizaines de milliers de fichiers, c'est des heures
+ * perdues pour un gain invisible.
+ */
+const THUMBNAIL_LIMIT = 200;
 
 /** Tentatives supplémentaires en cas d'erreur passagère (réseau, serveur). */
 const MAX_RETRIES = 2;
+
+/**
+ * Fichiers créés par le système, jamais voulus par l'utilisateur.
+ *
+ * Vus dans un import réel : des .DS_Store de 34 Ko — de simples métadonnées
+ * d'affichage macOS — envoyés parmi les fichiers d'un site. Ils encombrent le
+ * cloud, consomment du quota, et personne ne les cherchera jamais.
+ */
+const SYSTEM_JUNK = /^(\.DS_Store|Thumbs\.db|desktop\.ini|\.localized|__MACOSX)$/i;
 
 interface BatchState {
   running: boolean;
@@ -157,127 +184,81 @@ export function FileUploader({
   useEffect(() => setMounted(true), []);
 
   /**
-   * Envoie UN fichier. Renvoie true en cas de succès.
+   * Envoie les octets d'UN fichier vers l'URL signée fournie par le lot.
    *
    * Les erreurs réseau passagères sont réessayées : sur un import de
-   * plusieurs dizaines de fichiers, il suffit qu'une requête tombe pour que
-   * le fichier manque définitivement, sans que l'utilisateur le remarque au
-   * milieu de la liste.
+   * plusieurs milliers de fichiers, il suffit qu'une requête tombe pour
+   * qu'un fichier manque définitivement, sans qu'on le remarque au milieu
+   * de la liste.
    */
-  const uploadOne = useCallback(
-    async (item: UploadItem, attempt = 0): Promise<boolean> => {
+  const uploadBytes = useCallback(
+    async (
+      item: UploadItem,
+      target: { uploadUrl: string; method: string; headers: Record<string, string> },
+      attempt = 0,
+    ): Promise<boolean> => {
       const update = (patch: Partial<UploadItem>) =>
         setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
 
       try {
         update({ status: "uploading" });
-        // 1. Demander l'URL d'upload
-        const initRes = await fetch("/api/files/upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: item.file.name,
-            size: item.file.size,
-            mimeType: item.file.type || "application/octet-stream",
-            // Upload de dossier : le fichier va dans le sous-dossier recréé,
-            // pas dans le dossier courant.
-            folderId: item.targetFolderId !== undefined ? item.targetFolderId : folderId ?? null,
-            teamId: teamId ?? null,
-          }),
-        });
-        if (!initRes.ok) {
-          const err = await initRes.json().catch(() => ({ error: "Erreur" }));
-          // Messages explicites pour les erreurs courantes
-          if (err.error === "FILE_TOO_LARGE") {
-            throw new Error(err.message ?? "Fichier trop volumineux pour ton plan");
-          }
-          if (err.error === "QUOTA_EXCEEDED") {
-            throw new Error("Quota de stockage dépassé. Libère de l'espace ou upgrade ton plan.");
-          }
-          throw new Error(err.message ?? err.error ?? "Erreur d'initialisation");
-        }
-        const { fileId, uploadUrl, method, headers } = await initRes.json();
-
-        // 2. Upload des bytes avec progression
         let lastLoaded = 0;
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open(method, uploadUrl);
-          for (const [k, v] of Object.entries(headers ?? {})) xhr.setRequestHeader(k, v as string);
+          xhr.open(target.method, target.uploadUrl);
+          for (const [k, v] of Object.entries(target.headers ?? {})) xhr.setRequestHeader(k, v);
           xhr.upload.onprogress = (e) => {
             if (!e.lengthComputable) return;
-            // Compteur GLOBAL d'octets envoyés : sert à calculer la vitesse et
-            // le temps restant sur l'ensemble de l'import, pas fichier par
-            // fichier.
+            // Compteur GLOBAL : sert à la vitesse et au temps restant sur
+            // l'ensemble de l'import, pas fichier par fichier.
             bytesDoneRef.current += e.loaded - lastLoaded;
             lastLoaded = e.loaded;
             update({ progress: Math.round((e.loaded / e.total) * 100) });
           };
-          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`PUT ${xhr.status}`)));
+          xhr.onload = () =>
+            xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`PUT ${xhr.status}`));
           xhr.onerror = () => reject(new Error("Erreur réseau"));
           xhr.ontimeout = () => reject(new Error("Délai dépassé"));
           xhr.send(item.file);
         });
-
-        // 3. Finaliser
         update({ status: "completing", progress: 100 });
-        const completeRes = await fetch(`/api/files/${fileId}/complete`, { method: "POST" });
-        if (!completeRes.ok) throw new Error("Échec de la finalisation");
-
-        // 4. Vignette (images uniquement) — générée par le navigateur pour
-        //    que les grilles n'affichent pas des photos de 2 Mo dans des
-        //    cases de 200 px. Best-effort : un échec ne compromet pas
-        //    l'upload, on retombe simplement sur l'image d'origine.
-        try {
-          const thumb = await makeThumbnail(item.file);
-          if (thumb) {
-            await fetch(`/api/files/${fileId}/thumbnail`, {
-              method: "PUT",
-              headers: { "Content-Type": "image/jpeg" },
-              body: thumb,
-            });
-          }
-        } catch {
-          // vignette optionnelle
-        }
-
-        update({ status: "done", progress: 100 });
         return true;
       } catch (e) {
         const message = e instanceof Error ? e.message : "Erreur";
-        // Le quota et la taille maximale sont des refus définitifs : les
-        // réessayer ne ferait que perdre du temps et masquer la vraie cause.
-        const definitif = /[Qq]uota|volumineux|plan/.test(message);
-
-        if (!definitif && attempt < MAX_RETRIES) {
-          // Les octets déjà comptés pour cette tentative sont retirés du
-          // compteur global, sinon la progression dépasserait 100 %.
+        if (attempt < MAX_RETRIES) {
+          // Les octets déjà comptés pour cette tentative sont retirés, sinon
+          // la progression globale dépasserait 100 %.
           bytesDoneRef.current = Math.max(0, bytesDoneRef.current - item.file.size * (item.progress / 100));
           update({ status: "queued", progress: 0, error: undefined });
           await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
-          return uploadOne(item, attempt + 1);
+          return uploadBytes(item, target, attempt + 1);
         }
-
         update({ status: "error", error: message });
         return false;
       }
     },
-    [folderId, teamId]
+    [],
   );
 
   /**
-   * Traite une série de fichiers en limitant le nombre d'envois simultanés.
+   * Traite l'ensemble des fichiers, PAR LOTS.
    *
-   * C'EST LA CORRECTION DU BUG PRINCIPAL. La version précédente lançait
-   * `newItems.forEach(startUpload)` : sur l'import d'un dossier de site web,
-   * ça ouvrait une centaine de requêtes en même temps. Le serveur et la base
-   * ne suivaient pas, la plupart des envois échouaient — et comme les
-   * dossiers, eux, avaient bien été créés, il restait une arborescence
-   * complète et vide. Constaté en production : 42 dossiers sur 43 sans aucun
-   * fichier.
+   * ─────────────────────────────────────────────────────────────────────
+   * POURQUOI DES LOTS
+   * ─────────────────────────────────────────────────────────────────────
    *
-   * Trois fichiers à la fois : assez pour saturer une connexion domestique,
-   * assez peu pour ne jamais écrouler le serveur.
+   * La version précédente faisait deux appels au serveur PAR FICHIER : un
+   * pour préparer l'envoi, un pour le confirmer. Sur l'import d'un dossier
+   * de site web — mesuré chez l'utilisateur : 83 802 fichiers pour 3,94 Go,
+   * soit 47 Ko en moyenne — ça représentait plus de 160 000 appels de
+   * fonction serveur. Ce n'était plus la bande passante qui limitait mais
+   * l'attente : 37 Ko/s constatés, plus de 25 heures annoncées, pour des
+   * octets qui passent en moins d'une heure.
+   *
+   * Un lot prépare et confirme 100 fichiers à la fois. Les octets, eux,
+   * partent directement chez l'hébergeur de stockage sans passer par notre
+   * serveur : on peut donc en envoyer plus en parallèle sans risque pour
+   * lui — c'était la cause des échecs en masse précédents.
    */
   const runQueue = useCallback(
     async (queue: UploadItem[]) => {
@@ -289,39 +270,169 @@ export function FileUploader({
       setBatchState({ running: true, total: queue.length, done: 0, failed: 0 });
 
       const ticker = setInterval(() => setTick((t) => t + 1), 500);
+      // Les vignettes ajoutent une requête par image. Sur un gros import
+      // c'est du temps perdu pour un confort mineur : on les réserve aux
+      // petites sélections.
+      const withThumbnails = queue.length <= THUMBNAIL_LIMIT;
 
-      let cursor = 0;
       let done = 0;
       let failed = 0;
 
-      const worker = async () => {
-        while (cursor < queue.length) {
-          const item = queue[cursor++];
-          const ok = await uploadOne(item);
-          if (ok) done++;
-          else failed++;
-          setBatchState({ running: true, total: queue.length, done, failed });
-        }
-      };
+      for (let start = 0; start < queue.length; start += SERVER_BATCH) {
+        const lot = queue.slice(start, start + SERVER_BATCH);
 
-      await Promise.all(
-        Array.from({ length: Math.min(MAX_PARALLEL, queue.length) }, worker),
-      );
+        // 1. UN appel pour préparer tout le lot.
+        let prepared: { fileId: string; uploadUrl: string; method: string; headers: Record<string, string> }[];
+        try {
+          const res = await fetch("/api/files/upload-batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              teamId: teamId ?? null,
+              files: lot.map((i) => ({
+                name: i.file.name,
+                size: i.file.size,
+                mimeType: i.file.type || "application/octet-stream",
+                folderId: i.targetFolderId !== undefined ? i.targetFolderId : folderId ?? null,
+              })),
+            }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => null);
+            const message =
+              err?.error === "QUOTA_EXCEEDED"
+                ? "Quota de stockage dépassé"
+                : err?.error === "READ_ONLY"
+                  ? "Tu n'as pas le droit d'écrire ici"
+                  : (err?.message ?? err?.error ?? "Préparation impossible");
+            throw new Error(message);
+          }
+          prepared = (await res.json()).files;
+        } catch (e) {
+          // Tout le lot échoue : chaque fichier reçoit le message, sinon
+          // l'utilisateur voit des lignes rouges sans explication.
+          const message = e instanceof Error ? e.message : "Erreur";
+          setItems((prev) =>
+            prev.map((i) => (lot.some((l) => l.id === i.id) ? { ...i, status: "error", error: message } : i)),
+          );
+          failed += lot.length;
+          setBatchState({ running: true, total: queue.length, done, failed });
+          continue;
+        }
+
+        // 2. Envoi des octets, en parallèle et directement vers le stockage.
+        const uploaded: string[] = [];
+        let cursor = 0;
+        const worker = async () => {
+          while (cursor < lot.length) {
+            const index = cursor++;
+            const target = prepared[index];
+            // Fichier écarté par le serveur (trop volumineux pour le plan).
+            if (!target) {
+              setItems((prev) =>
+                prev.map((i) =>
+                  i.id === lot[index].id
+                    ? { ...i, status: "error", error: "Trop volumineux pour ton plan" }
+                    : i,
+                ),
+              );
+              failed++;
+              continue;
+            }
+            const ok = await uploadBytes(lot[index], target);
+            if (ok) uploaded.push(target.fileId);
+            else failed++;
+            setBatchState({ running: true, total: queue.length, done, failed });
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL, lot.length) }, worker));
+
+        // 3. UN appel pour confirmer tout le lot.
+        if (uploaded.length > 0) {
+          try {
+            const res = await fetch("/api/files/complete-batch", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fileIds: uploaded }),
+            });
+            if (!res.ok) throw new Error("Confirmation impossible");
+            const data = await res.json();
+
+            // Les fichiers portant un nom déjà présent passent par l'ancienne
+            // route, qui sait archiver l'existant en version.
+            for (const id of data.needsMerge ?? []) {
+              await fetch(`/api/files/${id}/complete`, { method: "POST" }).catch(() => undefined);
+            }
+
+            const okIds = new Set<string>([...(data.completed ?? []), ...(data.needsMerge ?? [])]);
+            const missing = new Set<string>(data.missing ?? []);
+            done += okIds.size;
+            failed += missing.size;
+
+            setItems((prev) =>
+              prev.map((i) => {
+                const idx = lot.findIndex((l) => l.id === i.id);
+                if (idx === -1) return i;
+                const fid = prepared[idx]?.fileId;
+                if (fid && okIds.has(fid)) return { ...i, status: "done", progress: 100 };
+                if (fid && missing.has(fid)) return { ...i, status: "error", error: "Fichier non reçu" };
+                return i;
+              }),
+            );
+          } catch {
+            setItems((prev) =>
+              prev.map((i) =>
+                lot.some((l) => l.id === i.id) && i.status === "completing"
+                  ? { ...i, status: "error", error: "Échec de la confirmation" }
+                  : i,
+              ),
+            );
+            failed += uploaded.length;
+          }
+        }
+
+        setBatchState({ running: true, total: queue.length, done, failed });
+
+        // 4. Vignettes — best-effort, uniquement sur les petites sélections.
+        if (withThumbnails) {
+          await Promise.all(
+            lot.map(async (item, index) => {
+              const fid = prepared[index]?.fileId;
+              if (!fid) return;
+              try {
+                const thumb = await makeThumbnail(item.file);
+                if (thumb) {
+                  await fetch(`/api/files/${fid}/thumbnail`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/jpeg" },
+                    body: thumb,
+                  });
+                }
+              } catch {
+                // vignette optionnelle
+              }
+            }),
+          );
+        }
+
+        // Les lignes terminées sont retirées au fil de l'eau : garder des
+        // dizaines de milliers d'éléments à l'écran ferait ramer le
+        // navigateur bien avant la fin de l'import.
+        if (queue.length > 200) {
+          setItems((prev) => prev.filter((i) => i.status !== "done"));
+        }
+      }
 
       clearInterval(ticker);
       setBatchState({ running: false, total: queue.length, done, failed });
 
-      // Un SEUL rafraîchissement, à la fin. L'ancienne version en déclenchait
-      // un par fichier — inutile, et coûteux sur un import massif.
+      // Un SEUL rafraîchissement, à la fin.
       router.refresh();
 
       if (failed === 0) {
         toast.success(
-          queue.length === 1
-            ? `« ${queue[0].file.name} » importé`
-            : `${done} fichier(s) importés`,
+          queue.length === 1 ? `« ${queue[0].file.name} » importé` : `${done} fichier(s) importés`,
         );
-        // Tout s'est bien passé : la liste se referme d'elle-même.
         setTimeout(() => setItems((prev) => prev.filter((i) => i.status !== "done")), 2500);
       } else {
         // En cas d'échec on ne referme RIEN : l'utilisateur doit voir quels
@@ -329,7 +440,7 @@ export function FileUploader({
         toast.error(`${failed} fichier(s) non importés sur ${queue.length}`);
       }
     },
-    [uploadOne, router, toast],
+    [uploadBytes, router, toast, folderId, teamId],
   );
 
   const handleFiles = useCallback(
@@ -346,13 +457,48 @@ export function FileUploader({
       });
       if (pending.length === 0) return;
 
+      // Écarte les fichiers créés par le système d'exploitation. Ils ne
+      // servent à rien dans un cloud, et sur un import de plusieurs dizaines
+      // de milliers de fichiers ils représentent des centaines d'envois
+      // inutiles.
+      const junkCount = pending.filter((p) => SYSTEM_JUNK.test(p.file.name)).length;
+      const kept = pending.filter((p) => !SYSTEM_JUNK.test(p.file.name));
+      if (junkCount > 0) {
+        toast.success(
+          junkCount === 1
+            ? "1 fichier système ignoré"
+            : `${junkCount} fichiers système ignorés (.DS_Store, Thumbs.db…)`,
+        );
+      }
+      if (kept.length === 0) return;
+      pending.length = 0;
+      pending.push(...kept);
+
       // Crée l'arborescence AVANT d'uploader : un seul appel par dossier
       // distinct, mis en cache pour ne pas recréer 200 fois le même.
       const folderIdByPath = new Map<string, string | null>();
       folderIdByPath.set("", folderId ?? null);
       const uniqueDirs = Array.from(new Set(pending.map((p) => p.relativePath))).filter(Boolean);
 
+      // Création de l'arborescence, NIVEAU PAR NIVEAU.
+      //
+      // En séquentiel, un site de plusieurs milliers de dossiers demandait
+      // autant d'allers-retours AVANT que le moindre fichier ne parte —
+      // plusieurs minutes d'attente sans que rien ne bouge à l'écran.
+      //
+      // On ne peut pas tout paralléliser pour autant : deux chemins frères
+      // créés en même temps risqueraient de créer deux fois leur parent
+      // commun. En traitant les niveaux dans l'ordre de profondeur, chaque
+      // parent existe déjà quand ses enfants sont demandés, et les dossiers
+      // d'un même niveau peuvent partir ensemble sans risque.
+      const byDepth = new Map<number, string[]>();
       for (const dir of uniqueDirs) {
+        const depth = dir.split("/").filter(Boolean).length;
+        if (!byDepth.has(depth)) byDepth.set(depth, []);
+        byDepth.get(depth)!.push(dir);
+      }
+
+      const ensureOne = async (dir: string) => {
         try {
           const res = await fetch("/api/folders/ensure-path", {
             method: "POST",
@@ -364,12 +510,22 @@ export function FileUploader({
             }),
           });
           const data = await res.json().catch(() => null);
-          folderIdByPath.set(dir, res.ok ? data?.folderId ?? null : folderId ?? null);
+          folderIdByPath.set(dir, res.ok ? (data?.folderId ?? null) : (folderId ?? null));
         } catch {
           // Dossier non créé → le fichier atterrit dans le dossier courant
           // plutôt que d'échouer complètement.
           folderIdByPath.set(dir, folderId ?? null);
         }
+      };
+
+      for (const depth of Array.from(byDepth.keys()).sort((a, b) => a - b)) {
+        const level = byDepth.get(depth)!;
+        let cursor = 0;
+        await Promise.all(
+          Array.from({ length: Math.min(MAX_PARALLEL, level.length) }, async () => {
+            while (cursor < level.length) await ensureOne(level[cursor++]);
+          }),
+        );
       }
 
       const newItems: UploadItem[] = pending.map((p, i) => ({
