@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { collectFolderSubtree } from "@/lib/folder-tree";
 import { getMembership, canWrite } from "@/lib/teams";
 
 export async function DELETE(
@@ -28,29 +29,32 @@ export async function DELETE(
   }
   if (!allowed) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
 
-  // Récursif : marquer en corbeille tous les sous-dossiers et fichiers descendants
-  // Approche simple : on récupère tous les IDs descendants via path, puis on update.
-  const fullPath = folder.path === "/" ? `/${folder.name}` : `${folder.path}/${folder.name}`;
-  const teamScope = folder.teamId ? { teamId: folder.teamId } : { ownerId: session.id, teamId: null };
+  // Toute l'arborescence part à la corbeille : le dossier, ses sous-dossiers,
+  // ET tous les fichiers qu'ils contiennent.
+  //
+  // La version précédente ne prenait que les fichiers placés DIRECTEMENT dans
+  // le dossier supprimé. Ceux des sous-dossiers restaient : ils continuaient
+  // d'occuper le quota tout en devenant inatteignables, leur dossier parent
+  // étant à la corbeille. Vu de l'utilisateur, la suppression ne marchait
+  // tout simplement pas.
+  const folderIds = await collectFolderSubtree([id], {
+    teamId: folder.teamId,
+    ownerId: session.id,
+  });
+  const now = new Date();
 
-  await db.$transaction([
-    db.folder.update({ where: { id }, data: { isTrash: true, deletedAt: new Date() } }),
+  const [folders, files] = await db.$transaction([
     db.folder.updateMany({
-      where: { ...teamScope, path: { startsWith: fullPath } },
-      data: { isTrash: true, deletedAt: new Date() },
+      where: { id: { in: folderIds } },
+      data: { isTrash: true, deletedAt: now },
     }),
     db.file.updateMany({
-      where: { folderId: id },
-      data: { isTrash: true, deletedAt: new Date() },
+      where: { folderId: { in: folderIds }, isTrash: false },
+      data: { isTrash: true, deletedAt: now },
     }),
-    // Pour les fichiers dans les sous-dossiers : on ne les retrouve pas par path
-    // (les fichiers n'ont pas de path), donc il faudrait une vraie récursion.
-    // Pour V1 on accepte cette limitation : seuls les fichiers DIRECTEMENT dans
-    // le dossier supprimé sont aussi corbeille. Les sous-dossiers sont en corbeille
-    // mais leurs fichiers restent visibles (mais le dossier parent l'est).
   ]);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, folders: folders.count, files: files.count });
 }
 
 // Rename

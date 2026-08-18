@@ -68,6 +68,8 @@ export function TrashView({
   const [selFiles, setSelFiles] = useState<Set<string>>(new Set());
   const [selFolders, setSelFolders] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<"restore" | "delete" | "empty" | null>(null);
+  /** Progression du vidage : la corbeille se vide par tranches côté serveur. */
+  const [emptyProgress, setEmptyProgress] = useState<{ done: number; remaining: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [confirmHardDel, setConfirmHardDel] = useState(false);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
@@ -136,20 +138,51 @@ export function TrashView({
     router.refresh();
   }
 
+  /**
+   * Vide entièrement la corbeille.
+   *
+   * Le serveur ne traite qu'un nombre borné de fichiers par appel : la
+   * suppression définitive interroge la base plusieurs fois par fichier, et
+   * une corbeille de plusieurs milliers d'éléments dépasserait le temps
+   * maximum d'une fonction serveur — l'utilisateur verrait un échec après une
+   * longue attente, sans savoir ce qui a été supprimé.
+   *
+   * On rappelle donc tant qu'il reste quelque chose, en affichant la
+   * progression plutôt qu'un simple sablier.
+   */
   async function performEmpty() {
     setBusy("empty");
     setErr(null);
-    const res = await fetch("/api/trash", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "empty" }),
-    });
-    setBusy(null);
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      setErr(data?.error ?? "Erreur");
-      return;
+    setEmptyProgress(null);
+
+    let supprimes = 0;
+    // Garde-fou : si le serveur cessait de faire décroître le reliquat, cette
+    // boucle tournerait indéfiniment.
+    for (let passe = 0; passe < 500; passe++) {
+      const res = await fetch("/api/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "empty" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setBusy(null);
+        setEmptyProgress(null);
+        setErr(
+          supprimes > 0
+            ? `${supprimes} élément(s) supprimés, puis échec : ${data?.error ?? "erreur"}`
+            : (data?.error ?? "Erreur"),
+        );
+        return;
+      }
+      const data = await res.json();
+      supprimes += data.deletedFiles ?? 0;
+      if (!data.remaining) break;
+      setEmptyProgress({ done: supprimes, remaining: data.remaining });
     }
+
+    setBusy(null);
+    setEmptyProgress(null);
     setConfirmEmpty(false);
     router.refresh();
   }
@@ -207,7 +240,11 @@ export function TrashView({
             className="btn-ghost text-xs !text-[var(--danger)] border border-[var(--danger)]/30"
           >
             {busy === "empty" ? <Loader2 className="size-3.5 animate-spin" /> : <AlertTriangle className="size-3.5" />}
-            Vider la corbeille
+            {/* Une grosse corbeille se vide en plusieurs passes : afficher
+                l'avancement évite de croire que ça a planté. */}
+            {emptyProgress
+              ? `${emptyProgress.done} supprimé(s), ${emptyProgress.remaining} restant(s)…`
+              : "Vider la corbeille"}
           </button>
         </div>
       </div>

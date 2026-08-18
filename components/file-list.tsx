@@ -344,16 +344,89 @@ export function FileList({
     setConfirmUnshare(null);
   }
 
+  /**
+   * Met la sélection à la corbeille.
+   *
+   * ─────────────────────────────────────────────────────────────────────
+   * CE QUE FAISAIT LA VERSION PRÉCÉDENTE
+   * ─────────────────────────────────────────────────────────────────────
+   *
+   *     await Promise.all([...selected].map((id) => fetch(…, "DELETE")))
+   *
+   * Une requête par élément, toutes lancées en même temps — 12 000 requêtes
+   * simultanées sur une grosse sélection, dont la plupart échouaient.
+   *
+   * Et surtout : AUCUNE réponse n'était vérifiée. `fetch` ne rejette que sur
+   * une panne réseau ; une réponse « erreur serveur » passe pour un succès.
+   * L'interface annonçait donc « 12 252 éléments déplacés en corbeille »
+   * alors que rien n'avait bougé. L'utilisateur n'avait aucun moyen de
+   * comprendre pourquoi ses fichiers étaient toujours là.
+   *
+   * Désormais : un seul appel, découpé en tranches si la sélection est
+   * énorme, et le nombre affiché est celui RÉELLEMENT supprimé en base.
+   */
   async function performBulkDelete() {
     setBulkBusy(true);
-    await Promise.all([
-      ...Array.from(selected).map((id) => fetch(`/api/files/${id}`, { method: "DELETE" })),
-      ...Array.from(selectFolders).map((id) => fetch(`/api/folders/${id}`, { method: "DELETE" })),
-    ]);
+    const fileIds = Array.from(selected);
+    const folderIds = Array.from(selectFolders);
+
+    // Découpage : une transaction démesurée dépasserait le temps maximum
+    // d'une fonction serveur et échouerait en bloc, sans rien supprimer.
+    const SLICE = 2000;
+    let deletedFiles = 0;
+    let deletedFolders = 0;
+    let erreur: string | null = null;
+
+    try {
+      for (let i = 0; i < Math.max(fileIds.length, folderIds.length); i += SLICE) {
+        const res = await fetch("/api/files/bulk-delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileIds: fileIds.slice(i, i + SLICE),
+            folderIds: folderIds.slice(i, i + SLICE),
+            teamId: teamId ?? null,
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          erreur =
+            data?.error === "FORBIDDEN"
+              ? "Tu n'as pas le droit de supprimer ici"
+              : (data?.error ?? "Erreur serveur");
+          break;
+        }
+        const data = await res.json();
+        deletedFiles += data.deletedFiles ?? 0;
+        deletedFolders += data.deletedFolders ?? 0;
+      }
+    } catch {
+      erreur = "Erreur réseau";
+    }
+
     setBulkBusy(false);
     setConfirmBulk(false);
     clearSelection();
-    toast.success(`${totalSelected} élément(s) déplacé(s) en corbeille`);
+
+    const total = deletedFiles + deletedFolders;
+    if (erreur) {
+      toast.error(
+        total > 0
+          ? `${total} élément(s) supprimé(s), puis échec : ${erreur}`
+          : `Échec de la suppression : ${erreur}`,
+      );
+    } else if (total === 0) {
+      // Zéro modifié alors qu'on a demandé une suppression : les éléments
+      // étaient déjà à la corbeille, ou ne t'appartiennent pas. Le dire
+      // plutôt que d'afficher une réussite trompeuse.
+      toast.error("Rien n'a été supprimé — éléments déjà en corbeille ou hors de ton espace");
+    } else {
+      // Les fichiers contenus dans les dossiers supprimés sont comptés :
+      // le total dépasse donc souvent le nombre d'éléments sélectionnés.
+      toast.success(
+        `${deletedFolders > 0 ? `${deletedFolders} dossier(s) et ` : ""}${deletedFiles} fichier(s) déplacé(s) en corbeille`,
+      );
+    }
     router.refresh();
   }
 

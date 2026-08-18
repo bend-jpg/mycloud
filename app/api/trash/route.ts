@@ -35,22 +35,48 @@ export async function POST(req: Request) {
 
   // EMPTY : on récupère tous les items perso de l'utilisateur en corbeille puis on delete.
   if (action === "empty") {
+    // PAR TRANCHES.
+    //
+    // La suppression définitive interroge la base plusieurs fois par fichier
+    // (versions archivées, comptage de références, miniature partagée). Sur
+    // une corbeille de 12 000 fichiers ça représente des dizaines de milliers
+    // de requêtes dans un seul appel : le temps maximum d'une fonction serveur
+    // est dépassé bien avant la fin, et l'utilisateur voit un échec après une
+    // longue attente, sans savoir ce qui a été supprimé ou pas.
+    //
+    // On en traite un nombre borné et on annonce ce qu'il reste ; le
+    // navigateur rappelle jusqu'à ce que la corbeille soit vide, en montrant
+    // la progression.
+    const EMPTY_SLICE = 300;
+
     const files = await db.file.findMany({
       where: { ownerId: session.id, isTrash: true },
       select: PURGEABLE_SELECT,
-    });
-    const folders = await db.folder.findMany({
-      where: { ownerId: session.id, isTrash: true, teamId: null },
-      select: { id: true },
+      take: EMPTY_SLICE,
     });
     await hardDeleteFiles(files, session.id);
-    if (folders.length > 0) {
-      await db.folder.deleteMany({ where: { id: { in: folders.map((f) => f.id) } } });
+
+    // Les dossiers ne partent qu'une fois tous les fichiers traités : tant
+    // qu'il en reste, un dossier supprimé rendrait les suivants introuvables.
+    const remainingFiles = await db.file.count({ where: { ownerId: session.id, isTrash: true } });
+    let deletedFolders = 0;
+    if (remainingFiles === 0) {
+      const folders = await db.folder.findMany({
+        where: { ownerId: session.id, isTrash: true, teamId: null },
+        select: { id: true },
+      });
+      if (folders.length > 0) {
+        const r = await db.folder.deleteMany({ where: { id: { in: folders.map((f) => f.id) } } });
+        deletedFolders = r.count;
+      }
     }
+
     return NextResponse.json({
       ok: true,
       deletedFiles: files.length,
-      deletedFolders: folders.length,
+      deletedFolders,
+      // Le navigateur rappelle tant que ce nombre n'est pas nul.
+      remaining: remainingFiles,
     });
   }
 
