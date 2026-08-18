@@ -63,6 +63,28 @@ const THUMBNAIL_LIMIT = 200;
 const MAX_RETRIES = 2;
 
 /**
+ * Nombre maximum de lignes affichées dans le panneau d'import.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * CE QUI BLOQUAIT TOUT
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * La version précédente plaçait la TOTALITÉ des fichiers dans l'affichage
+ * avant de commencer : sur un dossier de 83 000 fichiers, le navigateur
+ * devait dessiner 83 000 lignes d'un seul coup. Il gelait, et l'import ne
+ * démarrait jamais — les dossiers étaient créés, aucun fichier ne partait,
+ * et aucune progression ne s'affichait.
+ *
+ * Constaté chez l'utilisateur : 1 198 dossiers créés, zéro fichier, même pas
+ * en attente. Le symptôme (« ça n'a pas montré le temps ») était en réalité
+ * la cause.
+ *
+ * Seuls le lot en cours et les erreurs sont désormais affichés. Le compte
+ * total, lui, vient des compteurs — pas de la liste.
+ */
+const MAX_VISIBLE_ERRORS = 100;
+
+/**
  * Fichiers créés par le système, jamais voulus par l'utilisateur.
  *
  * Vus dans un import réel : des .DS_Store de 34 Ko — de simples métadonnées
@@ -174,6 +196,14 @@ export function FileUploader({
   const totalBytesRef = useRef(0);
   const startedAtRef = useRef(0);
   const [, setTick] = useState(0);
+  /**
+   * Message affiché AVANT que les envois ne commencent.
+   *
+   * Sur un gros dossier, l'analyse de l'arborescence et la création des
+   * dossiers prennent du temps — 1 198 dossiers chez l'utilisateur. Sans
+   * message, l'écran reste muet et on croit qu'il ne se passe rien.
+   */
+  const [preparing, setPreparing] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   /** Overlay plein-écran quand un drag arrive depuis l'extérieur (bureau, autre onglet). */
   const [pageDragOver, setPageDragOver] = useState(false);
@@ -281,8 +311,19 @@ export function FileUploader({
       for (let start = 0; start < queue.length; start += SERVER_BATCH) {
         const lot = queue.slice(start, start + SERVER_BATCH);
 
+        // L'affichage ne contient que le lot en cours et les erreurs déjà
+        // rencontrées. Y mettre les 83 000 fichiers gelait le navigateur
+        // avant même le premier envoi.
+        setItems((prev) => [
+          ...prev.filter((i) => i.status === "error").slice(-MAX_VISIBLE_ERRORS),
+          ...lot,
+        ]);
+
         // 1. UN appel pour préparer tout le lot.
-        let prepared: { fileId: string; uploadUrl: string; method: string; headers: Record<string, string> }[];
+        // Aligné sur le lot : une entrée par fichier, `null` pour ceux qui
+        // n'ont pas à être envoyés (déjà présents, ou refusés).
+        let prepared: ({ fileId: string; uploadUrl: string; method: string; headers: Record<string, string> } | null)[];
+        let dejaPresents: number[] = [];
         try {
           const res = await fetch("/api/files/upload-batch", {
             method: "POST",
@@ -307,7 +348,9 @@ export function FileUploader({
                   : (err?.message ?? err?.error ?? "Préparation impossible");
             throw new Error(message);
           }
-          prepared = (await res.json()).files;
+          const data = await res.json();
+          prepared = data.files;
+          dejaPresents = data.skipped ?? [];
         } catch (e) {
           // Tout le lot échoue : chaque fichier reçoit le message, sinon
           // l'utilisateur voit des lignes rouges sans explication.
@@ -320,12 +363,30 @@ export function FileUploader({
           continue;
         }
 
+        // Fichiers déjà dans le cloud : comptés comme faits, sans rien
+        // renvoyer. C'est ce qui permet de reprendre un import interrompu en
+        // re-sélectionnant le dossier, au lieu de tout refaire.
+        const skipSet = new Set(dejaPresents);
+        if (skipSet.size > 0) {
+          done += skipSet.size;
+          // Leurs octets ne partiront pas : on les retire du total, sinon la
+          // progression et le temps restant seraient faux.
+          for (const idx of skipSet) totalBytesRef.current -= lot[idx]?.file.size ?? 0;
+          setItems((prev) =>
+            prev.map((i) => {
+              const idx = lot.findIndex((l) => l.id === i.id);
+              return idx !== -1 && skipSet.has(idx) ? { ...i, status: "done", progress: 100 } : i;
+            }),
+          );
+        }
+
         // 2. Envoi des octets, en parallèle et directement vers le stockage.
         const uploaded: string[] = [];
         let cursor = 0;
         const worker = async () => {
           while (cursor < lot.length) {
             const index = cursor++;
+            if (skipSet.has(index)) continue;
             const target = prepared[index];
             // Fichier écarté par le serveur (trop volumineux pour le plan).
             if (!target) {
@@ -415,12 +476,6 @@ export function FileUploader({
           );
         }
 
-        // Les lignes terminées sont retirées au fil de l'eau : garder des
-        // dizaines de milliers d'éléments à l'écran ferait ramer le
-        // navigateur bien avant la fin de l'import.
-        if (queue.length > 200) {
-          setItems((prev) => prev.filter((i) => i.status !== "done"));
-        }
       }
 
       clearInterval(ticker);
@@ -498,6 +553,7 @@ export function FileUploader({
         byDepth.get(depth)!.push(dir);
       }
 
+      let dossiersFaits = 0;
       const ensureOne = async (dir: string) => {
         try {
           const res = await fetch("/api/folders/ensure-path", {
@@ -516,7 +572,17 @@ export function FileUploader({
           // plutôt que d'échouer complètement.
           folderIdByPath.set(dir, folderId ?? null);
         }
+        dossiersFaits++;
+        // Un message toutes les 20 créations : suffisant pour montrer que ça
+        // avance, sans redessiner l'écran en permanence.
+        if (dossiersFaits % 20 === 0 || dossiersFaits === uniqueDirs.length) {
+          setPreparing(`Création des dossiers — ${dossiersFaits}/${uniqueDirs.length}`);
+        }
       };
+
+      if (uniqueDirs.length > 0) {
+        setPreparing(`Création des dossiers — 0/${uniqueDirs.length}`);
+      }
 
       for (const depth of Array.from(byDepth.keys()).sort((a, b) => a - b)) {
         const level = byDepth.get(depth)!;
@@ -536,7 +602,10 @@ export function FileUploader({
         targetFolderId: folderIdByPath.get(p.relativePath) ?? folderId ?? null,
         relativePath: p.relativePath ? `${p.relativePath}/${p.file.name}` : undefined,
       }));
-      setItems((prev) => [...prev, ...newItems]);
+      setPreparing(null);
+      // Les éléments ne sont PAS tous placés dans l'affichage : c'est ce qui
+      // faisait geler le navigateur sur un gros dossier, avant même que le
+      // premier fichier ne parte. runQueue n'affiche que le lot en cours.
       await runQueue(newItems);
     },
     [runQueue, folderId, teamId]
@@ -714,7 +783,7 @@ export function FileUploader({
         </div>
       </div>
 
-      {items.length > 0 && (
+      {(items.length > 0 || preparing !== null) && (
         <div className="fixed bottom-6 end-6 w-96 max-w-[calc(100vw-3rem)] z-50 space-y-2">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-elevated)] shadow-2xl overflow-hidden">
             {/* En-tête : ce que l'utilisateur regarde pendant un gros import.
@@ -730,7 +799,9 @@ export function FileUploader({
                   <CheckCircle2 className="size-4 text-[var(--success)]" />
                 )}
                 <span className="font-medium text-sm">
-                  {batchState.running
+                  {preparing
+                    ? preparing
+                    : batchState.running
                     ? `Import en cours — ${batchState.done + batchState.failed}/${batchState.total}`
                     : batchState.failed > 0
                       ? `Terminé avec ${batchState.failed} échec(s)`

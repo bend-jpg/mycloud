@@ -83,23 +83,30 @@ export async function POST(req: Request) {
 
   // Limite par fichier : un seul fichier trop gros ne doit pas faire échouer
   // les 99 autres, on le signale individuellement.
+  //
+  // L'INDICE D'ORIGINE EST CONSERVÉ DE BOUT EN BOUT.
+  //
+  // La réponse doit rester alignée sur la demande : le navigateur associe
+  // chaque URL au fichier de même position. Écarter des entrées en cours de
+  // route sans garder leur indice décalerait tout, et les octets d'un fichier
+  // partiraient sous le nom d'un autre.
   const maxPerFile = quotaUser.plan?.maxUploadSizeBytes ?? BigInt(5 * 1024 * 1024 * 1024);
   const rejected: { index: number; error: string }[] = [];
-  const accepted: typeof files = [];
+  const accepted: { f: (typeof files)[number]; index: number }[] = [];
   files.forEach((f, index) => {
     if (BigInt(f.size) > maxPerFile) rejected.push({ index, error: "FILE_TOO_LARGE" });
-    else accepted.push(f);
+    else accepted.push({ f, index });
   });
 
   // Quota vérifié sur le TOTAL du lot, en une seule lecture.
-  const totalBytes = accepted.reduce((s, f) => s + BigInt(f.size), BigInt(0));
+  const totalBytes = accepted.reduce((s, a) => s + BigInt(a.f.size), BigInt(0));
   if (quotaUser.storageUsed + totalBytes > quotaUser.storageQuota) {
     return NextResponse.json({ error: "QUOTA_EXCEEDED" }, { status: 413 });
   }
 
   // Dossiers : une seule requête pour l'ensemble des destinations distinctes,
   // au lieu d'une par fichier.
-  const folderIds = Array.from(new Set(accepted.map((f) => f.folderId).filter(Boolean))) as string[];
+  const folderIds = Array.from(new Set(accepted.map((a) => a.f.folderId).filter(Boolean))) as string[];
   if (folderIds.length > 0) {
     const found = await db.folder.findMany({
       where: {
@@ -115,12 +122,52 @@ export async function POST(req: Request) {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────
+  // REPRISE : on ne réenvoie pas ce qui est déjà là
+  // ─────────────────────────────────────────────────────────────────────
+  //
+  // Un navigateur ne peut PAS relire des fichiers après un rechargement de
+  // page — c'est une règle de sécurité qu'aucun site ne contourne. Un import
+  // interrompu doit donc être relancé en re-sélectionnant le dossier.
+  //
+  // Sans cette vérification, tout repartirait de zéro : des heures pour
+  // réenvoyer ce qui était déjà arrivé. Un fichier de même nom, dans le même
+  // dossier, et de même taille est considéré comme déjà importé.
+  //
+  // La taille fait partie de la comparaison : sans elle, un fichier modifié
+  // depuis serait ignoré alors que l'utilisateur veut justement le mettre à
+  // jour.
+  const already = new Set<string>();
+  if (accepted.length > 0) {
+    const found = await db.file.findMany({
+      where: {
+        ownerId: session.id,
+        teamId: teamId ?? null,
+        isTrash: false,
+        OR: accepted.map((a) => ({
+          name: a.f.name,
+          folderId: a.f.folderId ?? null,
+          size: BigInt(a.f.size),
+        })),
+      },
+      select: { name: true, folderId: true, size: true },
+    });
+    for (const f of found) already.add(`${f.folderId ?? ""}|${f.name}|${f.size}`);
+  }
+
+  const skipped: number[] = [];
+  const toUpload = accepted.filter((a) => {
+    const deja = already.has(`${a.f.folderId ?? ""}|${a.f.name}|${BigInt(a.f.size)}`);
+    if (deja) skipped.push(a.index);
+    return !deja;
+  });
+
   const { provider, backendId } = await getDefaultStorage();
 
   // Signature des URL en parallèle : c'est du calcul local, sans appel
   // réseau — les enchaîner ne servirait qu'à perdre du temps.
   const prepared = await Promise.all(
-    accepted.map(async (f) => {
+    toUpload.map(async ({ f, index }) => {
       const fileId = nanoid();
       const key = teamId ? teamFileKey(teamId, fileId, f.name) : userFileKey(session.id, fileId, f.name);
       const presigned = await provider.createPresignedUpload(key, {
@@ -128,6 +175,7 @@ export async function POST(req: Request) {
         contentLength: f.size,
       });
       return {
+        index,
         fileId,
         key,
         uploadUrl: presigned.url,
@@ -152,16 +200,39 @@ export async function POST(req: Request) {
   );
 
   // UNE seule écriture pour tout le lot.
-  await db.file.createMany({ data: prepared.map((p) => p.row) });
+  if (prepared.length > 0) {
+    await db.file.createMany({ data: prepared.map((p) => p.row) });
+  }
 
-  return NextResponse.json({
-    files: prepared.map((p) => ({
+  // Réponse ALIGNÉE sur la demande : une entrée par fichier envoyé, dans le
+  // même ordre. `null` pour ceux qui n'ont pas à être envoyés (déjà présents,
+  // ou trop volumineux). Le navigateur associe chaque URL par position — un
+  // tableau compacté ferait partir les octets d'un fichier sous le nom d'un
+  // autre.
+  const parPosition: (null | {
+    fileId: string;
+    uploadUrl: string;
+    method: string;
+    headers: Record<string, string>;
+    key: string;
+  })[] = new Array(files.length).fill(null);
+
+  for (const p of prepared) {
+    parPosition[p.index] = {
       fileId: p.fileId,
       uploadUrl: p.uploadUrl,
       method: p.method,
       headers: p.headers,
       key: p.key,
-    })),
+    };
+  }
+
+  return NextResponse.json({
+    files: parPosition,
     rejected,
+    // Indices déjà présents dans le cloud : le navigateur les compte comme
+    // faits sans rien renvoyer. C'est ce qui permet de reprendre un import
+    // interrompu au lieu de tout recommencer.
+    skipped,
   });
 }
